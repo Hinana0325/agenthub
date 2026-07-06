@@ -2,12 +2,15 @@ package com.agenthub.app.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowCompat
@@ -35,8 +38,8 @@ fun buildColorScheme(
         secondaryContainer = accent.secondaryContainer,
         tertiary = accent.tertiary,
         tertiaryContainer = accent.tertiaryContainer,
-        background = if (isGlass) GlassSurfaceDark else DarkBackground,
-        surface = if (isGlass) GlassSurfaceDark else DarkSurface,
+        background = if (isGlass) Color.Transparent else DarkBackground,
+        surface = if (isGlass) Color.Transparent else DarkSurface,
         surfaceVariant = if (isGlass) GlassSurfaceVariantDark else DarkSurfaceVariant,
         onBackground = DarkOnBackground,
         onSurface = DarkOnBackground,
@@ -54,8 +57,8 @@ fun buildColorScheme(
         secondaryContainer = accent.secondaryContainer,
         tertiary = accent.tertiary,
         tertiaryContainer = accent.tertiaryContainer,
-        background = if (isGlass) GlassSurfaceLight else LightBackground,
-        surface = if (isGlass) GlassSurfaceLight else LightSurface,
+        background = if (isGlass) Color.Transparent else LightBackground,
+        surface = if (isGlass) Color.Transparent else LightSurface,
         surfaceVariant = if (isGlass) GlassSurfaceVariantLight else LightSurfaceVariant,
         onBackground = LightOnBackground,
         onSurface = LightOnBackground,
@@ -192,12 +195,29 @@ fun AgentHubTheme(
 
     CompositionLocalProvider(
         LocalIsGlass provides isGlass,
+        LocalGlassBlurRadius provides GlassBlurMd,
+        LocalGlassTintAlpha provides 0.20f,
+        LocalGlassBorderAlpha provides 0.15f,
+        LocalGlassShineAlpha provides if (isDark) 0.12f else 0.10f,
+        LocalGlassDispersion provides if (isDark) GlassDispersionDark else GlassDispersionLight,
+        LocalGlassShadowElevation provides GlassShadowMd,
         content = {
-            MaterialTheme(
-                colorScheme = colorScheme,
-                typography = AppTypography,
-                content = content
-            )
+            if (isGlass) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    GlassBackdrop(isDark = isDark)
+                    MaterialTheme(
+                        colorScheme = colorScheme,
+                        typography = AppTypography,
+                        content = content
+                    )
+                }
+            } else {
+                MaterialTheme(
+                    colorScheme = colorScheme,
+                    typography = AppTypography,
+                    content = content
+                )
+            }
         }
     )
 }

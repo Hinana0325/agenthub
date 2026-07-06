@@ -68,17 +68,21 @@ sealed class PluginAction {
                     url = json.get("url")?.asString ?: "",
                     method = json.get("method")?.asString ?: "GET",
                     headers = runCatching {
-                        gson.fromJson(json.get("headers")?.asString ?: "{}",
-                            object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type)
-                    }.getOrElse { emptyMap() },
+                        gson.fromJson<Map<String, String>>(
+                            json.get("headers")?.asString ?: "{}",
+                            object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+                        )
+                    }.getOrElse { emptyMap<String, String>() },
                     bodyTemplate = json.get("bodyTemplate")?.asString
                 )
                 "broadcast" -> Broadcast(
                     action = json.get("action")?.asString ?: "",
                     extras = runCatching {
-                        gson.fromJson(json.get("extras")?.asString ?: "{}",
-                            object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type)
-                    }.getOrElse { emptyMap() }
+                        gson.fromJson<Map<String, String>>(
+                            json.get("extras")?.asString ?: "{}",
+                            object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+                        )
+                    }.getOrElse { emptyMap<String, String>() }
                 )
                 "workflow" -> Workflow(
                     promptTemplate = json.get("promptTemplate")?.asString ?: ""

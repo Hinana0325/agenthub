@@ -46,7 +46,7 @@ fun PluginScreen(
                 title = { Text(stringResource(R.string.plugin_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
+                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                     }
                 }
             )
@@ -331,9 +331,9 @@ private fun PluginDetailDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 when (permission) {
-                                     "network" -> Icons.AutoMirrored.Filled.Wifi
-                                     "storage" -> Icons.AutoMirrored.Filled.Storage
-                                     else -> Icons.AutoMirrored.Filled.Security
+                                     "network" -> Icons.Filled.Wifi
+                                     "storage" -> Icons.Filled.Storage
+                                     else -> Icons.Filled.Security
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),

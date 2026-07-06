@@ -81,9 +81,8 @@ class OpenAIHttpTransport(
         try {
             client.preparePost(url) {
                 header("Authorization", "Bearer ${config.apiKey}")
-                setBody(gson.toJson(requestBody)) {
-                    contentType(ContentType.Application.Json)
-                }
+                header("Content-Type", "application/json")
+                setBody(gson.toJson(requestBody))
             }.execute { response ->
                 if (response.status != HttpStatusCode.OK) {
                     val errBody = response.bodyAsText().take(2000)

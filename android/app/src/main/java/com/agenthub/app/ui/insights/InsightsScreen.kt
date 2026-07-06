@@ -45,7 +45,7 @@ fun InsightsScreen(
                 title = { Text(stringResource(R.string.insights_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_close))
+                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.action_close))
                     }
                 },
                 actions = {

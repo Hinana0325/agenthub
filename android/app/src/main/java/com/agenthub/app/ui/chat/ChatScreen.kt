@@ -62,6 +62,10 @@ import com.agenthub.app.ui.components.ErrorSnackbar
 import kotlinx.coroutines.launch
 import com.agenthub.app.ui.components.scaleOnPress
 import com.agenthub.app.ui.theme.GlassTopAppBar
+import com.agenthub.app.ui.theme.LocalIsGlass
+import com.agenthub.app.ui.theme.glassBackground
+import com.agenthub.app.ui.theme.GlassShapeLg
+import androidx.compose.ui.graphics.Color
 import com.agenthub.app.util.HapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -561,10 +565,12 @@ fun ChatInputBar(
         label = "pulse-scale"
     )
 
+    val isGlassBar = LocalIsGlass.current
     Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface
+        tonalElevation = if (isGlassBar) 0.dp else 3.dp,
+        shadowElevation = if (isGlassBar) 0.dp else 8.dp,
+        color = if (isGlassBar) Color.Transparent else MaterialTheme.colorScheme.surface,
+        modifier = if (isGlassBar) Modifier.glassBackground(shape = GlassShapeLg) else Modifier
     ) {
         Column {
             // Pending attachment preview
@@ -724,7 +730,7 @@ fun ChatInputBar(
                             )
                         } else {
                             Icon(
-                                Icons.AutoMirrored.Filled.Send,
+                                Icons.Filled.Send,
                                 contentDescription = stringResource(R.string.action_send),
                                 modifier = Modifier.size(20.dp)
                             )
@@ -765,29 +771,37 @@ fun MessageBubble(
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Box {
+            val bubbleShape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (isUser) 16.dp else 4.dp,
+                bottomEnd = if (isUser) 4.dp else 16.dp
+            )
+            val isGlassBubble = LocalIsGlass.current
             Surface(
-                shape = RoundedCornerShape(
-                    topStart = 16.dp,
-                    topEnd = 16.dp,
-                    bottomStart = if (isUser) 16.dp else 4.dp,
-                    bottomEnd = if (isUser) 4.dp else 16.dp
-                ),
-                color = if (isUser)
-                    MaterialTheme.colorScheme.primaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = if (isUser) 0.dp else 1.dp,
-                modifier = Modifier.combinedClickable(
-                    onClick = {},
-                    onLongClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showContextMenu = true
-                    },
-                    onDoubleClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onReaction()
-                    }
-                )
+                shape = bubbleShape,
+                color = if (isGlassBubble) Color.Transparent
+                        else if (isUser) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = if (isGlassBubble) 0.dp else if (isUser) 0.dp else 1.dp,
+                modifier = Modifier
+                    .then(
+                        if (isGlassBubble) Modifier.glassBackground(
+                            tintColor = if (isUser) MaterialTheme.colorScheme.primary else Color.White,
+                            shape = bubbleShape
+                        ) else Modifier
+                    )
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showContextMenu = true
+                        },
+                        onDoubleClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onReaction()
+                        }
+                    )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     if (isStreaming) {
@@ -1536,12 +1550,13 @@ private fun SearchOverlay(
     onResultClick: (Message) -> Unit,
     onClose: () -> Unit
 ) {
+    val isGlassSearch = LocalIsGlass.current
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
+        color = if (isGlassSearch) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TopAppBar(
+            GlassTopAppBar(
                 title = {
                     OutlinedTextField(
                         value = query,
@@ -1559,10 +1574,7 @@ private fun SearchOverlay(
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.action_close))
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
 
             if (query.isNotBlank() && results.isEmpty()) {

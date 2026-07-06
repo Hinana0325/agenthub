@@ -1,6 +1,9 @@
 package com.agenthub.app.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 // ── 8 种强调色系统 ──
 
@@ -140,3 +143,38 @@ val GlassBackdropGradientTopLight = Color(0xFFE8E0F0)    // subtle lavender
 val GlassBackdropGradientBottomLight = Color(0xFFF5F0EC) // warm cream
 val GlassBackdropGradientTopDark = Color(0xFF1E1A24)     // deep purple
 val GlassBackdropGradientBottomDark = Color(0xFF1C1C18)  // warm dark
+
+// ── Android 17 玻璃模糊级别（对应系统级 5 级模糊） ──
+val GlassBlurXs = 8.dp
+val GlassBlurSm = 16.dp
+val GlassBlurMd = 24.dp
+val GlassBlurLg = 40.dp
+val GlassBlurXl = 60.dp
+
+// ── 深度阴影令牌（ambient + diffuse 多层） ──
+val GlassShadowSm = 4.dp
+val GlassShadowMd = 8.dp
+val GlassShadowLg = 16.dp
+val GlassShadowXl = 32.dp
+
+// ── 玻璃动态光泽色（Android 17 灵魂：高光流动） ──
+val GlassShineLight = Color(0x66FFFFFF)  // 40% white
+val GlassShineDark = Color(0x22FFFFFF)   // 13% white
+
+// ── 色散强度（chromatic aberration，边缘 RGB 分离） ──
+val GlassDispersionLight = 1.5f
+val GlassDispersionDark = 2.0f
+
+// ── 形状令牌（Material 3 Expressive 子集） ──
+val GlassShapeXs = RoundedCornerShape(8.dp)
+val GlassShapeSm = RoundedCornerShape(12.dp)
+val GlassShapeMd = RoundedCornerShape(16.dp)
+val GlassShapeLg = RoundedCornerShape(24.dp)
+val GlassShapeXl = RoundedCornerShape(32.dp)
+val GlassShapePill = RoundedCornerShape(100.dp)
+/** 超椭圆近似（squircle）：圆角随尺寸变化，视觉更柔和 */
+val GlassShapeSquircle = RoundedCornerShape(28.dp)
+
+// ── 强调色对应的玻璃光泽色（用于气泡/卡片 tint） ──
+val GlassTintPrimaryLight = Color(0x33FFFFFF)
+val GlassTintPrimaryDark = Color(0x26FFFFFF)

@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Shared Gson instance for Plugin <-> PluginEntity (de)serialization. */
+private val gson = Gson()
+
 /**
  * 插件管理器（DB 驱动）。
  *  - 首次启动播种内置插件（含真实可执行的 [PluginAction]）。
@@ -156,10 +159,8 @@ class PluginManager(private val pluginDao: PluginDao) {
     )
 
     companion object {
-        private val gson = Gson()
-
         /** 无 DB 的纯内存只读实例（降级/测试用）。 */
-        fun inMemory(): PluginManager = object : PluginManager(
+        fun inMemory(): PluginManager = PluginManager(
             object : PluginDao {
                 private val mem = mutableListOf<PluginEntity>()
                 override fun getAll(): Flow<List<PluginEntity>> =
@@ -172,7 +173,7 @@ class PluginManager(private val pluginDao: PluginDao) {
                 }
                 override suspend fun delete(id: String) { mem.removeIf { it.id == id } }
             }
-        ) {}
+        )
     }
 }
 
@@ -198,7 +199,7 @@ fun PluginEntity.toPlugin(): Plugin = Plugin(
     description = description,
     icon = icon,
     isEnabled = isEnabled,
-    permissions = runCatching { gson.fromJson(permissionsJson, listType) }.getOrElse { emptyList() },
+    permissions = runCatching { gson.fromJson<List<String>>(permissionsJson, listType) }.getOrElse { emptyList<String>() },
     version = version,
     action = if (actionType == "none") null else PluginAction.fromConfig(actionType, actionConfig)
 )

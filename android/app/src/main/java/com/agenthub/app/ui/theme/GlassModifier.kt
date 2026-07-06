@@ -1,9 +1,22 @@
 package com.agenthub.app.ui.theme
 
+import android.os.Build
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -13,11 +26,19 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -33,46 +54,126 @@ val LocalGlassTintAlpha = staticCompositionLocalOf { 0.20f }
 /** Default glass border opacity */
 val LocalGlassBorderAlpha = staticCompositionLocalOf { 0.15f }
 
+/** Dynamic shine (highlight) opacity — Android 17 glass soul */
+val LocalGlassShineAlpha = staticCompositionLocalOf { 0.10f }
+
+/** Dispersion (chromatic aberration) strength — simulated via colored edge */
+val LocalGlassDispersion = staticCompositionLocalOf { 1.5f }
+
+/** Depth shadow elevation (dp) */
+val LocalGlassShadowElevation = staticCompositionLocalOf { 8.dp }
+
 /**
- * Apply Apple-style frosted glass background to a composable.
+ * Apply Android 17-style liquid glass background to a composable.
  *
- * Uses [Modifier.blur] for the blur effect (works on all API levels).
- * Draws a semi-transparent tint and thin border on top.
+ * Layers (back → front):
+ *  1. Backdrop blur (API 31+ via [BlurEffect]; <31 degrades to [Modifier.blur])
+ *  2. Tint (wallpaper bleed-through)
+ *  3. Edge-light refraction (4-sided gradient border)
+ *  4. Chromatic dispersion (subtle red/cyan offset edges — Android 17 soul)
+ *  5. Dynamic shine (slow drifting highlight)
+ *  6. Depth shadow (ambient + diffuse)
  */
 @Composable
 fun Modifier.glassBackground(
     tintColor: Color = Color.White,
     borderColor: Color = Color.White,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
 ): Modifier {
     val isGlass = LocalIsGlass.current
     if (!isGlass) return this
 
-    val blurRadius = LocalGlassBlurRadius.current
     val tintAlpha = LocalGlassTintAlpha.current
     val borderAlpha = LocalGlassBorderAlpha.current
+    val shineAlpha = LocalGlassShineAlpha.current
+    val dispersion = LocalGlassDispersion.current
+    val shadowElevation = LocalGlassShadowElevation.current
 
-    return this
-        .drawBehind {
-            drawRect(color = tintColor.copy(alpha = tintAlpha), size = size)
-            if (borderAlpha > 0f) {
-                val half = 0.5.dp.toPx()
-                drawRect(color = borderColor.copy(alpha = borderAlpha), topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(size.width, half))
-                drawRect(color = borderColor.copy(alpha = borderAlpha), topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(half, size.height))
-                drawRect(color = borderColor.copy(alpha = borderAlpha), topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - half), size = androidx.compose.ui.geometry.Size(size.width, half))
-                drawRect(color = borderColor.copy(alpha = borderAlpha), topLeft = androidx.compose.ui.geometry.Offset(size.width - half, 0f), size = androidx.compose.ui.geometry.Size(half, size.height))
-            }
+    val density = LocalDensity.current
+    val borderPx = with(density) { 0.5.dp.toPx() }
+    val dispPx = with(density) { dispersion.dp.toPx() }
+
+    val infinite = rememberInfiniteTransition(label = "glass-shine")
+    val shinePhase by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shine-phase"
+    )
+
+    var result: Modifier = this
+
+    // NOTE: Backdrop blur is intentionally NOT applied on the content path.
+    // RenderEffect / Modifier.blur blur the composable's OWN subtree (incl. text),
+    // which would smear content. The frosted look here comes from translucency over
+    // [GlassBackdrop]; [GlassBox] may layer an optional blurred backdrop behind content.
+    // 2. Tint + edge light + dispersion + dynamic shine
+    result = result.drawBehind {
+        // Base tint (wallpaper bleed-through)
+        drawRect(color = tintColor.copy(alpha = tintAlpha), size = size)
+
+        // Chromatic dispersion — subtle red/cyan offset edges (Android 17 soul)
+        if (dispersion > 0f) {
+            val disp = dispPx
+            drawRect(
+                color = Color.Red.copy(alpha = 0.04f),
+                topLeft = androidx.compose.ui.geometry.Offset(disp, 0f),
+                size = androidx.compose.ui.geometry.Size(borderPx, size.height)
+            )
+            drawRect(
+                color = Color.Cyan.copy(alpha = 0.04f),
+                topLeft = androidx.compose.ui.geometry.Offset(-disp, 0f),
+                size = androidx.compose.ui.geometry.Size(borderPx, size.height)
+            )
         }
-        .blur(blurRadius)
+
+        // Dynamic diagonal shine — drifts with phase
+        val shineStart = 0.15f + shinePhase * 0.4f
+        val shineBrush = Brush.linearGradient(
+            colors = listOf(
+                Color.Transparent,
+                tintColor.copy(alpha = shineAlpha),
+                Color.Transparent
+            ),
+            start = androidx.compose.ui.geometry.Offset(size.width * shineStart, 0f),
+            end = androidx.compose.ui.geometry.Offset(size.width * (shineStart + 0.35f), size.height)
+        )
+        drawRect(brush = shineBrush, size = size)
+
+        // Edge-light refraction (4 borders, brighter top)
+        if (borderAlpha > 0f) {
+            val edge = borderColor.copy(alpha = borderAlpha)
+            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(size.width, borderPx))
+            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(borderPx, size.height))
+            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - borderPx), size = androidx.compose.ui.geometry.Size(size.width, borderPx))
+            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset(size.width - borderPx, 0f), size = androidx.compose.ui.geometry.Size(borderPx, size.height))
+        }
+    }
+
+    // 3. Depth shadow (ambient + diffuse layers)
+    result = result.shadow(
+        elevation = shadowElevation,
+        shape = shape,
+        clip = false,
+        ambientColor = tintColor.copy(alpha = 0.18f),
+        spotColor = Color.Black.copy(alpha = 0.32f)
+    )
+
+    return result
 }
 
 /**
- * Apple-style frosted glass container box.
+ * Apple-style frosted glass container box with Android 17 enhancements.
  */
 @Composable
 fun GlassBox(
     modifier: Modifier = Modifier,
     tintColor: Color = Color.White,
     borderColor: Color = Color.White,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
     val isGlass = LocalIsGlass.current
@@ -80,11 +181,37 @@ fun GlassBox(
         Box(modifier = modifier, content = content)
         return
     }
-    Box(modifier = modifier.glassBackground(tintColor, borderColor), content = content)
+    val blurRadius = LocalGlassBlurRadius.current
+    val tintAlpha = LocalGlassTintAlpha.current
+    val density = LocalDensity.current
+    val blurPx = with(density) { blurRadius.toPx() }
+    Box(modifier = modifier) {
+        // Optional frosted backdrop layer behind content. Blurs this layer's own
+        // (translucent) fill; the frosted depth reads as translucency over GlassBackdrop.
+        // Kept for API symmetry / future View-backed backdrop snapshots.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .then(
+                    if (Build.VERSION.SDK_INT >= 31) {
+                        Modifier.graphicsLayer {
+                            renderEffect = BlurEffect(blurPx, blurPx, TileMode.Clamp)
+                        }
+                    } else {
+                        Modifier.blur(blurRadius)
+                    }
+                )
+                .background(tintColor.copy(alpha = tintAlpha), shape)
+        )
+        Box(
+            modifier = Modifier.glassBackground(tintColor, borderColor, shape),
+            content = content
+        )
+    }
 }
 
 /**
- * Glass-styled [TopAppBar].
+ * Glass-styled [TopAppBar] with depth shadow.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,7 +236,7 @@ fun GlassTopAppBar(
 }
 
 /**
- * Glass-styled [NavigationBar].
+ * Glass-styled [NavigationBar] with active-pill spring indicator handled by caller.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -221,4 +348,80 @@ fun GlassCard(
         border = border,
         content = content,
     )
+}
+
+/**
+ * Android 17 liquid floating action button.
+ * Continuous subtle float + depth glow + spring press handled by caller via [scaleOnPress].
+ */
+@Composable
+fun GlassFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    shape: androidx.compose.ui.graphics.Shape = CircleShape,
+    content: @Composable () -> Unit,
+) {
+    val isGlass = LocalIsGlass.current
+    val density = LocalDensity.current
+    val infinite = rememberInfiniteTransition(label = "fab-float")
+    val floatY by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = -4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "fab-float-y"
+    )
+    val floatYpx = with(density) { floatY.dp.toPx() }
+
+    Box(
+        modifier = modifier
+            .graphicsLayer { translationY = floatYpx }
+            .then(if (isGlass) Modifier.glassBackground(tintColor = containerColor, shape = shape) else Modifier)
+            .shadow(
+                elevation = 12.dp,
+                shape = shape,
+                ambientColor = containerColor.copy(alpha = 0.3f),
+                spotColor = containerColor.copy(alpha = 0.4f)
+            )
+            .background(if (isGlass) Color.Transparent else containerColor, shape)
+            .clip(shape)
+            .clickable(onClick = onClick),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        content()
+    }
+}
+
+/**
+ * Floating pill control (Android 17 style) — for recording / status / quick actions.
+ */
+@Composable
+fun GlassPill(
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    tintColor: Color = Color.White,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val isGlass = LocalIsGlass.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(100.dp))
+            .then(if (isGlass) Modifier.glassBackground(tintColor, shape = RoundedCornerShape(100.dp)) else Modifier)
+            .background(
+                if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(100.dp)
+            )
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        androidx.compose.foundation.layout.Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) { content() }
+    }
 }
