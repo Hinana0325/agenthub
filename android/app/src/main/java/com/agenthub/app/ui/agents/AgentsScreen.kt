@@ -92,7 +92,7 @@ fun AgentsScreen(
                             showFabMenu = false
                             agentsViewModel.showNewForm()
                         },
-                        leadingIcon = { Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(20.dp)) }
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.import_configs)) },

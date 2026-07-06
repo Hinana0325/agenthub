@@ -34,7 +34,7 @@ fun ErrorSnackbar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.ErrorOutline,
+                Icons.AutoMirrored.Filled.ErrorOutline,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onError
@@ -56,7 +56,7 @@ fun ErrorSnackbar(
             }
             IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    Icons.Default.Close,
+                    Icons.AutoMirrored.Filled.Close,
                     contentDescription = "Dismiss",
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
@@ -88,9 +88,9 @@ fun SuccessSnackbar(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
-        ) {
+            ) {
             Icon(
-                Icons.Default.CheckCircle,
+                Icons.AutoMirrored.Filled.CheckCircle,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = Color.White
@@ -104,7 +104,7 @@ fun SuccessSnackbar(
             )
             IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
                 Icon(
-                    Icons.Default.Close,
+                    Icons.AutoMirrored.Filled.Close,
                     contentDescription = "Dismiss",
                     modifier = Modifier.size(16.dp),
                     tint = Color.White.copy(alpha = 0.7f)

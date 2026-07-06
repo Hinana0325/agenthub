@@ -11,11 +11,15 @@ import com.agenthub.app.data.model.Message
 import com.agenthub.app.data.model.MessageRole
 import com.agenthub.app.data.model.MessageStatus
 import com.agenthub.app.data.model.Session
+import com.agenthub.app.provider.AgentConnectionState
 import com.agenthub.app.provider.AgentEvent
-import com.agenthub.app.provider.AgentProvider
+import com.agenthub.app.provider.AgentTransport
+import com.agenthub.app.provider.TransportFactory
+import com.agenthub.app.data.settings.SettingsDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -67,7 +71,8 @@ data class ChatUiState(
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppModule.getRepository(application)
-    private val agentProvider = AgentProvider()
+    private val settingsDataStore = SettingsDataStore(getApplication())
+    private val _transport = MutableStateFlow<AgentTransport?>(null)
     private var voiceInputManager: VoiceInputManager? = null
     private var voiceChatManager: VoiceChatManager? = null
     val localModelManager = LocalModelManager()
@@ -97,24 +102,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             if (savedConfig != null) {
                 _uiState.update { it.copy(showWizard = false) }
-                agentProvider.connect(savedConfig.serverUrl, savedConfig.apiKey, savedConfig.type)
+                connectWith(savedConfig)
             }
         }
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         viewModelScope.launch {
-            agentProvider.events.collect { event ->
+            _transport.filterNotNull().flatMapLatest { it.events }.collect { event ->
                 handleAgentEvent(event)
             }
         }
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         viewModelScope.launch {
-            agentProvider.connectionState.collect { state ->
-                _uiState.update {
-                    it.copy(connectionState = ConnectionState(
-                        isConnected = state.isConnected,
-                        serverUrl = state.serverUrl,
-                        agentType = state.agentType,
-                        latency = state.latency
-                    ))
-                }
+            _transport.filterNotNull().flatMapLatest { it.connectionState }.collect { state ->
+                handleConnectionState(state)
             }
         }
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -197,6 +197,39 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(inputText = text) }
     }
 
+    /**
+     * 通过 [TransportFactory] 按 AgentType 获取传输实例并连接。
+     * 若已存在同类型的传输则复用，否则断开旧传输并创建新实例。
+     */
+    private suspend fun connectWith(config: AgentConfig) {
+        val current = _transport.value
+        val needsNew = current == null || current.connectionState.value.agentType != config.type
+        val transport = if (needsNew) {
+            current?.disconnect()
+            TransportFactory.create(config.type).also { _transport.value = it }
+        } else {
+            current
+        }
+        // E2E 仅对 WebSocket 对等传输（Hermes/OpenClaw/OpenCode）生效；
+        // 从全局设置读取开关与密钥，未启用则为 null。
+        val e2eKey = if (config.type in setOf(AgentType.Hermes, AgentType.OpenClaw, AgentType.OpenCode)) {
+            val enabled = settingsDataStore.e2eEnabled.first()
+            if (enabled) settingsDataStore.e2eKey.first().takeIf { it.isNotBlank() } else null
+        } else null
+        transport?.connect(config, e2eKey = e2eKey)
+    }
+
+    private fun handleConnectionState(state: AgentConnectionState) {
+        _uiState.update {
+            it.copy(connectionState = ConnectionState(
+                isConnected = state.isConnected,
+                serverUrl = state.serverUrl,
+                agentType = state.agentType,
+                latency = state.latency
+            ))
+        }
+    }
+
     fun sendMessage() {
         val text = _uiState.value.inputText.trim()
         val state = _uiState.value
@@ -244,7 +277,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (_uiState.value.connectionState.isConnected) {
-                agentProvider.sendMessage(sessionId, text)
+                _transport.value?.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -299,7 +332,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             repository.saveConfig(config)
 
-            agentProvider.connect(config.serverUrl, config.apiKey, config.type)
+            connectWith(config)
             _uiState.update { state ->
                 state.copy(
                     isConnecting = true,
@@ -454,7 +487,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             "/reconnect" -> {
                 val config = _uiState.value.agentConfig
                 if (config.serverUrl.isNotBlank()) {
-                    agentProvider.connect(config.serverUrl, config.apiKey, config.type)
+                    viewModelScope.launch { connectWith(config) }
                     _uiState.update { it.copy(isConnecting = true) }
                 }
                 return true
@@ -508,7 +541,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
             if (_uiState.value.connectionState.isConnected) {
-                agentProvider.sendMessage(sessionId, text)
+                _transport.value?.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -675,7 +708,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        agentProvider.disconnect()
+        _transport.value?.disconnect()
         voiceInputManager?.destroy()
         voiceChatManager?.destroy()
     }

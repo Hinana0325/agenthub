@@ -8,15 +8,23 @@ import androidx.room.TypeConverters
 import com.agenthub.app.data.local.dao.ActivityDao
 import com.agenthub.app.data.local.dao.AgentConfigDao
 import com.agenthub.app.data.local.dao.MessageDao
+import com.agenthub.app.data.local.dao.PluginDao
 import com.agenthub.app.data.local.dao.SessionDao
 import com.agenthub.app.data.local.entity.ActivityLogEntity
 import com.agenthub.app.data.local.entity.AgentConfigEntity
 import com.agenthub.app.data.local.entity.MessageEntity
+import com.agenthub.app.data.local.entity.PluginEntity
 import com.agenthub.app.data.local.entity.SessionEntity
 
 @Database(
-    entities = [SessionEntity::class, MessageEntity::class, AgentConfigEntity::class, ActivityLogEntity::class],
-    version = 3,
+    entities = [
+        SessionEntity::class,
+        MessageEntity::class,
+        AgentConfigEntity::class,
+        ActivityLogEntity::class,
+        PluginEntity::class
+    ],
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -25,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun agentConfigDao(): AgentConfigDao
     abstract fun activityDao(): ActivityDao
+    abstract fun pluginDao(): PluginDao
 
     companion object {
         @Volatile

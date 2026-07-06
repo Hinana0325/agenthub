@@ -113,6 +113,9 @@ dependencies {
     // Ktor WebSocket
     implementation "io.ktor:ktor-client-websockets:$ktorVersion"
 
+    // Ktor OkHttp engine (for SSE streaming in OpenAIHttpTransport)
+    implementation "io.ktor:ktor-client-okhttp:$ktorVersion"
+
     // Gson
     implementation "com.google.code.gson:gson:$gsonVersion"
 

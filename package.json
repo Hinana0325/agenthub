@@ -1,13 +1,8 @@
 {
   "name": "agenthub",
   "version": "1.0.0",
-  "description": "Multi-Agent mobile controller — PWA + Capacitor (Android/iOS) — Liquid Glass Design",
-  "main": "index.js",
+  "description": "Multi-Agent mobile controller for AI agents (Hermes / OpenAI-compatible / Local Models) — Android (Kotlin + Jetpack Compose)",
   "scripts": {
-    "build": "echo 'Static project, no build step needed'",
-    "test": "node tests.js",
-    "cap:sync": "npx cap sync",
-    "cap:open": "npx cap open android",
     "build:apk": "cd android && ./gradlew assembleDebug",
     "build:release": "cd android && ./gradlew assembleRelease"
   },
@@ -17,21 +12,12 @@
   },
   "keywords": [
     "ai-agent",
-    "pwa",
-    "capacitor",
     "android",
-    "mobile",
-    "chatbot",
-    "liquid-glass"
+    "kotlin",
+    "compose",
+    "multi-agent",
+    "mobile"
   ],
   "author": "Hinana0325",
-  "license": "MIT",
-  "dependencies": {
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/core": "^7.0.0"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^7.0.0",
-    "typescript": "^6.0.3"
-  }
+  "license": "MIT"
 }

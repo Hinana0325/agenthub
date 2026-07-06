@@ -11,25 +11,34 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agenthub.app.R
+import com.agenthub.app.data.AppModule
+import com.agenthub.app.data.plugin.Plugin
+import com.agenthub.app.data.plugin.PluginExecutor
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
-import com.agenthub.app.data.plugin.Plugin
-import com.agenthub.app.data.plugin.PluginManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginScreen(
-    pluginManager: PluginManager = remember { PluginManager() },
     onBack: () -> Unit = {}
 ) {
-    val plugins by pluginManager.plugins.collectAsState()
+    val context = LocalContext.current
+    val pluginManager = remember { AppModule.getPluginManager(context) }
+    val executor = remember { PluginExecutor(context) }
+    val scope = rememberCoroutineScope()
+    val plugins by pluginManager.plugins.collectAsStateWithLifecycle()
     var selectedPlugin by remember { mutableStateOf<Plugin?>(null) }
     var showDetailDialog by remember { mutableStateOf(false) }
+    var runInput by remember { mutableStateOf("") }
+    var runResult by remember { mutableStateOf<PluginExecutor.PluginResult?>(null) }
 
     Scaffold(
         topBar = {
@@ -37,7 +46,7 @@ fun PluginScreen(
                 title = { Text(stringResource(R.string.plugin_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.btn_back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
                     }
                 }
             )
@@ -46,11 +55,10 @@ fun PluginScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-            .padding(padding),
+                .padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Plugin stats
             item {
                 PluginStatsCard(
                     total = plugins.size,
@@ -58,7 +66,6 @@ fun PluginScreen(
                 )
             }
 
-            // Plugin list header
             item {
                 Text(
                     text = stringResource(R.string.plugin_installed),
@@ -68,13 +75,13 @@ fun PluginScreen(
                 )
             }
 
-            // Plugin items
             items(plugins, key = { it.id }) { plugin ->
                 PluginCard(
                     plugin = plugin,
                     onToggle = { pluginManager.togglePlugin(plugin.id) },
                     onClick = {
                         selectedPlugin = plugin
+                        runInput = ""
                         showDetailDialog = true
                     }
                 )
@@ -82,12 +89,70 @@ fun PluginScreen(
         }
     }
 
-    // Plugin detail dialog
     if (showDetailDialog && selectedPlugin != null) {
         PluginDetailDialog(
             plugin = selectedPlugin!!,
+            runInput = runInput,
+            onRunInputChange = { runInput = it },
+            onRun = {
+                scope.launch {
+                    runResult = executor.execute(selectedPlugin!!, runInput)
+                }
+            },
             onToggle = { pluginManager.togglePlugin(selectedPlugin!!.id) },
             onDismiss = { showDetailDialog = false }
+        )
+    }
+
+    // Execution result dialog
+    if (runResult != null) {
+        val result = runResult!!
+        AlertDialog(
+            onDismissRequest = { runResult = null },
+            title = { Text(if (result.sendToAgent) "Send to Agent" else "Result") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (result.sendToAgent) {
+                        Text(
+                            "This plugin produced a prompt. Copy it and paste it into your agent chat:",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = result.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (result.sendToAgent) {
+                    TextButton(onClick = {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AgentHub Plugin Prompt", result.content))
+                        runResult = null
+                    }) {
+                        Text("Copy")
+                    }
+                } else {
+                    TextButton(onClick = { runResult = null }) {
+                        Text(stringResource(R.string.btn_dismiss))
+                    }
+                }
+            },
+            dismissButton = {
+                if (result.sendToAgent) {
+                    TextButton(onClick = { runResult = null }) {
+                        Text(stringResource(R.string.btn_dismiss))
+                    }
+                }
+            }
         )
     }
 }
@@ -155,7 +220,6 @@ private fun PluginCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Plugin icon
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = RoundedCornerShape(12.dp),
@@ -174,7 +238,6 @@ private fun PluginCard(
 
             Spacer(Modifier.width(16.dp))
 
-            // Plugin info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = plugin.name,
@@ -207,7 +270,6 @@ private fun PluginCard(
                 }
             }
 
-            // Toggle switch
             Switch(
                 checked = plugin.isEnabled,
                 onCheckedChange = { onToggle() }
@@ -219,6 +281,9 @@ private fun PluginCard(
 @Composable
 private fun PluginDetailDialog(
     plugin: Plugin,
+    runInput: String,
+    onRunInputChange: (String) -> Unit,
+    onRun: () -> Unit,
     onToggle: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -240,7 +305,6 @@ private fun PluginDetailDialog(
 
                 HorizontalDivider()
 
-                // Version
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -257,7 +321,6 @@ private fun PluginDetailDialog(
                     )
                 }
 
-                // Permissions
                 if (plugin.permissions.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.plugin_permissions),
@@ -268,9 +331,9 @@ private fun PluginDetailDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 when (permission) {
-                                    "network" -> Icons.Default.Wifi
-                                    "storage" -> Icons.Default.Storage
-                                    else -> Icons.Default.Security
+                                     "network" -> Icons.AutoMirrored.Filled.Wifi
+                                     "storage" -> Icons.AutoMirrored.Filled.Storage
+                                     else -> Icons.AutoMirrored.Filled.Security
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
@@ -291,7 +354,39 @@ private fun PluginDetailDialog(
 
                 HorizontalDivider()
 
-                // Status toggle
+                // Run section (only when the plugin has an executable action)
+                if (plugin.action != null) {
+                    Text(
+                        text = "Run",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    OutlinedTextField(
+                        value = runInput,
+                        onValueChange = onRunInputChange,
+                        label = { Text("Input (optional)") },
+                        placeholder = { Text("e.g. London  or  2+2*3") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = onRun,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Run Plugin")
+                    }
+                } else {
+                    Text(
+                        text = "This plugin has no executable action.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                HorizontalDivider()
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
