@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">AgentHub</string>
+    <string name="title_activity_main">AgentHub</string>
+    <string name="package_name">com.agenthub.app</string>
+    <string name="custom_url_scheme">com.agenthub.app</string>
+
+    <!-- Navigation / Tabs -->
+    <string name="nav_chat">聊天</string>
+    <string name="nav_sessions">会话</string>
+    <string name="nav_activity">活动</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_agents">Agent</string>
+    <string name="new_chat">新建聊天</string>
+    <string name="new_agent">新建 Agent</string>
+
+    <!-- Connection Wizard -->
+    <string name="wizard_title">连接到 Agent 服务器</string>
+    <string name="wizard_subtitle">输入 Agent 服务器信息以开始聊天</string>
+    <string name="label_server_url">服务器地址</string>
+    <string name="label_api_key">API 密钥</string>
+    <string name="label_api_key_optional">API 密钥（可选）</string>
+    <string name="label_agent_protocol">Agent 协议</string>
+    <string name="label_protocol">协议</string>
+    <string name="btn_connect">连接</string>
+    <string name="btn_connecting">连接中…</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_skip">跳过 — 稍后配置</string>
+    <string name="status_connected">已连接</string>
+    <string name="status_disconnected">未连接</string>
+    <string name="saved_agents">已保存的 Agent（%d）</string>
+    <string name="optional">可选</string>
+
+    <!-- Messages / Chat -->
+    <string name="hint_type_message">输入消息…</string>
+    <string name="action_send">发送</string>
+    <string name="action_stop">停止</string>
+    <string name="action_clear">清空</string>
+    <string name="streaming">正在生成…</string>
+    <string name="empty_chat_title">开始对话</string>
+    <string name="empty_chat_subtitle">连接到 Agent 服务器以开始使用</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">暂无会话</string>
+    <string name="no_sessions_subtitle">您的对话将显示在这里</string>
+    <string name="untitled">未命名</string>
+    <string name="select_session">选择一个会话</string>
+    <string name="select_activity">选择一个活动以查看详情</string>
+
+    <!-- Settings -->
+    <string name="appearance">外观</string>
+    <string name="theme">主题</string>
+    <string name="accent_color">强调色</string>
+    <string name="font_size">字体大小</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_liquid_glass">液态玻璃</string>
+    <string name="font_small">小</string>
+    <string name="font_medium">中</string>
+    <string name="font_large">大</string>
+    <string name="connection">连接</string>
+    <string name="manage_agents">管理 Agent</string>
+    <string name="manage_agents_subtitle">%d 种类型可用</string>
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+
+    <!-- Agent Management -->
+    <string name="no_agents">未配置 Agent</string>
+    <string name="no_agents_subtitle">添加一个 Agent 以开始使用</string>
+    <string name="label_name">名称</string>
+    <string name="label_type">类型</string>
+    <string name="label_model_optional">模型（可选）</string>
+    <string name="label_system_prompt">系统提示词</string>
+    <string name="label_temperature">温度</string>
+    <string name="label_max_tokens">最大 Token 数</string>
+    <string name="btn_save">保存</string>
+    <string name="btn_delete">删除</string>
+    <string name="btn_edit">编辑</string>
+    <string name="edit_agent">编辑 Agent</string>
+    <string name="delete_agent_title">删除 Agent？</string>
+    <string name="delete_agent_message">将移除「%s」。此操作无法撤销。</string>
+    <string name="copy_config">复制配置</string>
+
+    <!-- Widget -->
+    <string name="widget_description">AgentHub · 快速查看 Agent 状态</string>
+    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_status">已连接 · Hermes Agent</string>
+    <string name="widget_new_conversation">💬 新对话</string>
+
+    <!-- Error / Status -->
+    <string name="connection_failed">连接失败</string>
+    <string name="connection_failed_attempts">连接失败，已重试 %d 次：%s</string>
+    <string name="connection_failed_retry">连接失败（重试 %d/%d）：%s</string>
+    <string name="unknown_error">未知错误</string>
+    <string name="btn_dismiss">关闭</string>
+    <string name="btn_retry">重试</string>
+
+    <!-- Activity Detail -->
+    <string name="activity_type">类型</string>
+    <string name="activity_description">描述</string>
+    <string name="activity_time">时间</string>
+    <string name="activity_id">活动 ID</string>
+    <string name="no_activity">暂无活动</string>
+    <string name="no_activity_subtitle">Agent 运行和事件将显示在这里</string>
+
+    <!-- Other -->
+    <string name="action_copy">复制</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
+
+    <!-- Search -->
+    <string name="action_search">搜索</string>
+    <string name="action_close">关闭</string>
+    <string name="search_placeholder">搜索消息…</string>
+    <string name="search_no_results">未找到结果</string>
+    <string name="search_role_user">你</string>
+    <string name="search_role_agent">Agent</string>
+
+    <!-- Agent Form -->
+    <string name="label_model">模型（可选）</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">Agent 连接</string>
+    <string name="notif_channel_desc">AgentHub 后台连接状态</string>
+    <string name="notif_connected_title">AgentHub 已连接</string>
+    <string name="notif_connected_text">%s 正在后台运行</string>
+    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_text">正在后台运行</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label">AgentHub 消息</string>
+
+    <!-- Import / Export -->
+    <string name="import_configs">导入配置</string>
+    <string name="export_configs">导出配置</string>
+
+    <!-- Notification Reply -->
+    <string name="notif_reply">回复</string>
+    <string name="notif_reply_hint">输入回复…</string>
+
+    <!-- Widget -->
+    <string name="widget_status_connected">已连接 · %s</string>
+    <string name="widget_status_disconnected">未连接</string>
+    <string name="widget_last_message_empty">暂无消息</string>
+    <string name="widget_quick_chat">💬 新对话</string>
+    <string name="widget_input_hint">快速消息…</string>
+    <string name="widget_send">发送</string>
+
+    <!-- E2E Encryption -->
+    <string name="e2e_security">安全</string>
+    <string name="e2e_title">端到端加密</string>
+    <string name="e2e_enabled">已启用 — 消息已加密</string>
+    <string name="e2e_disabled">未启用 — 消息未加密</string>
+    <string name="e2e_toggle">启用端到端加密</string>
+    <string name="e2e_key_label">加密密钥</string>
+    <string name="e2e_key_hidden">●●●●●●●●●●●●●●●●</string>
+    <string name="e2e_copy_key">复制密钥</string>
+    <string name="e2e_regenerate_key">重新生成密钥</string>
+    <string name="e2e_regenerate_warning">警告：重新生成密钥将导致旧消息无法解密</string>
+    <string name="e2e_import_key">导入密钥</string>
+    <string name="e2e_import_hint">粘贴您的加密密钥</string>
+    <string name="e2e_key_copied">加密密钥已复制</string>
+    <string name="e2e_key_regenerated">新密钥已生成</string>
+    <string name="e2e_key_imported">密钥已导入</string>
+    <string name="e2e_confirm_regenerate">确定要重新生成密钥吗？</string>
+    <string name="e2e_confirm">确认</string>
+
+    <!-- Data Backup -->
+    <string name="data_backup">数据</string>
+    <string name="export_chat_history">导出聊天记录</string>
+    <string name="export_chat_history_subtitle">将所有会话和消息保存为 JSON</string>
+    <string name="import_chat_history">导入聊天记录</string>
+    <string name="import_chat_history_subtitle">从备份文件恢复</string>
+    <string name="backup_saved">备份已保存到 %s</string>
+    <string name="backup_export_failed">导出失败：%s</string>
+    <string name="backup_restored">已恢复 %1$d 个会话，%2$d 条消息</string>
+    <string name="backup_restore_failed">恢复失败：%s</string>
+
+    <!-- Performance -->
+    <string name="performance">性能</string>
+    <string name="perf_avg_latency">平均消息延迟</string>
+    <string name="perf_connection_quality">连接质量</string>
+    <string name="perf_memory_usage">内存使用</string>
+    <string name="perf_total_messages">消息总数</string>
+    <string name="perf_uptime">运行时间</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_send_message">发送消息</string>
+    <string name="a11y_stop_generation">停止生成</string>
+    <string name="a11y_new_chat">新建聊天</string>
+    <string name="a11y_settings">设置</string>
+    <string name="a11y_search">搜索消息</string>
+    <string name="a11y_clear_chat">清空聊天</string>
+    <string name="a11y_close_search">关闭搜索</string>
+    <string name="a11y_message_from_user">来自你的消息</string>
+    <string name="a11y_message_from_agent">来自 Agent 的消息</string>
+    <string name="a11y_session_item">会话：%s</string>
+    <string name="a11y_pin_session">置顶会话</string>
+    <string name="a11y_unpin_session">取消置顶</string>
+    <string name="a11y_delete_session">删除会话</string>
+    <string name="a11y_delete_agent">删除 Agent</string>
+    <string name="a11y_copy_message">复制消息</string>
+    <string name="a11y_delete_message">删除消息</string>
+    <string name="a11y_connect_status">连接状态：%s</string>
+    <string name="a11y_message_status">消息状态：%s</string>
+    <string name="a11y_export_backup">导出聊天备份</string>
+    <string name="a11y_import_backup">导入聊天备份</string>
+    <string name="a11y_performance_stats">性能统计</string>
+
+    <!-- Voice Input -->
+    <string name="voice_input_start">开始语音输入</string>
+    <string name="voice_input_stop">停止语音输入</string>
+    <string name="voice_listening">正在聆听…</string>
+    <string name="voice_error">语音识别出错</string>
+    <string name="voice_not_available">此设备不支持语音识别</string>
+
+    <!-- File / Image Attachment -->
+    <string name="attach_file">添加附件</string>
+    <string name="attach_image">图片</string>
+    <string name="attach_document">文件</string>
+    <string name="attachment_preview">附件预览</string>
+
+    <!-- Device Sync -->
+    <string name="device_sync_title">设备同步</string>
+    <string name="device_sync_enable">启用设备同步</string>
+    <string name="device_sync_enabled_desc">在设备间同步消息和配置</string>
+    <string name="device_sync_disabled_desc">数据仅保留在此设备上</string>
+    <string name="device_sync_now">立即同步</string>
+    <string name="device_sync_status">同步状态</string>
+    <string name="device_sync_messages">消息</string>
+    <string name="device_sync_configs">配置</string>
+    <string name="device_sync_last">上次同步</string>
+    <string name="device_sync_paired">已配对设备</string>
+    <string name="device_sync_discover">发现</string>
+    <string name="device_sync_discover_title">发现设备</string>
+    <string name="device_sync_discovering">正在扫描附近设备…</string>
+    <string name="device_sync_no_found">未发现附近设备</string>
+    <string name="device_sync_no_devices">暂无配对设备</string>
+    <string name="device_sync_no_devices_hint">点击“发现”搜索附近设备</string>
+    <string name="device_sync_online">在线</string>
+    <string name="device_sync_offline">离线</string>
+    <string name="device_sync_pair">配对</string>
+    <string name="device_sync_signal">信号：%d%%</string>
+    <string name="device_sync_remove">移除设备</string>
+    <string name="device_sync_remove_title">移除设备？</string>
+    <string name="device_sync_remove_desc">从配对设备中移除「%s」？</string>
+
+    <!-- Collaboration -->
+    <string name="collab_title">协作</string>
+    <string name="collab_start">发起协作</string>
+    <string name="collab_join">加入会话</string>
+    <string name="collab_leave">离开会话</string>
+    <string name="collab_session_active">协作进行中</string>
+    <string name="collab_session_id">会话 ID</string>
+    <string name="collab_participants">参与者</string>
+    <string name="collab_host">主持人</string>
+    <string name="collab_indicator">协作模式：%d 位参与者</string>
+    <string name="collab_simulate_join">模拟加入</string>
+    <string name="collab_no_session">暂无活跃的协作会话</string>
+
+    <!-- Plugins -->
+    <string name="plugin_title">插件</string>
+    <string name="plugin_installed">已安装插件</string>
+    <string name="plugin_total">总计</string>
+    <string name="plugin_enabled">已启用</string>
+    <string name="plugin_version">版本</string>
+    <string name="plugin_permissions">权限</string>
+    <string name="plugin_status">状态</string>
+    <string name="plugin_perm_network">网络访问</string>
+    <string name="plugin_perm_storage">存储访问</string>
+    <string name="plugin_enable">启用</string>
+    <string name="plugin_disable">禁用</string>
+
+    <!-- Smart Notifications -->
+    <string name="smart_notif_title">智能通知</string>
+    <string name="smart_notif_desc">按优先级过滤通知</string>
+    <string name="smart_notif_high">高优先级</string>
+    <string name="smart_notif_high_desc">错误、警告、需要操作</string>
+    <string name="smart_notif_medium">中优先级</string>
+    <string name="smart_notif_medium_desc">普通 Agent 回复</string>
+    <string name="smart_notif_low">低优先级</string>
+    <string name="smart_notif_low_desc">状态更新、心跳</string>
+    <string name="smart_notif_quiet_hours">免打扰</string>
+    <string name="smart_notif_quiet_hours_desc">在免打扰时段内屏蔽通知</string>
+    <string name="smart_notif_rules">通知规则</string>
+    <string name="smart_notif_rules_desc">自定义通知过滤规则</string>
+    <string name="smart_notif_add_rule">添加规则</string>
+    <string name="smart_notif_rule_name">规则名称</string>
+    <string name="smart_notif_rule_pattern">匹配模式</string>
+    <string name="smart_notif_rule_priority">优先级</string>
+    <string name="smart_notif_rule_delete">删除规则</string>
+    <string name="smart_notif_rule_delete_desc">删除规则「%s」？</string>
+
+    <!-- Desktop Mode -->
+    <string name="btn_back">返回</string>
+
+    <!-- Agent Marketplace -->
+    <string name="nav_marketplace">市场</string>
+    <string name="marketplace_title">Agent 市场</string>
+    <string name="marketplace_search">搜索 Agent…</string>
+    <string name="marketplace_install">安装</string>
+    <string name="marketplace_installed">已安装</string>
+    <string name="marketplace_all">全部</string>
+    <string name="marketplace_results">找到 %d 个 Agent</string>
+    <string name="marketplace_no_results">未找到 Agent</string>
+    <string name="marketplace_subtitle">发现并安装社区 Agent</string>
+
+    <!-- 数据洞察 -->
+    <string name="insights_title">数据洞察</string>
+    <string name="insights_subtitle">查看使用统计和使用模式</string>
+    <string name="insights_overview">概览</string>
+    <string name="insights_total_messages">总消息数</string>
+    <string name="insights_total_sessions">总会话数</string>
+    <string name="insights_avg_response">平均响应</string>
+    <string name="insights_streak">连续使用</string>
+    <string name="insights_days">天</string>
+    <string name="insights_avg_length">平均长度</string>
+    <string name="insights_chars">字符</string>
+    <string name="insights_active_hour">最活跃时段</string>
+    <string name="insights_message_trend">消息趋势</string>
+    <string name="insights_hourly_activity">每小时活跃度</string>
+    <string name="insights_agent_distribution">Agent 分布</string>
+    <string name="insights_no_data">暂无数据</string>
+    <string name="insights_less">少</string>
+    <string name="insights_more">多</string>
+    <string name="insights_export">导出报告</string>
+    <string name="insights_export_success">报告已保存到 %s</string>
+    <string name="insights_export_failed">导出失败：%s</string>
+
+    <!-- Workflow -->
+    <string name="nav_workflow">工作流</string>
+    <string name="workflow_title">工作流</string>
+    <string name="workflow_create">创建工作流</string>
+    <string name="workflow_templates">模板</string>
+    <string name="workflow_run">运行</string>
+    <string name="workflow_output">输出</string>
+    <string name="workflow_input_label">输入</string>
+    <string name="workflow_description">描述</string>
+    <string name="workflow_template">模板</string>
+
+    <!-- Commands -->
+    <string name="cmd_clear">清空聊天</string>
+    <string name="cmd_new">新建聊天</string>
+    <string name="cmd_model">切换模型</string>
+    <string name="cmd_theme">更换主题</string>
+    <string name="cmd_export">导出数据</string>
+    <string name="cmd_search">搜索消息</string>
+    <string name="cmd_reconnect">重新连接</string>
+    <string name="cmd_help">显示帮助</string>
+    <string name="cmd_compare">比较模型</string>
+    <string name="cmd_palette_title">命令</string>
+
+    <!-- Voice -->
+    <string name="voice_mode">语音模式</string>
+    <string name="voice_speaking">正在说话…</string>
+    <string name="voice_waiting">等待输入</string>
+    <string name="voice_tap_to_start">点击开始说话</string>
+
+    <!-- Custom Theme -->
+    <string name="custom_theme_title">自定义主题</string>
+    <string name="custom_theme_enable">启用自定义主题</string>
+    <string name="custom_theme_enable_desc">使用自定义颜色覆盖默认主题</string>
+    <string name="custom_theme_preview">预览</string>
+    <string name="custom_theme_primary_color">主色</string>
+    <string name="custom_theme_accent_color">强调色</string>
+    <string name="custom_theme_bg_color">背景色</string>
+    <string name="custom_theme_font_size">字体大小</string>
+    <string name="custom_theme_corner_radius">圆角大小</string>
+    <string name="custom_theme_preview_header">标题</string>
+    <string name="custom_theme_preview_user_msg">用户消息</string>
+    <string name="custom_theme_preview_agent_msg">Agent 消息</string>
+    <string name="custom_theme_preview_button">按钮</string>
+    <string name="custom_theme_hex_input">十六进制颜色</string>
+    <string name="custom_theme_radius_none">无</string>
+    <string name="custom_theme_radius_round">圆角</string>
+
+    <!-- Font sizes -->
+    <string name="font_xlarge">特大</string>
+</resources>

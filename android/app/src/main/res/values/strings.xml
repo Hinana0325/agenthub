@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">AgentHub</string>
+    <string name="title_activity_main">AgentHub</string>
+    <string name="package_name">com.agenthub.app</string>
+    <string name="custom_url_scheme">com.agenthub.app</string>
+
+    <!-- Navigation / Tabs -->
+    <string name="nav_chat">Chat</string>
+    <string name="nav_sessions">Sessions</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_agents">Agents</string>
+    <string name="new_chat">New Chat</string>
+    <string name="new_agent">New Agent</string>
+
+    <!-- Connection Wizard -->
+    <string name="wizard_title">Connect to Agent Server</string>
+    <string name="wizard_subtitle">Enter your agent server details to start chatting</string>
+    <string name="label_server_url">Server URL</string>
+    <string name="label_api_key">API Key</string>
+    <string name="label_api_key_optional">API Key (optional)</string>
+    <string name="label_agent_protocol">Agent Protocol</string>
+    <string name="label_protocol">Protocol</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_connecting">Connecting…</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_skip">Skip — I\'ll configure later</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="saved_agents">Saved Agents (%d)</string>
+    <string name="optional">Optional</string>
+
+    <!-- Messages / Chat -->
+    <string name="hint_type_message">Type a message…</string>
+    <string name="action_send">Send</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_clear">Clear</string>
+    <string name="streaming">Streaming…</string>
+    <string name="empty_chat_title">Start a conversation</string>
+    <string name="empty_chat_subtitle">Connect to an agent server to get started</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">No sessions yet</string>
+    <string name="no_sessions_subtitle">Your conversations will appear here</string>
+    <string name="untitled">Untitled</string>
+    <string name="select_session">Select a session</string>
+    <string name="select_activity">Select an activity to view details</string>
+
+    <!-- Settings -->
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="accent_color">Accent Color</string>
+    <string name="font_size">Font Size</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_liquid_glass">Liquid Glass</string>
+    <string name="font_small">Small</string>
+    <string name="font_medium">Medium</string>
+    <string name="font_large">Large</string>
+    <string name="connection">Connection</string>
+    <string name="manage_agents">Manage Agents</string>
+    <string name="manage_agents_subtitle">%d types available</string>
+    <string name="about">About</string>
+    <string name="version">Version</string>
+
+    <!-- Agent Management -->
+    <string name="no_agents">No agents configured</string>
+    <string name="no_agents_subtitle">Add an agent to get started</string>
+    <string name="label_name">Name</string>
+    <string name="label_type">Type</string>
+    <string name="label_model_optional">Model (optional)</string>
+    <string name="label_system_prompt">System Prompt</string>
+    <string name="label_temperature">Temperature</string>
+    <string name="label_max_tokens">Max Tokens</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_edit">Edit</string>
+    <string name="edit_agent">Edit Agent</string>
+    <string name="delete_agent_title">Delete Agent?</string>
+    <string name="delete_agent_message">This will remove \"%s\". This cannot be undone.</string>
+    <string name="copy_config">Copy Config</string>
+
+    <!-- Widget -->
+    <string name="widget_description">AgentHub · Quick view Agent status</string>
+    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_status">Connected · Hermes Agent</string>
+    <string name="widget_new_conversation">💬 New conversation</string>
+
+    <!-- Error / Status -->
+    <string name="connection_failed">Connection failed</string>
+    <string name="connection_failed_attempts">Connection failed after %d attempts: %s</string>
+    <string name="connection_failed_retry">Connection failed (retry %d/%d): %s</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="btn_dismiss">Dismiss</string>
+    <string name="btn_retry">Retry</string>
+
+    <!-- Activity Detail -->
+    <string name="activity_type">Type</string>
+    <string name="activity_description">Description</string>
+    <string name="activity_time">Time</string>
+    <string name="activity_id">Activity ID</string>
+    <string name="no_activity">No activity yet</string>
+    <string name="no_activity_subtitle">Agent runs and events will appear here</string>
+
+    <!-- Other -->
+    <string name="action_copy">Copy</string>
+    <string name="copied_to_clipboard">copied to clipboard</string>
+
+    <!-- Search -->
+    <string name="action_search">Search</string>
+    <string name="action_close">Close</string>
+    <string name="search_placeholder">Search messages…</string>
+    <string name="search_no_results">No results found</string>
+    <string name="search_role_user">You</string>
+    <string name="search_role_agent">Agent</string>
+
+    <!-- Agent Form -->
+    <string name="label_model">Model (optional)</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">Agent Connection</string>
+    <string name="notif_channel_desc">AgentHub background connection status</string>
+    <string name="notif_connected_title">AgentHub connected</string>
+    <string name="notif_connected_text">%s is running in background</string>
+    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_text">Running in background</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label">AgentHub Message</string>
+
+    <!-- Import / Export -->
+    <string name="import_configs">Import Configs</string>
+    <string name="export_configs">Export Configs</string>
+
+    <!-- Notification Reply -->
+    <string name="notif_reply">Reply</string>
+    <string name="notif_reply_hint">Type a reply…</string>
+
+    <!-- Widget -->
+    <string name="widget_status_connected">Connected · %s</string>
+    <string name="widget_status_disconnected">Disconnected</string>
+    <string name="widget_last_message_empty">No messages</string>
+    <string name="widget_quick_chat">💬 New conversation</string>
+    <string name="widget_input_hint">Quick message…</string>
+    <string name="widget_send">Send</string>
+
+    <!-- E2E Encryption -->
+    <string name="e2e_security">Security</string>
+    <string name="e2e_title">End-to-End Encryption</string>
+    <string name="e2e_enabled">Enabled — Messages are encrypted</string>
+    <string name="e2e_disabled">Disabled — Messages are not encrypted</string>
+    <string name="e2e_toggle">Enable E2E Encryption</string>
+    <string name="e2e_key_label">Encryption Key</string>
+    <string name="e2e_key_hidden">●●●●●●●●●●●●●●●●</string>
+    <string name="e2e_copy_key">Copy Key</string>
+    <string name="e2e_regenerate_key">Regenerate Key</string>
+    <string name="e2e_regenerate_warning">Warning: Regenerating the key will make previous messages unreadable</string>
+    <string name="e2e_import_key">Import Key</string>
+    <string name="e2e_import_hint">Paste your encryption key</string>
+    <string name="e2e_key_copied">Encryption key copied</string>
+    <string name="e2e_key_regenerated">New key has been generated</string>
+    <string name="e2e_key_imported">Key imported successfully</string>
+    <string name="e2e_confirm_regenerate">Are you sure you want to regenerate the key?</string>
+    <string name="e2e_confirm">Confirm</string>
+
+    <!-- Data Backup -->
+    <string name="data_backup">Data</string>
+    <string name="export_chat_history">Export Chat History</string>
+    <string name="export_chat_history_subtitle">Save all sessions and messages as JSON</string>
+    <string name="import_chat_history">Import Chat History</string>
+    <string name="import_chat_history_subtitle">Restore from a backup file</string>
+    <string name="backup_saved">Backup saved to %s</string>
+    <string name="backup_export_failed">Export failed: %s</string>
+    <string name="backup_restored">Restored %1$d sessions, %2$d messages</string>
+    <string name="backup_restore_failed">Restore failed: %s</string>
+
+    <!-- Performance -->
+    <string name="performance">Performance</string>
+    <string name="perf_avg_latency">Avg Message Latency</string>
+    <string name="perf_connection_quality">Connection Quality</string>
+    <string name="perf_memory_usage">Memory Usage</string>
+    <string name="perf_total_messages">Total Messages</string>
+    <string name="perf_uptime">Uptime</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_send_message">Send message</string>
+    <string name="a11y_stop_generation">Stop generation</string>
+    <string name="a11y_new_chat">New chat</string>
+    <string name="a11y_settings">Settings</string>
+    <string name="a11y_search">Search messages</string>
+    <string name="a11y_clear_chat">Clear chat</string>
+    <string name="a11y_close_search">Close search</string>
+    <string name="a11y_message_from_user">Message from you</string>
+    <string name="a11y_message_from_agent">Message from agent</string>
+    <string name="a11y_session_item">Session: %s</string>
+    <string name="a11y_pin_session">Pin session</string>
+    <string name="a11y_unpin_session">Unpin session</string>
+    <string name="a11y_delete_session">Delete session</string>
+    <string name="a11y_delete_agent">Delete agent</string>
+    <string name="a11y_copy_message">Copy message</string>
+    <string name="a11y_delete_message">Delete message</string>
+    <string name="a11y_connect_status">Connection status: %s</string>
+    <string name="a11y_message_status">Message status: %s</string>
+    <string name="a11y_export_backup">Export chat backup</string>
+    <string name="a11y_import_backup">Import chat backup</string>
+    <string name="a11y_performance_stats">Performance statistics</string>
+
+    <!-- Voice Input -->
+    <string name="voice_input_start">Start voice input</string>
+    <string name="voice_input_stop">Stop voice input</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_error">Voice recognition error</string>
+    <string name="voice_not_available">Speech recognition not available on this device</string>
+
+    <!-- File / Image Attachment -->
+    <string name="attach_file">Attach file</string>
+    <string name="attach_image">Image</string>
+    <string name="attach_document">File</string>
+    <string name="attachment_preview">Attachment preview</string>
+
+    <!-- Device Sync -->
+    <string name="device_sync_title">Device Sync</string>
+    <string name="device_sync_enable">Enable Device Sync</string>
+    <string name="device_sync_enabled_desc">Sync messages and configs across devices</string>
+    <string name="device_sync_disabled_desc">Keep your data on this device only</string>
+    <string name="device_sync_now">Sync Now</string>
+    <string name="device_sync_status">Sync Status</string>
+    <string name="device_sync_messages">Messages</string>
+    <string name="device_sync_configs">Configs</string>
+    <string name="device_sync_last">Last Sync</string>
+    <string name="device_sync_paired">Paired Devices</string>
+    <string name="device_sync_discover">Discover</string>
+    <string name="device_sync_discover_title">Discover Devices</string>
+    <string name="device_sync_discovering">Scanning for nearby devices…</string>
+    <string name="device_sync_no_found">No devices found nearby</string>
+    <string name="device_sync_no_devices">No paired devices</string>
+    <string name="device_sync_no_devices_hint">Tap Discover to find nearby devices</string>
+    <string name="device_sync_online">Online</string>
+    <string name="device_sync_offline">Offline</string>
+    <string name="device_sync_pair">Pair</string>
+    <string name="device_sync_signal">Signal: %d%%</string>
+    <string name="device_sync_remove">Remove device</string>
+    <string name="device_sync_remove_title">Remove Device?</string>
+    <string name="device_sync_remove_desc">Remove "%s" from paired devices?</string>
+
+    <!-- Collaboration -->
+    <string name="collab_title">Collaboration</string>
+    <string name="collab_start">Start Collaboration</string>
+    <string name="collab_join">Join Session</string>
+    <string name="collab_leave">Leave Session</string>
+    <string name="collab_session_active">Collaboration Active</string>
+    <string name="collab_session_id">Session ID</string>
+    <string name="collab_participants">Participants</string>
+    <string name="collab_host">Host</string>
+    <string name="collab_indicator">Collab mode: %d participants</string>
+    <string name="collab_simulate_join">Simulate Join</string>
+    <string name="collab_no_session">No active collaboration session</string>
+
+    <!-- Plugins -->
+    <string name="plugin_title">Plugins</string>
+    <string name="plugin_installed">Installed Plugins</string>
+    <string name="plugin_total">Total</string>
+    <string name="plugin_enabled">Active</string>
+    <string name="plugin_version">Version</string>
+    <string name="plugin_permissions">Permissions</string>
+    <string name="plugin_status">Status</string>
+    <string name="plugin_perm_network">Network access</string>
+    <string name="plugin_perm_storage">Storage access</string>
+    <string name="plugin_enable">Enable</string>
+    <string name="plugin_disable">Disable</string>
+
+    <!-- Smart Notifications -->
+    <string name="smart_notif_title">Smart Notifications</string>
+    <string name="smart_notif_desc">Filter notifications by priority</string>
+    <string name="smart_notif_high">High Priority</string>
+    <string name="smart_notif_high_desc">Errors, warnings, action required</string>
+    <string name="smart_notif_medium">Medium Priority</string>
+    <string name="smart_notif_medium_desc">Normal agent replies</string>
+    <string name="smart_notif_low">Low Priority</string>
+    <string name="smart_notif_low_desc">Status updates, heartbeats</string>
+    <string name="smart_notif_quiet_hours">Quiet Hours</string>
+    <string name="smart_notif_quiet_hours_desc">Suppress notifications during quiet hours</string>
+    <string name="smart_notif_rules">Notification Rules</string>
+    <string name="smart_notif_rules_desc">Custom rules for notification filtering</string>
+    <string name="smart_notif_add_rule">Add Rule</string>
+    <string name="smart_notif_rule_name">Rule Name</string>
+    <string name="smart_notif_rule_pattern">Pattern</string>
+    <string name="smart_notif_rule_priority">Priority</string>
+    <string name="smart_notif_rule_delete">Delete Rule</string>
+    <string name="smart_notif_rule_delete_desc">Remove "%s" rule?</string>
+
+    <!-- Desktop Mode -->
+    <string name="btn_back">Back</string>
+
+    <!-- Agent Marketplace -->
+    <string name="nav_marketplace">Marketplace</string>
+    <string name="marketplace_title">Agent Marketplace</string>
+    <string name="marketplace_search">Search agents…</string>
+    <string name="marketplace_install">Install</string>
+    <string name="marketplace_installed">Installed</string>
+    <string name="marketplace_all">All</string>
+    <string name="marketplace_results">%d agents found</string>
+    <string name="marketplace_no_results">No agents found</string>
+    <string name="marketplace_subtitle">Discover and install community agents</string>
+
+    <!-- Data Insights -->
+    <string name="insights_title">Insights</string>
+    <string name="insights_subtitle">View your usage statistics and patterns</string>
+    <string name="insights_overview">Overview</string>
+    <string name="insights_total_messages">Total Messages</string>
+    <string name="insights_total_sessions">Total Sessions</string>
+    <string name="insights_avg_response">Avg Response</string>
+    <string name="insights_streak">Streak</string>
+    <string name="insights_days">days</string>
+    <string name="insights_avg_length">Avg Length</string>
+    <string name="insights_chars">chars</string>
+    <string name="insights_active_hour">Active Hour</string>
+    <string name="insights_message_trend">Message Trend</string>
+    <string name="insights_hourly_activity">Hourly Activity</string>
+    <string name="insights_agent_distribution">Agent Distribution</string>
+    <string name="insights_no_data">No data yet</string>
+    <string name="insights_less">Less</string>
+    <string name="insights_more">More</string>
+    <string name="insights_export">Export Report</string>
+    <string name="insights_export_success">Report saved to %s</string>
+    <string name="insights_export_failed">Export failed: %s</string>
+
+    <!-- Workflow -->
+    <string name="nav_workflow">Workflow</string>
+    <string name="workflow_title">Workflow</string>
+    <string name="workflow_create">Create Workflow</string>
+    <string name="workflow_templates">Templates</string>
+    <string name="workflow_run">Run</string>
+    <string name="workflow_output">Output</string>
+    <string name="workflow_input_label">Input</string>
+    <string name="workflow_description">Description</string>
+    <string name="workflow_template">Template</string>
+
+    <!-- Commands -->
+    <string name="cmd_clear">Clear chat</string>
+    <string name="cmd_new">New chat</string>
+    <string name="cmd_model">Switch model</string>
+    <string name="cmd_theme">Change theme</string>
+    <string name="cmd_export">Export data</string>
+    <string name="cmd_search">Search messages</string>
+    <string name="cmd_reconnect">Reconnect</string>
+    <string name="cmd_help">Show help</string>
+    <string name="cmd_compare">Compare models</string>
+    <string name="cmd_palette_title">Commands</string>
+
+    <!-- Voice -->
+    <string name="voice_mode">Voice Mode</string>
+    <string name="voice_speaking">Speaking…</string>
+    <string name="voice_waiting">Waiting for input</string>
+    <string name="voice_tap_to_start">Tap to start speaking</string>
+
+    <!-- Custom Theme -->
+    <string name="custom_theme_title">Custom Theme</string>
+    <string name="custom_theme_enable">Enable Custom Theme</string>
+    <string name="custom_theme_enable_desc">Override default theme with custom colors</string>
+    <string name="custom_theme_preview">Preview</string>
+    <string name="custom_theme_primary_color">Primary Color</string>
+    <string name="custom_theme_accent_color">Accent Color</string>
+    <string name="custom_theme_bg_color">Background Color</string>
+    <string name="custom_theme_font_size">Font Size</string>
+    <string name="custom_theme_corner_radius">Corner Radius</string>
+    <string name="custom_theme_preview_header">Header</string>
+    <string name="custom_theme_preview_user_msg">User message</string>
+    <string name="custom_theme_preview_agent_msg">Agent message</string>
+    <string name="custom_theme_preview_button">Button</string>
+    <string name="custom_theme_hex_input">Hex Color</string>
+    <string name="custom_theme_radius_none">None</string>
+    <string name="custom_theme_radius_round">Round</string>
+
+    <!-- Font sizes -->
+    <string name="font_xlarge">Extra Large</string>
+</resources>

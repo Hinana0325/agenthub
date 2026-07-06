@@ -1,0 +1,33 @@
+{
+  "name": "AgentHub",
+  "short_name": "AgentHub",
+  "description": "Multi-Agent mobile controller — Hermes / OpenCode / OpenClaw / OpenAI / Xiaomi MiMo",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a14",
+  "theme_color": "#818cf8",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%236c5ce7'/%3E%3Ctext x='256' y='350' font-size='280' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "新对话",
+      "short_name": "新对话",
+      "url": "./index.html?action=new",
+      "description": "开始新的对话"
+    },
+    {
+      "name": "设置",
+      "short_name": "设置",
+      "url": "./index.html#settings",
+      "description": "打开设置页面"
+    }
+  ]
+}

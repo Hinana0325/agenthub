@@ -1,0 +1,176 @@
+package com.agenthub.app
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.widget.RemoteViews
+import com.agenthub.app.data.local.AppDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
+/**
+ * AgentHub Home Screen Widget 2.0
+ * 交互式 Widget：状态仪表盘 + 快捷输入 + 最后消息预览
+ */
+class AgentHubWidget : AppWidgetProvider() {
+
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        for (widgetId in appWidgetIds) {
+            val views = RemoteViews(context.packageName, R.layout.agent_hub_widget)
+
+            // 点击 Widget 主体打开聊天页面
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingOpen = PendingIntent.getActivity(
+                context, 0, openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_container, pendingOpen)
+
+            // 设置快捷发送按钮
+            val sendIntent = Intent(context, WidgetSendReceiver::class.java).apply {
+                action = ACTION_WIDGET_SEND
+            }
+            val sendPending = PendingIntent.getBroadcast(
+                context, 100, sendIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_btn_send, sendPending)
+
+            // 设置语音按钮
+            val voiceIntent = Intent(context, WidgetVoiceReceiver::class.java).apply {
+                action = ACTION_WIDGET_VOICE
+            }
+            val voicePending = PendingIntent.getBroadcast(
+                context, 101, voiceIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_btn_voice, voicePending)
+
+            // 异步更新状态、最后消息、延迟
+            updateWidgetData(context, views, appWidgetManager, widgetId)
+        }
+    }
+
+    private fun updateWidgetData(
+        context: Context,
+        views: RemoteViews,
+        appWidgetManager: AppWidgetManager,
+        widgetId: Int
+    ) {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        scope.launch {
+            try {
+                val db = AppDatabase.getInstance(context)
+                val prefs = context.getSharedPreferences("agent_hub_prefs", Context.MODE_PRIVATE)
+
+                // 获取连接状态
+                val isConnected = prefs.getBoolean("ws_connected", false)
+                val agentName = prefs.getString("current_agent_name", "") ?: ""
+                val latency = prefs.getLong("avg_latency_ms", 0L)
+
+                // 更新连接状态指示
+                views.setInt(
+                    R.id.widget_status_dot,
+                    "setBackgroundResource",
+                    if (isConnected) R.drawable.dot_connected else R.drawable.dot_disconnected
+                )
+
+                // 更新 Agent 名称
+                val displayName = if (agentName.isNotEmpty()) agentName else "AgentHub"
+                views.setTextViewText(R.id.widget_agent_name, "\uD83E\uDD16 $displayName")
+
+                // 更新延迟
+                views.setTextViewText(
+                    R.id.widget_latency,
+                    if (latency > 0) "${latency} ms" else "— ms"
+                )
+
+                // 获取最后一条消息
+                try {
+                    val lastMessage = db.messageDao().getLastMessage()
+                    val preview = if (lastMessage != null) {
+                        val content = lastMessage.content
+                        if (content.length > 120) content.substring(0, 120) + "…" else content
+                    } else {
+                        context.getString(R.string.widget_last_message_empty)
+                    }
+                    views.setTextViewText(R.id.widget_last_message, preview)
+                } catch (_: Exception) {
+                    views.setTextViewText(R.id.widget_last_message, context.getString(R.string.widget_last_message_empty))
+                }
+
+                appWidgetManager.updateAppWidget(widgetId, views)
+            } catch (_: Exception) {
+                // 静默失败，保持默认显示
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_WIDGET_SEND = "com.agenthub.app.WIDGET_SEND"
+        const val ACTION_WIDGET_VOICE = "com.agenthub.app.WIDGET_VOICE"
+
+        /** 更新所有 Widget 实例 */
+        fun updateAll(context: Context) {
+            val manager = AppWidgetManager.getInstance(context)
+            val provider = ComponentName(context, AgentHubWidget::class.java)
+            val ids = manager.getAppWidgetIds(provider)
+            if (ids.isNotEmpty()) {
+                AgentHubWidget().onUpdate(context, manager, ids)
+            }
+        }
+    }
+}
+
+/**
+ * Widget 快捷发送按钮的 BroadcastReceiver
+ */
+class WidgetSendReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val prefs = context.getSharedPreferences("agent_hub_widget_prefs", Context.MODE_PRIVATE)
+        val pendingText = prefs.getString("widget_pending_input", "") ?: ""
+
+        if (pendingText.isNotBlank()) {
+            // 将待发送文本保存，由 App 读取并发送
+            prefs.edit().remove("widget_pending_input").apply()
+
+            // 打开 App 并传递发送指令
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                putExtra("widget_action", "send_message")
+                putExtra("widget_message", pendingText)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            context.startActivity(openIntent)
+        } else {
+            // 没有输入文本，打开 App 聊天界面
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            context.startActivity(openIntent)
+        }
+    }
+}
+
+/**
+ * Widget 语音按钮的 BroadcastReceiver
+ */
+class WidgetVoiceReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        // 打开 App 并启动语音输入
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            putExtra("widget_action", "voice_input")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        context.startActivity(openIntent)
+    }
+}

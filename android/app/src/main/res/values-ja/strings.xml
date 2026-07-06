@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">AgentHub</string>
+    <string name="title_activity_main">AgentHub</string>
+    <string name="package_name">com.agenthub.app</string>
+    <string name="custom_url_scheme">com.agenthub.app</string>
+
+    <!-- Navigation / Tabs -->
+    <string name="nav_chat">チャット</string>
+    <string name="nav_sessions">セッション</string>
+    <string name="nav_activity">アクティビティ</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_agents">Agent</string>
+    <string name="new_chat">新しいチャット</string>
+    <string name="new_agent">新しい Agent</string>
+
+    <!-- Connection Wizard -->
+    <string name="wizard_title">Agent サーバーに接続</string>
+    <string name="wizard_subtitle">Agent サーバーの情報を入力してチャットを開始します</string>
+    <string name="label_server_url">サーバー URL</string>
+    <string name="label_api_key">API Key</string>
+    <string name="label_api_key_optional">API Key（任意）</string>
+    <string name="label_agent_protocol">Agent プロトコル</string>
+    <string name="label_protocol">プロトコル</string>
+    <string name="btn_connect">接続</string>
+    <string name="btn_connecting">接続中…</string>
+    <string name="btn_cancel">キャンセル</string>
+    <string name="btn_skip">スキップ — 後で設定します</string>
+    <string name="status_connected">接続済み</string>
+    <string name="status_disconnected">未接続</string>
+    <string name="saved_agents">保存済み Agent（%d）</string>
+    <string name="optional">任意</string>
+
+    <!-- Messages / Chat -->
+    <string name="hint_type_message">メッセージを入力…</string>
+    <string name="action_send">送信</string>
+    <string name="action_stop">停止</string>
+    <string name="action_clear">クリア</string>
+    <string name="streaming">生成中…</string>
+    <string name="empty_chat_title">会話を始める</string>
+    <string name="empty_chat_subtitle">Agent サーバーに接続して開始します</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">セッションがありません</string>
+    <string name="no_sessions_subtitle">会話はここに表示されます</string>
+    <string name="untitled">無題</string>
+    <string name="select_session">セッションを選択</string>
+    <string name="select_activity">アクティビティを選択して詳細を表示</string>
+
+    <!-- Settings -->
+    <string name="appearance">外観</string>
+    <string name="theme">テーマ</string>
+    <string name="accent_color">アクセントカラー</string>
+    <string name="font_size">フォントサイズ</string>
+    <string name="theme_system">システムのデフォルト</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+    <string name="theme_liquid_glass">リキッドグラス</string>
+    <string name="font_small">小</string>
+    <string name="font_medium">中</string>
+    <string name="font_large">大</string>
+    <string name="connection">接続</string>
+    <string name="manage_agents">Agent 管理</string>
+    <string name="manage_agents_subtitle">%d 種類が利用可能です</string>
+    <string name="about">バージョン情報</string>
+    <string name="version">バージョン</string>
+
+    <!-- Agent Management -->
+    <string name="no_agents">Agent が未設定です</string>
+    <string name="no_agents_subtitle">Agent を追加して開始してください</string>
+    <string name="label_name">名前</string>
+    <string name="label_type">タイプ</string>
+    <string name="label_model_optional">モデル（任意）</string>
+    <string name="label_system_prompt">システムプロンプト</string>
+    <string name="label_temperature">Temperature</string>
+    <string name="label_max_tokens">最大 Token 数</string>
+    <string name="btn_save">保存</string>
+    <string name="btn_delete">削除</string>
+    <string name="btn_edit">編集</string>
+    <string name="edit_agent">Agent を編集</string>
+    <string name="delete_agent_title">Agent を削除しますか？</string>
+    <string name="delete_agent_message">「%s」を削除します。この操作は元に戻せません。</string>
+    <string name="copy_config">設定をコピー</string>
+
+    <!-- Notification / Service -->
+    <string name="notif_channel_name">Agent 接続</string>
+    <string name="notif_channel_desc">AgentHub バックグラウンド接続ステータス</string>
+    <string name="notif_connected_title">AgentHub 接続済み</string>
+    <string name="notif_connected_text">AgentHub はバックグラウンドで実行中です</string>
+    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_text">バックグラウンドで実行中</string>
+
+    <!-- Widget -->
+    <string name="widget_description">AgentHub · Agent ステータスをすばやく確認</string>
+    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_status_connected">接続済み · %s</string>
+    <string name="widget_status_disconnected">未接続</string>
+    <string name="widget_last_message_empty">メッセージなし</string>
+    <string name="widget_new_conversation">💬 新しい会話</string>
+    <string name="widget_quick_chat">💬 新しい会話</string>
+    <string name="widget_input_hint">クイックメッセージ…</string>
+    <string name="widget_send">送信</string>
+
+    <!-- Error / Status -->
+    <string name="connection_failed">接続に失敗しました</string>
+    <string name="connection_failed_attempts">接続に失敗しました（%d 回試行）：%s</string>
+    <string name="connection_failed_retry">接続に失敗しました（リトライ %d/%d）：%s</string>
+    <string name="unknown_error">不明なエラー</string>
+    <string name="btn_dismiss">閉じる</string>
+    <string name="btn_retry">再試行</string>
+
+    <!-- Activity Detail -->
+    <string name="activity_type">タイプ</string>
+    <string name="activity_description">説明</string>
+    <string name="activity_time">時刻</string>
+    <string name="activity_id">アクティビティ ID</string>
+    <string name="no_activity">アクティビティがありません</string>
+    <string name="no_activity_subtitle">Agent の実行とイベントはここに表示されます</string>
+
+    <!-- Other -->
+    <string name="action_copy">コピー</string>
+    <string name="copied_to_clipboard">クリップボードにコピーしました</string>
+
+    <!-- Agent Form -->
+    <string name="label_model">モデル（任意）</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label">AgentHub メッセージ</string>
+
+    <!-- Import/Export -->
+    <string name="import_configs">設定をインポート</string>
+    <string name="export_configs">設定をエクスポート</string>
+
+    <!-- Notification Reply -->
+    <string name="notif_reply">返信</string>
+    <string name="notif_reply_hint">返信を入力…</string>
+
+    <!-- Widget (legacy) -->
+    <string name="widget_status">接続済み · Hermes Agent</string>
+
+    <!-- E2E Encryption -->
+    <string name="e2e_security">セキュリティ</string>
+    <string name="e2e_title">エンドツーエンド暗号化</string>
+    <string name="e2e_enabled">有効 — メッセージは暗号化されています</string>
+    <string name="e2e_disabled">無効 — メッセージは暗号化されていません</string>
+    <string name="e2e_toggle">E2E 暗号化を有効にする</string>
+    <string name="e2e_key_label">暗号化キー</string>
+    <string name="e2e_key_hidden">●●●●●●●●●●●●●●●●</string>
+    <string name="e2e_copy_key">キーをコピー</string>
+    <string name="e2e_regenerate_key">キーを再生成</string>
+    <string name="e2e_regenerate_warning">警告：キーを再生成すると、以前のメッセージは復号できなくなります</string>
+    <string name="e2e_import_key">キーをインポート</string>
+    <string name="e2e_import_hint">暗号化キーを貼り付けてください</string>
+    <string name="e2e_key_copied">暗号化キーをコピーしました</string>
+    <string name="e2e_key_regenerated">新しいキーが生成されました</string>
+    <string name="e2e_key_imported">キーがインポートされました</string>
+    <string name="e2e_confirm_regenerate">本当にキーを再生成しますか？</string>
+    <string name="e2e_confirm">確認</string>
+
+    <!-- Data Backup -->
+    <string name="data_backup">データ</string>
+    <string name="export_chat_history">チャット履歴をエクスポート</string>
+    <string name="export_chat_history_subtitle">すべてのセッションとメッセージを JSON で保存</string>
+    <string name="import_chat_history">チャット履歴をインポート</string>
+    <string name="import_chat_history_subtitle">バックアップファイルから復元</string>
+    <string name="backup_saved">バックアップを %s に保存しました</string>
+    <string name="backup_export_failed">エクスポート失敗：%s</string>
+    <string name="backup_restored">%1$d 件のセッション、%2$d 件のメッセージを復元しました</string>
+    <string name="backup_restore_failed">復元失敗：%s</string>
+
+    <!-- Performance -->
+    <string name="performance">パフォーマンス</string>
+    <string name="perf_avg_latency">平均メッセージ遅延</string>
+    <string name="perf_connection_quality">接続品質</string>
+    <string name="perf_memory_usage">メモリ使用量</string>
+    <string name="perf_total_messages">メッセージ総数</string>
+    <string name="perf_uptime">稼働時間</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_send_message">メッセージを送信</string>
+    <string name="a11y_stop_generation">生成を停止</string>
+    <string name="a11y_new_chat">新しいチャット</string>
+    <string name="a11y_settings">設定</string>
+    <string name="a11y_search">メッセージを検索</string>
+    <string name="a11y_clear_chat">チャットをクリア</string>
+    <string name="a11y_close_search">検索を閉じる</string>
+    <string name="a11y_message_from_user">あなたからのメッセージ</string>
+    <string name="a11y_message_from_agent">Agent からのメッセージ</string>
+    <string name="a11y_session_item">セッション：%s</string>
+    <string name="a11y_pin_session">セッションをピン留め</string>
+    <string name="a11y_unpin_session">ピン留めを解除</string>
+    <string name="a11y_delete_session">セッションを削除</string>
+    <string name="a11y_delete_agent">Agent を削除</string>
+    <string name="a11y_copy_message">メッセージをコピー</string>
+    <string name="a11y_delete_message">メッセージを削除</string>
+    <string name="a11y_connect_status">接続ステータス：%s</string>
+    <string name="a11y_message_status">メッセージステータス：%s</string>
+    <string name="a11y_export_backup">チャットバックアップをエクスポート</string>
+    <string name="a11y_import_backup">チャットバックアップをインポート</string>
+    <string name="a11y_performance_stats">パフォーマンス統計</string>
+
+    <!-- Voice Input -->
+    <string name="voice_input_start">音声入力を開始</string>
+    <string name="voice_input_stop">音声入力を停止</string>
+    <string name="voice_listening">聞き取り中…</string>
+    <string name="voice_error">音声認識エラー</string>
+    <string name="voice_not_available">このデバイスでは音声認識が利用できません</string>
+
+    <!-- File / Image Attachment -->
+    <string name="attach_file">ファイルを添付</string>
+    <string name="attach_image">画像</string>
+    <string name="attach_document">ファイル</string>
+    <string name="attachment_preview">添付プレビュー</string>
+
+    <!-- Device Sync -->
+    <string name="device_sync_title">デバイス同期</string>
+    <string name="device_sync_enable">デバイス同期を有効化</string>
+    <string name="device_sync_enabled_desc">デバイス間でメッセージと設定を同期</string>
+    <string name="device_sync_disabled_desc">データはこのデバイスのみに保存</string>
+    <string name="device_sync_now">今すぐ同期</string>
+    <string name="device_sync_status">同期ステータス</string>
+    <string name="device_sync_messages">メッセージ</string>
+    <string name="device_sync_configs">設定</string>
+    <string name="device_sync_last">前回の同期</string>
+    <string name="device_sync_paired">ペアリング済みデバイス</string>
+    <string name="device_sync_discover">検索</string>
+    <string name="device_sync_discover_title">デバイスを検索</string>
+    <string name="device_sync_discovering">周辺デバイスをスキャン中…</string>
+    <string name="device_sync_no_found">周辺にデバイスが見つかりません</string>
+    <string name="device_sync_no_devices">ペアリング済みデバイスなし</string>
+    <string name="device_sync_no_devices_hint">「検索」をタップして周辺デバイスを見つけます</string>
+    <string name="device_sync_online">オンライン</string>
+    <string name="device_sync_offline">オフライン</string>
+    <string name="device_sync_pair">ペアリング</string>
+    <string name="device_sync_signal">電波強度：%d%%</string>
+    <string name="device_sync_remove">デバイスを削除</string>
+    <string name="device_sync_remove_title">デバイスを削除しますか？</string>
+    <string name="device_sync_remove_desc">「%s」をペアリング済みデバイスから削除しますか？</string>
+
+    <!-- Collaboration -->
+    <string name="collab_title">コラボレーション</string>
+    <string name="collab_start">コラボを開始</string>
+    <string name="collab_join">セッションに参加</string>
+    <string name="collab_leave">セッションを退出</string>
+    <string name="collab_session_active">コラボレーション中</string>
+    <string name="collab_session_id">セッション ID</string>
+    <string name="collab_participants">参加者</string>
+    <string name="collab_host">ホスト</string>
+    <string name="collab_indicator">コラボモード：%d 人の参加者</string>
+    <string name="collab_simulate_join">参加をシミュレート</string>
+    <string name="collab_no_session">アクティブなコラボセッションなし</string>
+
+    <!-- Plugins -->
+    <string name="plugin_title">プラグイン</string>
+    <string name="plugin_installed">インストール済みプラグイン</string>
+    <string name="plugin_total">合計</string>
+    <string name="plugin_enabled">有効</string>
+    <string name="plugin_version">バージョン</string>
+    <string name="plugin_permissions">権限</string>
+    <string name="plugin_status">ステータス</string>
+    <string name="plugin_perm_network">ネットワークアクセス</string>
+    <string name="plugin_perm_storage">ストレージアクセス</string>
+    <string name="plugin_enable">有効化</string>
+    <string name="plugin_disable">無効化</string>
+
+    <!-- Smart Notifications -->
+    <string name="smart_notif_title">スマート通知</string>
+    <string name="smart_notif_desc">優先度で通知をフィルタリング</string>
+    <string name="smart_notif_high">高優先度</string>
+    <string name="smart_notif_high_desc">エラー、警告、操作が必要</string>
+    <string name="smart_notif_medium">中優先度</string>
+    <string name="smart_notif_medium_desc">通常の Agent 返信</string>
+    <string name="smart_notif_low">低優先度</string>
+    <string name="smart_notif_low_desc">ステータス更新、ハートビート</string>
+    <string name="smart_notif_quiet_hours">おやすみモード</string>
+    <string name="smart_notif_quiet_hours_desc">おやすみモード中は通知を抑制</string>
+    <string name="smart_notif_rules">通知ルール</string>
+    <string name="smart_notif_rules_desc">カスタム通知フィルタリングルール</string>
+    <string name="smart_notif_add_rule">ルールを追加</string>
+    <string name="smart_notif_rule_name">ルール名</string>
+    <string name="smart_notif_rule_pattern">パターン</string>
+    <string name="smart_notif_rule_priority">優先度</string>
+    <string name="smart_notif_rule_delete">ルールを削除</string>
+    <string name="smart_notif_rule_delete_desc">ルール「%s」を削除しますか？</string>
+
+    <!-- Desktop Mode -->
+    <string name="btn_back">戻る</string>
+
+    <!-- Agent Marketplace -->
+    <string name="nav_marketplace">マーケット</string>
+    <string name="marketplace_title">Agent マーケットプレイス</string>
+    <string name="marketplace_search">Agent を検索…</string>
+    <string name="marketplace_install">インストール</string>
+    <string name="marketplace_installed">インストール済み</string>
+    <string name="marketplace_all">すべて</string>
+    <string name="marketplace_results">%d 件の Agent</string>
+    <string name="marketplace_no_results">Agent が見つかりません</string>
+    <string name="marketplace_subtitle">コミュニティ Agent を発見してインストール</string>
+
+    <!-- データインサイト -->
+    <string name="insights_title">インサイト</string>
+    <string name="insights_subtitle">使用統計とパターンを確認</string>
+    <string name="insights_overview">概要</string>
+    <string name="insights_total_messages">メッセージ総数</string>
+    <string name="insights_total_sessions">セッション総数</string>
+    <string name="insights_avg_response">平均応答</string>
+    <string name="insights_streak">連続日数</string>
+    <string name="insights_days">日</string>
+    <string name="insights_avg_length">平均長</string>
+    <string name="insights_chars">文字</string>
+    <string name="insights_active_hour">最も活発な時間</string>
+    <string name="insights_message_trend">メッセージトレンド</string>
+    <string name="insights_hourly_activity">時間別アクティビティ</string>
+    <string name="insights_agent_distribution">Agent 分布</string>
+    <string name="insights_no_data">データなし</string>
+    <string name="insights_less">少ない</string>
+    <string name="insights_more">多い</string>
+    <string name="insights_export">レポートをエクスポート</string>
+    <string name="insights_export_success">レポートを %s に保存しました</string>
+    <string name="insights_export_failed">エクスポート失敗：%s</string>
+</resources>

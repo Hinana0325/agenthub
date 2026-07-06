@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">AgentHub</string>
+    <string name="title_activity_main">AgentHub</string>
+    <string name="package_name">com.agenthub.app</string>
+    <string name="custom_url_scheme">com.agenthub.app</string>
+
+    <!-- Navigation / Tabs -->
+    <string name="nav_chat">채팅</string>
+    <string name="nav_sessions">세션</string>
+    <string name="nav_activity">활동</string>
+    <string name="nav_settings">설정</string>
+    <string name="nav_agents">Agent</string>
+    <string name="new_chat">새 채팅</string>
+    <string name="new_agent">새 Agent</string>
+
+    <!-- Connection Wizard -->
+    <string name="wizard_title">Agent 서버에 연결</string>
+    <string name="wizard_subtitle">Agent 서버 정보를 입력하여 채팅을 시작합니다</string>
+    <string name="label_server_url">서버 URL</string>
+    <string name="label_api_key">API Key</string>
+    <string name="label_api_key_optional">API Key（선택）</string>
+    <string name="label_agent_protocol">Agent 프로토콜</string>
+    <string name="label_protocol">프로토콜</string>
+    <string name="btn_connect">연결</string>
+    <string name="btn_connecting">연결 중…</string>
+    <string name="btn_cancel">취소</string>
+    <string name="btn_skip">건너뛰기 — 나중에 설정합니다</string>
+    <string name="status_connected">연결됨</string>
+    <string name="status_disconnected">연결 끊김</string>
+    <string name="saved_agents">저장된 Agent（%d）</string>
+    <string name="optional">선택</string>
+
+    <!-- Messages / Chat -->
+    <string name="hint_type_message">메시지를 입력하세요…</string>
+    <string name="action_send">보내기</string>
+    <string name="action_stop">중지</string>
+    <string name="action_clear">지우기</string>
+    <string name="streaming">생성 중…</string>
+    <string name="empty_chat_title">대화를 시작하세요</string>
+    <string name="empty_chat_subtitle">Agent 서버에 연결하여 시작합니다</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">세션이 없습니다</string>
+    <string name="no_sessions_subtitle">대화가 여기에 표시됩니다</string>
+    <string name="untitled">제목 없음</string>
+    <string name="select_session">세션을 선택하세요</string>
+    <string name="select_activity">활동을 선택하여 세부 정보를 확인하세요</string>
+
+    <!-- Settings -->
+    <string name="appearance">외관</string>
+    <string name="theme">테마</string>
+    <string name="accent_color">강조 색상</string>
+    <string name="font_size">글꼴 크기</string>
+    <string name="theme_system">시스템 기본값</string>
+    <string name="theme_light">라이트</string>
+    <string name="theme_dark">다크</string>
+    <string name="theme_liquid_glass">리퀴드 글래스</string>
+    <string name="font_small">작게</string>
+    <string name="font_medium">보통</string>
+    <string name="font_large">크게</string>
+    <string name="connection">연결</string>
+    <string name="manage_agents">Agent 관리</string>
+    <string name="manage_agents_subtitle">%d 가지 유형 사용 가능</string>
+    <string name="about">정보</string>
+    <string name="version">버전</string>
+
+    <!-- Agent Management -->
+    <string name="no_agents">Agent가 설정되지 않았습니다</string>
+    <string name="no_agents_subtitle">Agent를 추가하여 시작하세요</string>
+    <string name="label_name">이름</string>
+    <string name="label_type">유형</string>
+    <string name="label_model_optional">모델（선택）</string>
+    <string name="label_system_prompt">시스템 프롬프트</string>
+    <string name="label_temperature">Temperature</string>
+    <string name="label_max_tokens">최대 Token 수</string>
+    <string name="btn_save">저장</string>
+    <string name="btn_delete">삭제</string>
+    <string name="btn_edit">편집</string>
+    <string name="edit_agent">Agent 편집</string>
+    <string name="delete_agent_title">Agent를 삭제하시겠습니까?</string>
+    <string name="delete_agent_message">「%s」을(를) 삭제합니다. 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="copy_config">설정 복사</string>
+
+    <!-- Notification / Service -->
+    <string name="notif_channel_name">Agent 연결</string>
+    <string name="notif_channel_desc">AgentHub 백그라운드 연결 상태</string>
+    <string name="notif_connected_title">AgentHub 연결됨</string>
+    <string name="notif_connected_text">AgentHub가 백그라운드에서 실행 중입니다</string>
+    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_text">백그라운드에서 실행 중</string>
+
+    <!-- Widget -->
+    <string name="widget_description">AgentHub · Agent 상태를 빠르게 확인</string>
+    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_status_connected">연결됨 · %s</string>
+    <string name="widget_status_disconnected">연결 끊김</string>
+    <string name="widget_last_message_empty">메시지 없음</string>
+    <string name="widget_new_conversation">💬 새 대화</string>
+    <string name="widget_quick_chat">💬 새 대화</string>
+    <string name="widget_input_hint">빠른 메시지…</string>
+    <string name="widget_send">보내기</string>
+
+    <!-- Error / Status -->
+    <string name="connection_failed">연결 실패</string>
+    <string name="connection_failed_attempts">연결 실패（%d 회 시도）：%s</string>
+    <string name="connection_failed_retry">연결 실패（재시도 %d/%d）：%s</string>
+    <string name="unknown_error">알 수 없는 오류</string>
+    <string name="btn_dismiss">닫기</string>
+    <string name="btn_retry">재시도</string>
+
+    <!-- Activity Detail -->
+    <string name="activity_type">유형</string>
+    <string name="activity_description">설명</string>
+    <string name="activity_time">시간</string>
+    <string name="activity_id">활동 ID</string>
+    <string name="no_activity">활동이 없습니다</string>
+    <string name="no_activity_subtitle">Agent 실행 및 이벤트가 여기에 표시됩니다</string>
+
+    <!-- Other -->
+    <string name="action_copy">복사</string>
+    <string name="copied_to_clipboard">클립보드에 복사되었습니다</string>
+
+    <!-- Agent Form -->
+    <string name="label_model">모델（선택）</string>
+
+    <!-- Clipboard -->
+    <string name="clipboard_label">AgentHub 메시지</string>
+
+    <!-- Import/Export -->
+    <string name="import_configs">설정 가져오기</string>
+    <string name="export_configs">설정 내보내기</string>
+
+    <!-- Notification Reply -->
+    <string name="notif_reply">답장</string>
+    <string name="notif_reply_hint">답장을 입력하세요…</string>
+
+    <!-- Widget (legacy) -->
+    <string name="widget_status">연결됨 · Hermes Agent</string>
+
+    <!-- E2E Encryption -->
+    <string name="e2e_security">보안</string>
+    <string name="e2e_title">종단간 암호화</string>
+    <string name="e2e_enabled">활성화 — 메시지가 암호화됩니다</string>
+    <string name="e2e_disabled">비활성화 — 메시지가 암호화되지 않습니다</string>
+    <string name="e2e_toggle">E2E 암호화 활성화</string>
+    <string name="e2e_key_label">암호화 키</string>
+    <string name="e2e_key_hidden">●●●●●●●●●●●●●●●●</string>
+    <string name="e2e_copy_key">키 복사</string>
+    <string name="e2e_regenerate_key">키 재생성</string>
+    <string name="e2e_regenerate_warning">경고：키를 재생성하면 이전 메시지를 복호화할 수 없습니다</string>
+    <string name="e2e_import_key">키 가져오기</string>
+    <string name="e2e_import_hint">암호화 키를 붙여넣으세요</string>
+    <string name="e2e_key_copied">암호화 키가 복사되었습니다</string>
+    <string name="e2e_key_regenerated">새 키가 생성되었습니다</string>
+    <string name="e2e_key_imported">키가 가져와졌습니다</string>
+    <string name="e2e_confirm_regenerate">정말로 키를 재생성하시겠습니까?</string>
+    <string name="e2e_confirm">확인</string>
+
+    <!-- Data Backup -->
+    <string name="data_backup">데이터</string>
+    <string name="export_chat_history">채팅 기록 내보내기</string>
+    <string name="export_chat_history_subtitle">모든 세션과 메시지를 JSON으로 저장</string>
+    <string name="import_chat_history">채팅 기록 가져오기</string>
+    <string name="import_chat_history_subtitle">백업 파일에서 복원</string>
+    <string name="backup_saved">백업이 %s에 저장되었습니다</string>
+    <string name="backup_export_failed">내보내기 실패：%s</string>
+    <string name="backup_restored">%1$d개 세션, %2$d개 메시지를 복원했습니다</string>
+    <string name="backup_restore_failed">복원 실패：%s</string>
+
+    <!-- Performance -->
+    <string name="performance">성능</string>
+    <string name="perf_avg_latency">평균 메시지 지연</string>
+    <string name="perf_connection_quality">연결 품질</string>
+    <string name="perf_memory_usage">메모리 사용량</string>
+    <string name="perf_total_messages">메시지 총수</string>
+    <string name="perf_uptime">가동 시간</string>
+
+    <!-- Accessibility -->
+    <string name="a11y_send_message">메시지 보내기</string>
+    <string name="a11y_stop_generation">생성 중지</string>
+    <string name="a11y_new_chat">새 채팅</string>
+    <string name="a11y_settings">설정</string>
+    <string name="a11y_search">메시지 검색</string>
+    <string name="a11y_clear_chat">채팅 지우기</string>
+    <string name="a11y_close_search">검색 닫기</string>
+    <string name="a11y_message_from_user">나의 메시지</string>
+    <string name="a11y_message_from_agent">Agent의 메시지</string>
+    <string name="a11y_session_item">세션：%s</string>
+    <string name="a11y_pin_session">세션 고정</string>
+    <string name="a11y_unpin_session">고정 해제</string>
+    <string name="a11y_delete_session">세션 삭제</string>
+    <string name="a11y_delete_agent">Agent 삭제</string>
+    <string name="a11y_copy_message">메시지 복사</string>
+    <string name="a11y_delete_message">메시지 삭제</string>
+    <string name="a11y_connect_status">연결 상태：%s</string>
+    <string name="a11y_message_status">메시지 상태：%s</string>
+    <string name="a11y_export_backup">채팅 백업 내보내기</string>
+    <string name="a11y_import_backup">채팅 백업 가져오기</string>
+    <string name="a11y_performance_stats">성능 통계</string>
+
+    <!-- Voice Input -->
+    <string name="voice_input_start">음성 입력 시작</string>
+    <string name="voice_input_stop">음성 입력 중지</string>
+    <string name="voice_listening">듣는 중…</string>
+    <string name="voice_error">음성 인식 오류</string>
+    <string name="voice_not_available">이 기기에서는 음성 인식을 사용할 수 없습니다</string>
+
+    <!-- File / Image Attachment -->
+    <string name="attach_file">파일 첨부</string>
+    <string name="attach_image">이미지</string>
+    <string name="attach_document">파일</string>
+    <string name="attachment_preview">첨부 미리보기</string>
+
+    <!-- Device Sync -->
+    <string name="device_sync_title">기기 동기화</string>
+    <string name="device_sync_enable">기기 동기화 활성화</string>
+    <string name="device_sync_enabled_desc">기기 간 메시지 및 설정 동기화</string>
+    <string name="device_sync_disabled_desc">이 기기에만 데이터 저장</string>
+    <string name="device_sync_now">지금 동기화</string>
+    <string name="device_sync_status">동기화 상태</string>
+    <string name="device_sync_messages">메시지</string>
+    <string name="device_sync_configs">설정</string>
+    <string name="device_sync_last">마지막 동기화</string>
+    <string name="device_sync_paired">페어링된 기기</string>
+    <string name="device_sync_discover">검색</string>
+    <string name="device_sync_discover_title">기기 검색</string>
+    <string name="device_sync_discovering">주변 기기 스캔 중…</string>
+    <string name="device_sync_no_found">주변에서 기기를 찾을 수 없습니다</string>
+    <string name="device_sync_no_devices">페어링된 기기 없음</string>
+    <string name="device_sync_no_devices_hint">「검색」을 눌러 주변 기기를 찾으세요</string>
+    <string name="device_sync_online">온라인</string>
+    <string name="device_sync_offline">오프라인</string>
+    <string name="device_sync_pair">페어링</string>
+    <string name="device_sync_signal">신호 강도：%d%%</string>
+    <string name="device_sync_remove">기기 제거</string>
+    <string name="device_sync_remove_title">기기를 제거하시겠습니까?</string>
+    <string name="device_sync_remove_desc">「%s」을(를) 페어링된 기기에서 제거하시겠습니까?</string>
+
+    <!-- Collaboration -->
+    <string name="collab_title">협업</string>
+    <string name="collab_start">협업 시작</string>
+    <string name="collab_join">세션 참여</string>
+    <string name="collab_leave">세션 나가기</string>
+    <string name="collab_session_active">협업 진행 중</string>
+    <string name="collab_session_id">세션 ID</string>
+    <string name="collab_participants">참여자</string>
+    <string name="collab_host">호스트</string>
+    <string name="collab_indicator">협업 모드：%d명 참여 중</string>
+    <string name="collab_simulate_join">참여 시뮬레이션</string>
+    <string name="collab_no_session">활성 협업 세션 없음</string>
+
+    <!-- Plugins -->
+    <string name="plugin_title">플러그인</string>
+    <string name="plugin_installed">설치된 플러그인</string>
+    <string name="plugin_total">전체</string>
+    <string name="plugin_enabled">활성</string>
+    <string name="plugin_version">버전</string>
+    <string name="plugin_permissions">권한</string>
+    <string name="plugin_status">상태</string>
+    <string name="plugin_perm_network">네트워크 접근</string>
+    <string name="plugin_perm_storage">저장소 접근</string>
+    <string name="plugin_enable">활성화</string>
+    <string name="plugin_disable">비활성화</string>
+
+    <!-- Smart Notifications -->
+    <string name="smart_notif_title">스마트 알림</string>
+    <string name="smart_notif_desc">우선순위별 알림 필터링</string>
+    <string name="smart_notif_high">높은 우선순위</string>
+    <string name="smart_notif_high_desc">오류, 경고, 작업 필요</string>
+    <string name="smart_notif_medium">보통 우선순위</string>
+    <string name="smart_notif_medium_desc">일반 Agent 응답</string>
+    <string name="smart_notif_low">낮은 우선순위</string>
+    <string name="smart_notif_low_desc">상태 업데이트, 하트비트</string>
+    <string name="smart_notif_quiet_hours">방해 금지</string>
+    <string name="smart_notif_quiet_hours_desc">방해 금지 시간 동안 알림 억제</string>
+    <string name="smart_notif_rules">알림 규칙</string>
+    <string name="smart_notif_rules_desc">사용자 정의 알림 필터링 규칙</string>
+    <string name="smart_notif_add_rule">규칙 추가</string>
+    <string name="smart_notif_rule_name">규칙 이름</string>
+    <string name="smart_notif_rule_pattern">패턴</string>
+    <string name="smart_notif_rule_priority">우선순위</string>
+    <string name="smart_notif_rule_delete">규칙 삭제</string>
+    <string name="smart_notif_rule_delete_desc">규칙 「%s」을(를) 삭제하시겠습니까?</string>
+
+    <!-- Desktop Mode -->
+    <string name="btn_back">뒤로</string>
+
+    <!-- Agent Marketplace -->
+    <string name="nav_marketplace">마켓플레이스</string>
+    <string name="marketplace_title">Agent 마켓플레이스</string>
+    <string name="marketplace_search">Agent 검색…</string>
+    <string name="marketplace_install">설치</string>
+    <string name="marketplace_installed">설치됨</string>
+    <string name="marketplace_all">전체</string>
+    <string name="marketplace_results">%d개의 Agent</string>
+    <string name="marketplace_no_results">Agent를 찾을 수 없습니다</string>
+    <string name="marketplace_subtitle">커뮤니티 Agent를 발견하고 설치하세요</string>
+
+    <!-- 데이터 인사이트 -->
+    <string name="insights_title">인사이트</string>
+    <string name="insights_subtitle">사용 통계와 패턴을 확인하세요</string>
+    <string name="insights_overview">개요</string>
+    <string name="insights_total_messages">총 메시지 수</string>
+    <string name="insights_total_sessions">총 세션 수</string>
+    <string name="insights_avg_response">평균 응답</string>
+    <string name="insights_streak">연속 사용</string>
+    <string name="insights_days">일</string>
+    <string name="insights_avg_length">평균 길이</string>
+    <string name="insights_chars">자</string>
+    <string name="insights_active_hour">가장 활발한 시간</string>
+    <string name="insights_message_trend">메시지 추세</string>
+    <string name="insights_hourly_activity">시간별 활동</string>
+    <string name="insights_agent_distribution">Agent 분포</string>
+    <string name="insights_no_data">데이터 없음</string>
+    <string name="insights_less">적음</string>
+    <string name="insights_more">많음</string>
+    <string name="insights_export">보고서 내보내기</string>
+    <string name="insights_export_success">보고서가 %s에 저장되었습니다</string>
+    <string name="insights_export_failed">내보내기 실패：%s</string>
+</resources>

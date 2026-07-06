@@ -1,0 +1,167 @@
+[
+  {
+    "id": "hermes-coder",
+    "name": "Hermes Coder",
+    "description": "A powerful coding assistant built on the Hermes protocol. Supports code generation, debugging, and refactoring across 50+ languages.",
+    "type": "Hermes",
+    "serverUrl": "wss://hermes-coder.example.com/ws",
+    "author": "AgentHub Team",
+    "downloads": 12580,
+    "rating": 4.8,
+    "tags": ["coding", "debug", "refactor"]
+  },
+  {
+    "id": "opencode-assistant",
+    "name": "OpenCode Assistant",
+    "description": "General-purpose coding agent using the OpenCode protocol. Great for pair programming and learning.",
+    "type": "OpenCode",
+    "serverUrl": "wss://opencode-assistant.example.com/ws",
+    "author": "OpenCode Foundation",
+    "downloads": 8920,
+    "rating": 4.6,
+    "tags": ["coding", "learning", "pair-programming"]
+  },
+  {
+    "id": "openclaw-researcher",
+    "name": "OpenClaw Researcher",
+    "description": "Research-focused agent powered by OpenClaw. Excels at web research, summarization, and knowledge synthesis.",
+    "type": "OpenClaw",
+    "serverUrl": "wss://openclaw-researcher.example.com/ws",
+    "author": "OpenClaw Labs",
+    "downloads": 6340,
+    "rating": 4.7,
+    "tags": ["research", "summarization", "knowledge"]
+  },
+  {
+    "id": "openai-creative",
+    "name": "Creative Writer",
+    "description": "Creative writing assistant using OpenAI-compatible API. Generate stories, poems, marketing copy, and more.",
+    "type": "OpenAI",
+    "serverUrl": "https://api.openai.example.com/v1",
+    "author": "Creative Labs",
+    "downloads": 15200,
+    "rating": 4.5,
+    "tags": ["writing", "creative", "marketing"]
+  },
+  {
+    "id": "mimo-multilingual",
+    "name": "MiMo Multilingual",
+    "description": "Multilingual assistant powered by Xiaomi MiMo. Supports 100+ languages with native-level fluency.",
+    "type": "XiaomiMiMo",
+    "serverUrl": "wss://mimo-multilingual.example.com/ws",
+    "author": "Xiaomi AI",
+    "downloads": 9870,
+    "rating": 4.9,
+    "tags": ["multilingual", "translation", "conversation"]
+  },
+  {
+    "id": "hermes-data",
+    "name": "Data Analyst",
+    "description": "Data analysis agent on Hermes protocol. Handles CSV, JSON, SQL queries and generates visualizations.",
+    "type": "Hermes",
+    "serverUrl": "wss://hermes-data.example.com/ws",
+    "author": "DataHub Inc",
+    "downloads": 7650,
+    "rating": 4.4,
+    "tags": ["data", "analysis", "visualization", "sql"]
+  },
+  {
+    "id": "opencode-devops",
+    "name": "DevOps Helper",
+    "description": "DevOps automation agent. Manages CI/CD pipelines, Docker containers, and cloud infrastructure.",
+    "type": "OpenCode",
+    "serverUrl": "wss://opencode-devops.example.com/ws",
+    "author": "CloudOps Team",
+    "downloads": 5430,
+    "rating": 4.3,
+    "tags": ["devops", "docker", "ci-cd", "cloud"]
+  },
+  {
+    "id": "openclaw-tutor",
+    "name": "AI Tutor",
+    "description": "Educational assistant for students. Explains concepts, creates quizzes, and tracks learning progress.",
+    "type": "OpenClaw",
+    "serverUrl": "wss://openclaw-tutor.example.com/ws",
+    "author": "EduTech Labs",
+    "downloads": 11200,
+    "rating": 4.7,
+    "tags": ["education", "tutoring", "learning"]
+  },
+  {
+    "id": "openai-math",
+    "name": "Math Solver",
+    "description": "Mathematical problem solver using OpenAI-compatible API. From arithmetic to advanced calculus and linear algebra.",
+    "type": "OpenAI",
+    "serverUrl": "https://api.math-solver.example.com/v1",
+    "author": "MathGenius",
+    "downloads": 8100,
+    "rating": 4.6,
+    "tags": ["math", "education", "problem-solving"]
+  },
+  {
+    "id": "mimo-productivity",
+    "name": "Productivity Pro",
+    "description": "Productivity assistant by Xiaomi MiMo. Manages tasks, schedules, emails, and daily planning.",
+    "type": "XiaomiMiMo",
+    "serverUrl": "wss://mimo-productivity.example.com/ws",
+    "author": "Xiaomi AI",
+    "downloads": 13400,
+    "rating": 4.5,
+    "tags": ["productivity", "scheduling", "tasks"]
+  },
+  {
+    "id": "hermes-security",
+    "name": "Security Auditor",
+    "description": "Cybersecurity agent for code auditing, vulnerability scanning, and security best practices.",
+    "type": "Hermes",
+    "serverUrl": "wss://hermes-security.example.com/ws",
+    "author": "SecureCode",
+    "downloads": 4200,
+    "rating": 4.8,
+    "tags": ["security", "audit", "vulnerability"]
+  },
+  {
+    "id": "openclaw-writer",
+    "name": "Technical Writer",
+    "description": "Documentation and technical writing assistant. Creates API docs, READMEs, and user guides.",
+    "type": "OpenClaw",
+    "serverUrl": "wss://openclaw-writer.example.com/ws",
+    "author": "DocTeam",
+    "downloads": 6780,
+    "rating": 4.4,
+    "tags": ["documentation", "writing", "technical"]
+  },
+  {
+    "id": "hermes-translator",
+    "name": "Code Translator",
+    "description": "Translates code between programming languages. Supports Python, Java, Kotlin, Swift, Rust, Go, and more.",
+    "type": "Hermes",
+    "serverUrl": "wss://hermes-translator.example.com/ws",
+    "author": "Polyglot Dev",
+    "downloads": 5670,
+    "rating": 4.2,
+    "tags": ["translation", "coding", "multilingual"]
+  },
+  {
+    "id": "mimo-chat",
+    "name": "Casual Chat Buddy",
+    "description": "Friendly conversational agent by Xiaomi MiMo. Perfect for casual chats, jokes, and daily companionship.",
+    "type": "XiaomiMiMo",
+    "serverUrl": "wss://mimo-chat.example.com/ws",
+    "author": "Xiaomi AI",
+    "downloads": 18900,
+    "rating": 4.6,
+    "tags": ["chat", "casual", "entertainment"]
+  },
+  {
+    "id": "openai-api-builder",
+    "name": "API Builder",
+    "description": "API design and implementation assistant. Creates RESTful APIs, GraphQL schemas, and WebSocket services.",
+    "type": "OpenAI",
+    "serverUrl": "https://api-builder.example.com/v1",
+    "author": "APIWorks",
+    "downloads": 7200,
+    "rating": 4.5,
+    "tags": ["api", "rest", "graphql", "backend"]
+  }
+]

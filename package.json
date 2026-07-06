@@ -1,0 +1,37 @@
+{
+  "name": "agenthub",
+  "version": "1.0.0",
+  "description": "Multi-Agent mobile controller — PWA + Capacitor (Android/iOS) — Liquid Glass Design",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Static project, no build step needed'",
+    "test": "node tests.js",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "build:apk": "cd android && ./gradlew assembleDebug",
+    "build:release": "cd android && ./gradlew assembleRelease"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hinana0325/agenthub"
+  },
+  "keywords": [
+    "ai-agent",
+    "pwa",
+    "capacitor",
+    "android",
+    "mobile",
+    "chatbot",
+    "liquid-glass"
+  ],
+  "author": "Hinana0325",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "typescript": "^6.0.3"
+  }
+}

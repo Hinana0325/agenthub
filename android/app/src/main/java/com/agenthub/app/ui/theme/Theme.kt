@@ -1,0 +1,203 @@
+package com.agenthub.app.ui.theme
+
+import android.app.Activity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
+
+/**
+ * AgentHub 主题模式：Light / Dark / LiquidGlass / System
+ */
+enum class ThemeMode { Light, Dark, LiquidGlass, System }
+
+/**
+ * 根据强调色和主题模式构建 Material3 ColorScheme
+ */
+fun buildColorScheme(
+    accent: AccentPalette,
+    isDark: Boolean,
+    isGlass: Boolean = false
+) = if (isDark) {
+    darkColorScheme(
+        primary = accent.primary,
+        onPrimary = accent.onPrimary,
+        primaryContainer = accent.primaryContainer,
+        onPrimaryContainer = accent.onPrimaryContainer,
+        secondary = accent.secondary,
+        secondaryContainer = accent.secondaryContainer,
+        tertiary = accent.tertiary,
+        tertiaryContainer = accent.tertiaryContainer,
+        background = if (isGlass) GlassSurfaceDark else DarkBackground,
+        surface = if (isGlass) GlassSurfaceDark else DarkSurface,
+        surfaceVariant = if (isGlass) GlassSurfaceVariantDark else DarkSurfaceVariant,
+        onBackground = DarkOnBackground,
+        onSurface = DarkOnBackground,
+        outline = DarkOutline,
+        outlineVariant = DarkOutlineVariant,
+        surfaceTint = DarkSurfaceTint
+    )
+} else {
+    lightColorScheme(
+        primary = accent.primary,
+        onPrimary = accent.onPrimary,
+        primaryContainer = accent.primaryContainer,
+        onPrimaryContainer = accent.onPrimaryContainer,
+        secondary = accent.secondary,
+        secondaryContainer = accent.secondaryContainer,
+        tertiary = accent.tertiary,
+        tertiaryContainer = accent.tertiaryContainer,
+        background = if (isGlass) GlassSurfaceLight else LightBackground,
+        surface = if (isGlass) GlassSurfaceLight else LightSurface,
+        surfaceVariant = if (isGlass) GlassSurfaceVariantLight else LightSurfaceVariant,
+        onBackground = LightOnBackground,
+        onSurface = LightOnBackground,
+        outline = LightOutline,
+        outlineVariant = LightOutlineVariant,
+        surfaceTint = LightSurfaceTint
+    )
+}
+
+val AccentPalettes: Map<String, AccentPalette> = mapOf(
+    "blue" to AccentBlue,
+    "teal" to AccentTeal,
+    "purple" to AccentPurple,
+    "coral" to AccentCoral,
+    "amber" to AccentAmber,
+    "green" to AccentGreen,
+    "pink" to AccentPink,
+    "gray" to AccentGray
+)
+
+/**
+ * Parse a hex color string (e.g. "#185FA5") to a Compose Color.
+ * Returns fallback if parsing fails.
+ */
+fun parseHexColor(hex: String, fallback: Color = Color.Unspecified): Color {
+    return try {
+        val cleaned = hex.trim().removePrefix("#")
+        val argb = if (cleaned.length == 6) {
+            0xFF000000L or cleaned.toLong(16)
+        } else if (cleaned.length == 8) {
+            cleaned.toLong(16)
+        } else {
+            return fallback
+        }
+        Color(argb.toULong())
+    } catch (_: Exception) {
+        fallback
+    }
+}
+
+/**
+ * Build a custom ColorScheme from hex color strings.
+ */
+fun buildCustomColorScheme(
+    primaryHex: String,
+    accentHex: String,
+    backgroundHex: String,
+    isDark: Boolean
+): androidx.compose.material3.ColorScheme {
+    val primary = parseHexColor(primaryHex, if (isDark) DarkSurfaceTint else LightSurfaceTint)
+    val accent = parseHexColor(accentHex, AccentBlue.secondary)
+    val background = parseHexColor(backgroundHex, if (isDark) DarkBackground else LightBackground)
+
+    return if (isDark) {
+        darkColorScheme(
+            primary = primary,
+            onPrimary = Color.White,
+            primaryContainer = primary.copy(alpha = 0.3f),
+            onPrimaryContainer = Color.White,
+            secondary = accent,
+            secondaryContainer = accent.copy(alpha = 0.3f),
+            tertiary = accent,
+            tertiaryContainer = accent.copy(alpha = 0.3f),
+            background = background,
+            surface = DarkSurface,
+            surfaceVariant = DarkSurfaceVariant,
+            onBackground = DarkOnBackground,
+            onSurface = DarkOnBackground,
+            outline = DarkOutline,
+            outlineVariant = DarkOutlineVariant,
+            surfaceTint = primary
+        )
+    } else {
+        lightColorScheme(
+            primary = primary,
+            onPrimary = Color.White,
+            primaryContainer = primary.copy(alpha = 0.15f),
+            onPrimaryContainer = primary,
+            secondary = accent,
+            secondaryContainer = accent.copy(alpha = 0.15f),
+            tertiary = accent,
+            tertiaryContainer = accent.copy(alpha = 0.15f),
+            background = background,
+            surface = LightSurface,
+            surfaceVariant = LightSurfaceVariant,
+            onBackground = LightOnBackground,
+            onSurface = LightOnBackground,
+            outline = LightOutline,
+            outlineVariant = LightOutlineVariant,
+            surfaceTint = primary
+        )
+    }
+}
+
+@Composable
+fun AgentHubTheme(
+    themeMode: ThemeMode = ThemeMode.System,
+    accentColor: String = "blue",
+    customThemeEnabled: Boolean = false,
+    customPrimaryColorHex: String = "#185FA5",
+    customAccentColorHex: String = "#535F70",
+    customBackgroundColorHex: String = "#FDFBFF",
+    customCornerRadius: Int = 16,
+    content: @Composable () -> Unit
+) {
+    val isDark = when (themeMode) {
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+        ThemeMode.LiquidGlass -> isSystemInDarkTheme()
+        ThemeMode.System -> isSystemInDarkTheme()
+    }
+    val isGlass = themeMode == ThemeMode.LiquidGlass
+    val accent = AccentPalettes[accentColor] ?: AccentBlue
+    val colorScheme = if (customThemeEnabled) {
+        buildCustomColorScheme(
+            primaryHex = customPrimaryColorHex,
+            accentHex = customAccentColorHex,
+            backgroundHex = customBackgroundColorHex,
+            isDark = isDark
+        )
+    } else {
+        buildColorScheme(accent, isDark, isGlass)
+    }
+
+    // Edge-to-edge: system will handle status bar/navigation bar appearance
+    val activity = androidx.compose.ui.platform.LocalContext.current as? Activity
+    if (activity != null) {
+        SideEffect {
+            val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+            controller?.isAppearanceLightStatusBars = !isDark
+            controller?.isAppearanceLightNavigationBars = !isDark
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalIsGlass provides isGlass,
+        content = {
+            MaterialTheme(
+                colorScheme = colorScheme,
+                typography = AppTypography,
+                content = content
+            )
+        }
+    )
+}
