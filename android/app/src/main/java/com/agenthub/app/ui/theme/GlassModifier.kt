@@ -327,7 +327,9 @@ fun GlassCard(
         enabled = enabled,
         shape = shape,
         colors = if (isGlass) CardDefaults.cardColors(containerColor = Color.Transparent) else colors,
-        elevation = elevation,
+        // Glass mode draws its own depth shadow via Modifier.glassBackground(); zero out
+        // Card's built-in elevation so we don't get a doubled/heavy shadow.
+        elevation = if (isGlass) CardDefaults.cardElevation(0.dp) else elevation,
         border = border,
         interactionSource = interactionSource,
         modifier = modifier.then(
@@ -358,7 +360,9 @@ fun GlassCard(
         ),
         shape = shape,
         colors = if (isGlass) CardDefaults.cardColors(containerColor = Color.Transparent) else colors,
-        elevation = elevation,
+        // Glass mode draws its own depth shadow via Modifier.glassBackground(); zero out
+        // Card's built-in elevation so we don't get a doubled/heavy shadow.
+        elevation = if (isGlass) CardDefaults.cardElevation(0.dp) else elevation,
         border = border,
         content = content,
     )
@@ -478,6 +482,10 @@ fun GlassDropdownMenu(
         ),
         offset = offset,
         shape = RoundedCornerShape(16.dp),
+        // Glass mode already draws a single depth shadow via Modifier.glassBackground();
+        // zero the popup's own surface shadow so it doesn't double up.
+        tonalElevation = if (isGlass) 0.dp else 2.dp,
+        shadowElevation = if (isGlass) 0.dp else 2.dp,
         containerColor = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
         content = content
     )

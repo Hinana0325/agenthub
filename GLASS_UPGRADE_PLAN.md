@@ -267,6 +267,13 @@ fun GlassBackdrop(
       使 `glassPress` 弹簧缩放真正响应指针按压。
 - [x] `GlassModalBottomSheet` 已新建（`GlassModifier.kt`）—— 磨砂半透明底部弹窗，含玻璃 drag handle。
 - [x] `GlassEnterTransition`（fade + spring scale）已接入 `MessageBubble` 入场动画。
+- [x] **`MessageBubble` 滚动重播修复**：`ChatContent` 持有 `seenMessageIds` 集合（首次组合即把当前所有消息 id 收入），`items` 调用点传入该集合；`MessageBubble` 用
+      `enter = if (hasEntered) EnterTransition.None else GlassEnterTransition` 驱动**入场过渡**（而非 visibility），
+      只有真正新增的消息才播放弹簧入场，滚动回头不再重播（且不会因标记已见而误触发退出动画）。
+- [x] **玻璃组件双重阴影修复**：`GlassCard` 在 glass 模式下将 `Card` 的 `elevation` 归零（`CardDefaults.cardElevation(0.dp)`），
+      只保留 `glassBackground()` 的单一深度阴影；`GlassDropdownMenu` 在 glass 模式下将 `DropdownMenu` 的
+      `tonalElevation` / `shadowElevation` 归零，避免与玻璃阴影叠加成厚重双影。
 - [ ] 可选：将 `GlassMotion` 的 `glassPress` / `glassClickable` 进一步接入发送按钮与卡片点击
       （发送按钮当前用 `scaleOnPress`，已有按压反馈，可后续统一为 `glassPress`）。
 - [x] `assembleDebug` 已通过编译验证（`BUILD SUCCESSFUL`，commit `eccb3f2`），0 个 Java 文件，纯 Kotlin + Compose。
+- [x] 打磨批次（滚动重播 + 双重阴影）：`assembleDebug` 再次通过（`BUILD SUCCESSFUL`，commit 见下）。

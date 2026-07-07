@@ -491,6 +491,12 @@ private fun ChatContent(
     val context = LocalContext.current
     val contentMaxWidth = adaptive.panelConfig.contentMaxWidth
     val horizontalPadding = if (adaptive.isTablet) 48.dp else 12.dp
+    // Messages already on screen at first composition are considered "seen" so they
+    // don't replay the spring entrance while merely scrolling. Only genuinely new
+    // messages (added later this session) animate in.
+    val seenMessageIds = remember {
+        mutableSetOf<String>().apply { addAll(uiState.messages.map { it.id }) }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (uiState.messages.isEmpty()) {
@@ -516,6 +522,7 @@ private fun ChatContent(
                 ) { message ->
                     MessageBubble(
                         message = message,
+                        seenMessageIds = seenMessageIds,
                         onDelete = { viewModel.deleteMessage(message.id) },
                         onCopy = { viewModel.copyToClipboard(context, message.content) },
                         onReaction = { viewModel.toggleMessageReaction(message.id) }
@@ -760,18 +767,30 @@ fun MessageBubble(
     message: Message,
     onDelete: () -> Unit = {},
     onCopy: () -> Unit = {},
-    onReaction: () -> Unit = {}
+    onReaction: () -> Unit = {},
+    // Ids already shown at least once. Bubble only plays the spring entrance for
+    // genuinely-new messages; once seen it is added here so scrolling back never
+    // replays the animation. We drive the *enter transition* (not visibility) so a
+    // marked-seen bubble never triggers AnimatedVisibility's exit.
+    seenMessageIds: MutableSet<String> = mutableSetOf()
 ) {
     val isUser = message.role == MessageRole.User
     val isStreaming = message.status == MessageStatus.Sending
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
+    val hasEntered = seenMessageIds.contains(message.id)
+
     var showContextMenu by remember { mutableStateOf(false) }
+
+    // Mark this message as seen after first composition so future scroll-ins are static.
+    LaunchedEffect(message.id) {
+        seenMessageIds.add(message.id)
+    }
 
     AnimatedVisibility(
         visible = true,
-        enter = GlassEnterTransition
+        enter = if (hasEntered) EnterTransition.None else GlassEnterTransition
     ) {
     Column(
         modifier = Modifier
