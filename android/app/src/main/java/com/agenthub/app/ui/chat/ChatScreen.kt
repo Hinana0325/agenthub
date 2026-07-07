@@ -64,7 +64,6 @@ import com.agenthub.app.ui.components.scaleOnPress
 import com.agenthub.app.ui.theme.GlassTopAppBar
 import com.agenthub.app.ui.theme.LocalIsGlass
 import com.agenthub.app.ui.theme.glassBackground
-import com.agenthub.app.ui.theme.GlassShapeLg
 import com.agenthub.app.ui.theme.GlassEnterTransition
 import com.agenthub.app.ui.theme.GlassDropdownMenu
 import com.agenthub.app.ui.theme.GlassDropdownMenuItem
@@ -573,7 +572,14 @@ fun ChatInputBar(
         tonalElevation = if (isGlassBar) 0.dp else 3.dp,
         shadowElevation = if (isGlassBar) 0.dp else 8.dp,
         color = if (isGlassBar) Color.Transparent else MaterialTheme.colorScheme.surface,
-        modifier = if (isGlassBar) Modifier.glassBackground(shape = GlassShapeLg) else Modifier
+        modifier = if (isGlassBar) Modifier.glassBackground(
+            shape = RoundedCornerShape(
+                topStart = 24.dp,
+                topEnd = 24.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 0.dp
+            )
+        ) else Modifier
     ) {
         Column {
             // Pending attachment preview
