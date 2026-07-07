@@ -262,7 +262,11 @@ fun GlassBackdrop(
 
 ### 待办 / 可选打磨
 
-- 将 `GlassMotion` 的 `Spring*` / `GlassEnterTransition` / `glassClickable` 接入气泡入场、
-  发送按钮、卡片点击等交互（进一步增强 Expressive 触感）。
-- `GlassDropdownMenu` / `GlassModalBottomSheet` 等尚未新建（计划 1.4 余下项）。
-- 无 Android SDK 环境，**未做编译验证**，仅通过人工代码审查 + 括号平衡检查保证语法正确。
+- [x] `GlassDropdownMenu` / `GlassDropdownMenuItem` 已新建（`GlassModifier.kt`），并迁移
+      `ChatScreen`、`AgentsScreen` 的全部 `DropdownMenu` 调用点；共享 `MutableInteractionSource`
+      使 `glassPress` 弹簧缩放真正响应指针按压。
+- [x] `GlassModalBottomSheet` 已新建（`GlassModifier.kt`）—— 磨砂半透明底部弹窗，含玻璃 drag handle。
+- [x] `GlassEnterTransition`（fade + spring scale）已接入 `MessageBubble` 入场动画。
+- [ ] 可选：将 `GlassMotion` 的 `glassPress` / `glassClickable` 进一步接入发送按钮与卡片点击
+      （发送按钮当前用 `scaleOnPress`，已有按压反馈，可后续统一为 `glassPress`）。
+- [x] `assembleDebug` 已通过编译验证（`BUILD SUCCESSFUL`，commit `eccb3f2`），0 个 Java 文件，纯 Kotlin + Compose。
