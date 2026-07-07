@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
@@ -19,14 +20,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -40,6 +47,7 @@ import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 
 /** Whether the current composable tree is in glass mode */
@@ -424,4 +432,108 @@ fun GlassPill(
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
         ) { content() }
     }
+}
+
+/**
+ * Glass-styled [DropdownMenu] — Android 17 translucent popup with edge-light and
+ * dynamic shine. Falls back to the default Material3 surface container outside glass mode.
+ *
+ * Wrap the [content] with [GlassDropdownMenuItem] (see below) to keep individual rows
+ * consistent, or supply any [ColumnScope] content.
+ */
+@Composable
+fun GlassDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    offset: DpOffset = DpOffset(0.dp, 0.dp),
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val isGlass = LocalIsGlass.current
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier.then(
+            if (isGlass) {
+                Modifier.glassBackground(
+                    tintColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            } else {
+                Modifier
+            }
+        ),
+        offset = offset,
+        shape = RoundedCornerShape(16.dp),
+        containerColor = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+        content = content
+    )
+}
+
+/**
+ * A single row inside a [GlassDropdownMenu], with Android 17 spring press feedback.
+ * The same [MutableInteractionSource] feeds both [DropdownMenuItem]'s clickable and
+ * [Modifier.glassPress], so the elastic scale reacts to real pointer presses.
+ */
+@Composable
+fun GlassDropdownMenuItem(
+    text: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    enabled: Boolean = true,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isGlass = LocalIsGlass.current
+    DropdownMenuItem(
+        text = text,
+        onClick = onClick,
+        modifier = modifier.then(
+            if (isGlass) Modifier.glassPress(interactionSource) else Modifier
+        ),
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        enabled = enabled,
+        interactionSource = interactionSource
+    )
+}
+
+/**
+ * Glass-styled [ModalBottomSheet] — Android 17 liquid bottom sheet with frosted
+ * translucency, edge-light, and a tinted drag handle. Falls back to the default
+ * Material3 surface container outside glass mode.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GlassModalBottomSheet(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    sheetState: SheetState = rememberModalBottomSheetState(),
+    dragHandle: @Composable (() -> Unit)? = {
+        androidx.compose.material3.BottomSheetDefaults.DragHandle(
+            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+    },
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val isGlass = LocalIsGlass.current
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        modifier = modifier.then(
+            if (isGlass) {
+                Modifier.glassBackground(
+                    tintColor = Color.White,
+                    shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp)
+                )
+            } else {
+                Modifier
+            }
+        ),
+        sheetState = sheetState,
+        shape = RoundedCornerShape(28.dp, 28.dp, 0.dp, 0.dp),
+        containerColor = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh,
+        dragHandle = dragHandle,
+        content = content
+    )
 }

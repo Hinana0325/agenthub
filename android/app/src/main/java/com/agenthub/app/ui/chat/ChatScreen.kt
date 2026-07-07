@@ -65,6 +65,9 @@ import com.agenthub.app.ui.theme.GlassTopAppBar
 import com.agenthub.app.ui.theme.LocalIsGlass
 import com.agenthub.app.ui.theme.glassBackground
 import com.agenthub.app.ui.theme.GlassShapeLg
+import com.agenthub.app.ui.theme.GlassEnterTransition
+import com.agenthub.app.ui.theme.GlassDropdownMenu
+import com.agenthub.app.ui.theme.GlassDropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import com.agenthub.app.util.HapticFeedback
 
@@ -641,16 +644,16 @@ fun ChatInputBar(
                                 )
                             )
                         }
-                        DropdownMenu(
+                        GlassDropdownMenu(
                             expanded = showAttachMenu,
                             onDismissRequest = { showAttachMenu = false }
                         ) {
-                            DropdownMenuItem(
+                            GlassDropdownMenuItem(
                                 text = { Text(stringResource(R.string.attach_image)) },
                                 onClick = { showAttachMenu = false; onAttachImage() },
                                 leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp)) }
                             )
-                            DropdownMenuItem(
+                            GlassDropdownMenuItem(
                                 text = { Text(stringResource(R.string.attach_document)) },
                                 onClick = { showAttachMenu = false; onAttachFile() },
                                 leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(20.dp)) }
@@ -762,7 +765,7 @@ fun MessageBubble(
 
     AnimatedVisibility(
         visible = true,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
+        enter = GlassEnterTransition
     ) {
     Column(
         modifier = Modifier
@@ -859,11 +862,11 @@ fun MessageBubble(
             }
 
             // Context menu
-            DropdownMenu(
+            GlassDropdownMenu(
                 expanded = showContextMenu,
                 onDismissRequest = { showContextMenu = false }
             ) {
-                DropdownMenuItem(
+                GlassDropdownMenuItem(
                     text = { Text(stringResource(R.string.action_copy)) },
                     onClick = {
                         showContextMenu = false
@@ -876,7 +879,7 @@ fun MessageBubble(
                         Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.a11y_copy_message), modifier = Modifier.size(18.dp))
                     }
                 )
-                DropdownMenuItem(
+                GlassDropdownMenuItem(
                     text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
                     onClick = {
                         showContextMenu = false
@@ -1467,7 +1470,7 @@ fun WizardOverlay(
                         onDismissRequest = { expanded = false }
                     ) {
                         com.agenthub.app.data.model.AgentType.entries.forEach { type ->
-                            DropdownMenuItem(
+                            GlassDropdownMenuItem(
                                 text = { Text(type.displayName) },
                                 onClick = { selectedType = type; expanded = false }
                             )

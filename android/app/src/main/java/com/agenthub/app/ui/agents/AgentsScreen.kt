@@ -36,6 +36,8 @@ import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
+import com.agenthub.app.ui.theme.GlassDropdownMenu
+import com.agenthub.app.ui.theme.GlassDropdownMenuItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,11 +84,11 @@ fun AgentsScreen(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 // FAB menu items
-                DropdownMenu(
+                GlassDropdownMenu(
                     expanded = showFabMenu,
                     onDismissRequest = { showFabMenu = false }
                 ) {
-                    DropdownMenuItem(
+                    GlassDropdownMenuItem(
                         text = { Text(stringResource(R.string.new_agent)) },
                         onClick = {
                             showFabMenu = false
@@ -94,7 +96,7 @@ fun AgentsScreen(
                         },
                         leadingIcon = { Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(20.dp)) }
                     )
-                    DropdownMenuItem(
+                    GlassDropdownMenuItem(
                         text = { Text(stringResource(R.string.import_configs)) },
                         onClick = {
                             showFabMenu = false
@@ -102,7 +104,7 @@ fun AgentsScreen(
                         },
                         leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }
                     )
-                    DropdownMenuItem(
+                    GlassDropdownMenuItem(
                         text = { Text(stringResource(R.string.export_configs)) },
                         onClick = {
                             showFabMenu = false
@@ -290,16 +292,16 @@ private fun AgentGridCard(
     }
 
     // Context menu
-    DropdownMenu(
+    GlassDropdownMenu(
         expanded = showContextMenu,
         onDismissRequest = { showContextMenu = false }
     ) {
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_edit)) },
             onClick = { showContextMenu = false; onEdit() },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) }
         )
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
             onClick = { showContextMenu = false; onDelete() },
             leadingIcon = {
@@ -311,7 +313,7 @@ private fun AgentGridCard(
                 )
             }
         )
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.copy_config)) },
             onClick = { showContextMenu = false },
             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -403,16 +405,16 @@ private fun AgentCard(
     }
 
     // Context menu
-    DropdownMenu(
+    GlassDropdownMenu(
         expanded = showContextMenu,
         onDismissRequest = { showContextMenu = false }
     ) {
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_edit)) },
             onClick = { showContextMenu = false; onEdit() },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) }
         )
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
             onClick = { showContextMenu = false; onDelete() },
             leadingIcon = {
@@ -424,7 +426,7 @@ private fun AgentCard(
                 )
             }
         )
-        DropdownMenuItem(
+        GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.copy_config)) },
             onClick = { showContextMenu = false },
             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -571,7 +573,7 @@ private fun TypeSelector(
             onDismissRequest = { expanded = false }
         ) {
             AgentType.values().forEach { agentType ->
-                DropdownMenuItem(
+                GlassDropdownMenuItem(
                     text = { Text(agentType.displayName) },
                     onClick = { onSelect(agentType); expanded = false }
                 )
