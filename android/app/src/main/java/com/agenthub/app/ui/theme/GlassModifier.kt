@@ -118,7 +118,22 @@ fun Modifier.glassBackground(
     // RenderEffect / Modifier.blur blur the composable's OWN subtree (incl. text),
     // which would smear content. The frosted look here comes from translucency over
     // [GlassBackdrop]; [GlassBox] may layer an optional blurred backdrop behind content.
-    // 2. Tint + edge light + dispersion + dynamic shine
+
+    // 3. Depth shadow (ambient + diffuse) — drawn FIRST so the rounded drop shadow
+    //    is NOT clipped away by the glass outline below.
+    result = result.shadow(
+        elevation = shadowElevation,
+        shape = shape,
+        clip = false,
+        ambientColor = tintColor.copy(alpha = 0.18f),
+        spotColor = Color.Black.copy(alpha = 0.32f)
+    )
+
+    // Clip every layer after this (tint + content) to the glass [shape], so rounded
+    // surfaces don't bleed square tint corners past their rounded outline.
+    result = result.clip(shape)
+
+    // 2. Tint + edge light + dispersion + dynamic shine (clipped to [shape] above)
     result = result.drawBehind {
         // Base tint (wallpaper bleed-through)
         drawRect(color = tintColor.copy(alpha = tintAlpha), size = size)
@@ -160,15 +175,6 @@ fun Modifier.glassBackground(
             drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset(size.width - borderPx, 0f), size = androidx.compose.ui.geometry.Size(borderPx, size.height))
         }
     }
-
-    // 3. Depth shadow (ambient + diffuse layers)
-    result = result.shadow(
-        elevation = shadowElevation,
-        shape = shape,
-        clip = false,
-        ambientColor = tintColor.copy(alpha = 0.18f),
-        spotColor = Color.Black.copy(alpha = 0.32f)
-    )
 
     return result
 }
@@ -238,7 +244,7 @@ fun GlassTopAppBar(
             containerColor = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surface
         ),
         modifier = modifier.then(
-            if (isGlass) Modifier.glassBackground() else Modifier
+            if (isGlass) Modifier.glassBackground(shape = RoundedCornerShape(0.dp)) else Modifier
         )
     )
 }
@@ -266,7 +272,7 @@ fun GlassNavigationBar(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         content = content,
-        modifier = modifier.glassBackground(),
+        modifier = modifier.glassBackground(shape = RoundedCornerShape(0.dp)),
     )
 }
 
@@ -294,7 +300,7 @@ fun GlassNavigationRail(
         header = header,
         containerColor = Color.Transparent,
         content = content,
-        modifier = modifier.glassBackground(),
+        modifier = modifier.glassBackground(shape = RoundedCornerShape(0.dp)),
     )
 }
 
@@ -388,19 +394,26 @@ fun GlassFloatingActionButton(
     Box(
         modifier = modifier
             .graphicsLayer { translationY = floatYpx }
-            .then(if (isGlass) Modifier.glassBackground(tintColor = containerColor, shape = shape) else Modifier)
             .shadow(
                 elevation = 12.dp,
                 shape = shape,
                 ambientColor = containerColor.copy(alpha = 0.3f),
                 spotColor = containerColor.copy(alpha = 0.4f)
             )
+            .then(if (isGlass) Modifier.glassBackground(tintColor = containerColor, shape = shape) else Modifier)
             .background(if (isGlass) Color.Transparent else containerColor, shape)
-            .clip(shape)
-            .clickable(onClick = onClick),
-        contentAlignment = androidx.compose.ui.Alignment.Center
     ) {
-        content()
+        // Inner clip keeps the ripple + content inside the shape WITHOUT clipping
+        // away the outer drop shadow drawn by the shadow() modifier above.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(shape)
+                .clickable(onClick = onClick),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            content()
+        }
     }
 }
 

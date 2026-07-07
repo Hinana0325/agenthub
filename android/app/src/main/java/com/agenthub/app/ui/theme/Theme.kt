@@ -106,7 +106,8 @@ fun buildCustomColorScheme(
     primaryHex: String,
     accentHex: String,
     backgroundHex: String,
-    isDark: Boolean
+    isDark: Boolean,
+    isGlass: Boolean = false
 ): androidx.compose.material3.ColorScheme {
     val primary = parseHexColor(primaryHex, if (isDark) DarkSurfaceTint else LightSurfaceTint)
     val accent = parseHexColor(accentHex, AccentBlue.secondary)
@@ -122,9 +123,9 @@ fun buildCustomColorScheme(
             secondaryContainer = accent.copy(alpha = 0.3f),
             tertiary = accent,
             tertiaryContainer = accent.copy(alpha = 0.3f),
-            background = background,
-            surface = DarkSurface,
-            surfaceVariant = DarkSurfaceVariant,
+            background = if (isGlass) Color.Transparent else background,
+            surface = if (isGlass) Color.Transparent else DarkSurface,
+            surfaceVariant = if (isGlass) background.copy(alpha = 0.35f) else DarkSurfaceVariant,
             onBackground = DarkOnBackground,
             onSurface = DarkOnBackground,
             outline = DarkOutline,
@@ -141,9 +142,9 @@ fun buildCustomColorScheme(
             secondaryContainer = accent.copy(alpha = 0.15f),
             tertiary = accent,
             tertiaryContainer = accent.copy(alpha = 0.15f),
-            background = background,
-            surface = LightSurface,
-            surfaceVariant = LightSurfaceVariant,
+            background = if (isGlass) Color.Transparent else background,
+            surface = if (isGlass) Color.Transparent else LightSurface,
+            surfaceVariant = if (isGlass) background.copy(alpha = 0.35f) else LightSurfaceVariant,
             onBackground = LightOnBackground,
             onSurface = LightOnBackground,
             outline = LightOutline,
@@ -177,7 +178,8 @@ fun AgentHubTheme(
             primaryHex = customPrimaryColorHex,
             accentHex = customAccentColorHex,
             backgroundHex = customBackgroundColorHex,
-            isDark = isDark
+            isDark = isDark,
+            isGlass = isGlass
         )
     } else {
         buildColorScheme(accent, isDark, isGlass)
