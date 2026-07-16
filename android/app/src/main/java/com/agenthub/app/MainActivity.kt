@@ -78,18 +78,11 @@ class MainActivity : ComponentActivity() {
             val themeMode = when (settingsState.themeMode) {
                 "light" -> ThemeMode.Light
                 "dark" -> ThemeMode.Dark
-                "liquid_glass" -> ThemeMode.LiquidGlass
                 else -> ThemeMode.System
             }
             AgentHubTheme(
                 themeMode = themeMode,
-                accentColor = settingsState.accentColor,
-                fontSize = settingsState.fontSize,
-                customThemeEnabled = settingsState.customThemeEnabled,
-                customPrimaryColorHex = settingsState.customPrimaryColor,
-                customAccentColorHex = settingsState.customAccentColor,
-                customBackgroundColorHex = settingsState.customBackgroundColor,
-                customCornerRadius = settingsState.customCornerRadius
+                fontSize = settingsState.fontSize
             ) {
                 val isGlass = LocalIsGlass.current
                 val isDark = isSystemInDarkTheme()

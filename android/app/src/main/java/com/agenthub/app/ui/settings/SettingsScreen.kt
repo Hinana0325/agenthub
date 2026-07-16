@@ -26,7 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.agenthub.app.R
 import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
-import com.agenthub.app.ui.theme.AccentPalettes
+import com.agenthub.app.data.AppModule
 import com.agenthub.app.ui.theme.GlassTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,8 +44,13 @@ fun SettingsScreen(
     val context = LocalContext.current
     val useDualPane = adaptive.windowSize == WindowSize.Expanded
 
+    // Real agent-config count for the "Manage Agents" subtitle (the previous code
+    // mistakenly passed a stale palette count there).
+    val agentConfigs by com.agenthub.app.data.AppModule.getRepository(context)
+        .getAllConfigs()
+        .collectAsState(initial = emptyList<com.agenthub.app.data.model.AgentConfig>())
+
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showAccentDialog by remember { mutableStateOf(false) }
     var showFontDialog by remember { mutableStateOf(false) }
     var showE2EDialog by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("appearance") }
@@ -71,13 +76,6 @@ fun SettingsScreen(
             current = uiState.themeMode,
             onSelect = { settingsViewModel.setThemeMode(it); showThemeDialog = false },
             onDismiss = { showThemeDialog = false }
-        )
-    }
-    if (showAccentDialog) {
-        AccentPickerDialog(
-            current = uiState.accentColor,
-            onSelect = { settingsViewModel.setAccentColor(it); showAccentDialog = false },
-            onDismiss = { showAccentDialog = false }
         )
     }
     if (showFontDialog) {
@@ -229,14 +227,6 @@ fun SettingsScreen(
                                 }
                                 item {
                                     SettingsItem(
-                                        title = stringResource(R.string.accent_color),
-                                        subtitle = accentLabel(uiState.accentColor),
-                                        icon = Icons.Default.FormatPaint,
-                                        onClick = { showAccentDialog = true }
-                                    )
-                                }
-                                item {
-                                    SettingsItem(
                                         title = stringResource(R.string.font_size),
                                         subtitle = fontSizeLabel(uiState.fontSize, context),
                                         icon = Icons.Default.TextFields,
@@ -249,7 +239,7 @@ fun SettingsScreen(
                                 item {
                                     SettingsItem(
                                         title = stringResource(R.string.manage_agents),
-                                        subtitle = stringResource(R.string.manage_agents_subtitle, AccentPalettes.size),
+                                        subtitle = stringResource(R.string.manage_agents_subtitle, agentConfigs.size),
                                         icon = Icons.Default.Hub,
                                         onClick = onNavigateToAgents
                                     )
@@ -419,14 +409,6 @@ fun SettingsScreen(
                         }
                         item {
                             SettingsItem(
-                                title = stringResource(R.string.accent_color),
-                                subtitle = accentLabel(uiState.accentColor),
-                                icon = Icons.Default.FormatPaint,
-                                onClick = { showAccentDialog = true }
-                            )
-                        }
-                        item {
-                            SettingsItem(
                                 title = stringResource(R.string.font_size),
                                 subtitle = fontSizeLabel(uiState.fontSize, context),
                                 icon = Icons.Default.TextFields,
@@ -438,7 +420,7 @@ fun SettingsScreen(
                         item {
                             SettingsItem(
                                 title = stringResource(R.string.manage_agents),
-                                subtitle = stringResource(R.string.manage_agents_subtitle, AccentPalettes.size),
+                                subtitle = stringResource(R.string.manage_agents_subtitle, agentConfigs.size),
                                 icon = Icons.Default.Hub,
                                 onClick = onNavigateToAgents
                             )
@@ -660,8 +642,7 @@ private fun ThemePickerDialog(
     val options = listOf(
         "system" to stringResource(R.string.theme_system),
         "light" to stringResource(R.string.theme_light),
-        "dark" to stringResource(R.string.theme_dark),
-        "liquid_glass" to stringResource(R.string.theme_liquid_glass)
+        "dark" to stringResource(R.string.theme_dark)
     )
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -676,39 +657,6 @@ private fun ThemePickerDialog(
                         RadioButton(selected = current == value, onClick = { onSelect(value) })
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(label)
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } }
-    )
-}
-
-@Composable
-private fun AccentPickerDialog(
-    current: String,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.accent_color)) },
-        text = {
-            Column {
-                AccentPalettes.forEach { (key, palette) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable { onSelect(key) }.padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = current == key, onClick = { onSelect(key) })
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(
-                            modifier = Modifier.size(20.dp),
-                            shape = RoundedCornerShape(4.dp),
-                            color = palette.primary
-                        ) { }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(key.replaceFirstChar { it.uppercase() })
                     }
                 }
             }
@@ -753,13 +701,8 @@ private fun themeLabel(mode: String, context: android.content.Context): String =
     "system" -> context.getString(R.string.theme_system)
     "light" -> context.getString(R.string.theme_light)
     "dark" -> context.getString(R.string.theme_dark)
-    "liquid_glass" -> context.getString(R.string.theme_liquid_glass)
     else -> mode
 }
-
-private fun accentLabel(color: String): String = AccentPalettes[color]?.let {
-    color.replaceFirstChar { c -> c.uppercase() }
-} ?: color.replaceFirstChar { c -> c.uppercase() }
 
 /**
  * Version item with 5-tap easter egg that shows developer info.

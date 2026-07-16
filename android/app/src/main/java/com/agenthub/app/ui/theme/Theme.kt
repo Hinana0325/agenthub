@@ -18,9 +18,10 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * AgentHub 主题模式：Light / Dark / LiquidGlass / System
+ * AgentHub 主题模式：Light / Dark / System（跟随系统）。
+ * 视觉风格始终为液态玻璃（liquid glass 常驻），模式只决定深色/浅色基底。
  */
-enum class ThemeMode { Light, Dark, LiquidGlass, System }
+enum class ThemeMode { Light, Dark, System }
 
 /**
  * 根据强调色和主题模式构建 Material3 ColorScheme
@@ -69,91 +70,11 @@ fun buildColorScheme(
     )
 }
 
-val AccentPalettes: Map<String, AccentPalette> = mapOf(
-    "blue" to AccentBlue,
-    "teal" to AccentTeal,
-    "purple" to AccentPurple,
-    "coral" to AccentCoral,
-    "amber" to AccentAmber,
-    "green" to AccentGreen,
-    "pink" to AccentPink,
-    "gray" to AccentGray
-)
+// NOTE: The previous multi-accent picker (AccentPalettes) and the custom-theme hex
+// color builder (buildCustomColorScheme / parseHexColor) were removed. The app now
+// uses a single default accent (AccentBlue) and the liquid-glass style is always on,
+// so per-user color customization is no longer needed.
 
-/**
- * Parse a hex color string (e.g. "#185FA5") to a Compose Color.
- * Returns fallback if parsing fails.
- */
-fun parseHexColor(hex: String, fallback: Color = Color.Unspecified): Color {
-    return try {
-        val cleaned = hex.trim().removePrefix("#")
-        val argb = if (cleaned.length == 6) {
-            0xFF000000L or cleaned.toLong(16)
-        } else if (cleaned.length == 8) {
-            cleaned.toLong(16)
-        } else {
-            return fallback
-        }
-        Color(argb.toULong())
-    } catch (_: Exception) {
-        fallback
-    }
-}
-
-/**
- * Build a custom ColorScheme from hex color strings.
- */
-fun buildCustomColorScheme(
-    primaryHex: String,
-    accentHex: String,
-    backgroundHex: String,
-    isDark: Boolean,
-    isGlass: Boolean = false
-): androidx.compose.material3.ColorScheme {
-    val primary = parseHexColor(primaryHex, if (isDark) DarkSurfaceTint else LightSurfaceTint)
-    val accent = parseHexColor(accentHex, AccentBlue.secondary)
-    val background = parseHexColor(backgroundHex, if (isDark) DarkBackground else LightBackground)
-
-    return if (isDark) {
-        darkColorScheme(
-            primary = primary,
-            onPrimary = Color.White,
-            primaryContainer = primary.copy(alpha = 0.3f),
-            onPrimaryContainer = Color.White,
-            secondary = accent,
-            secondaryContainer = accent.copy(alpha = 0.3f),
-            tertiary = accent,
-            tertiaryContainer = accent.copy(alpha = 0.3f),
-            background = if (isGlass) Color.Transparent else background,
-            surface = if (isGlass) Color.Transparent else DarkSurface,
-            surfaceVariant = if (isGlass) background.copy(alpha = 0.35f) else DarkSurfaceVariant,
-            onBackground = DarkOnBackground,
-            onSurface = DarkOnBackground,
-            outline = DarkOutline,
-            outlineVariant = DarkOutlineVariant,
-            surfaceTint = primary
-        )
-    } else {
-        lightColorScheme(
-            primary = primary,
-            onPrimary = Color.White,
-            primaryContainer = primary.copy(alpha = 0.15f),
-            onPrimaryContainer = primary,
-            secondary = accent,
-            secondaryContainer = accent.copy(alpha = 0.15f),
-            tertiary = accent,
-            tertiaryContainer = accent.copy(alpha = 0.15f),
-            background = if (isGlass) Color.Transparent else background,
-            surface = if (isGlass) Color.Transparent else LightSurface,
-            surfaceVariant = if (isGlass) background.copy(alpha = 0.35f) else LightSurfaceVariant,
-            onBackground = LightOnBackground,
-            onSurface = LightOnBackground,
-            outline = LightOutline,
-            outlineVariant = LightOutlineVariant,
-            surfaceTint = primary
-        )
-    }
-}
 
 /** Map a persisted font-size setting to a multiplier applied to the base typography. */
 private fun fontScaleFor(size: String): Float = when (size) {
@@ -182,34 +103,18 @@ private fun scaleTypography(base: Typography, factor: Float): Typography = Typog
 @Composable
 fun AgentHubTheme(
     themeMode: ThemeMode = ThemeMode.System,
-    accentColor: String = "blue",
     fontSize: String = "medium",
-    customThemeEnabled: Boolean = false,
-    customPrimaryColorHex: String = "#185FA5",
-    customAccentColorHex: String = "#535F70",
-    customBackgroundColorHex: String = "#FDFBFF",
-    customCornerRadius: Int = 16,
     content: @Composable () -> Unit
 ) {
     val isDark = when (themeMode) {
         ThemeMode.Light -> false
         ThemeMode.Dark -> true
-        ThemeMode.LiquidGlass -> isSystemInDarkTheme()
         ThemeMode.System -> isSystemInDarkTheme()
     }
-    val isGlass = themeMode == ThemeMode.LiquidGlass
-    val accent = AccentPalettes[accentColor] ?: AccentBlue
-    val colorScheme = if (customThemeEnabled) {
-        buildCustomColorScheme(
-            primaryHex = customPrimaryColorHex,
-            accentHex = customAccentColorHex,
-            backgroundHex = customBackgroundColorHex,
-            isDark = isDark,
-            isGlass = isGlass
-        )
-    } else {
-        buildColorScheme(accent, isDark, isGlass)
-    }
+    // Liquid glass is always on; the theme mode only selects the dark/light base.
+    val isGlass = true
+    val accent = AccentBlue
+    val colorScheme = buildColorScheme(accent, isDark, isGlass)
 
     // Apply the persisted font-size setting by scaling the base typography.
     val typography = scaleTypography(AppTypography, fontScaleFor(fontSize))
@@ -233,16 +138,8 @@ fun AgentHubTheme(
         LocalGlassDispersion provides if (isDark) GlassDispersionDark else GlassDispersionLight,
         LocalGlassShadowElevation provides GlassShadowMd,
         content = {
-            if (isGlass) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    GlassBackdrop(isDark = isDark)
-                    MaterialTheme(
-                        colorScheme = colorScheme,
-                        typography = typography,
-                        content = content
-                    )
-                }
-            } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                GlassBackdrop(isDark = isDark)
                 MaterialTheme(
                     colorScheme = colorScheme,
                     typography = typography,

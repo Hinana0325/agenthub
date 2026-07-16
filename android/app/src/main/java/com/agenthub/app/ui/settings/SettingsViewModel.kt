@@ -25,18 +25,10 @@ import java.security.SecureRandom
 
 data class SettingsUiState(
     val themeMode: String = "system",
-    val accentColor: String = "blue",
     val fontSize: String = "medium",
     val e2eEnabled: Boolean = false,
     val e2eKey: String = "",
-    val backupMessage: String? = null,
-    // Custom theme
-    val customThemeEnabled: Boolean = false,
-    val customPrimaryColor: String = "#185FA5",
-    val customAccentColor: String = "#535F70",
-    val customBackgroundColor: String = "#FDFBFF",
-    val customFontSize: String = "medium",
-    val customCornerRadius: Int = 16
+    val backupMessage: String? = null
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -49,11 +41,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             dataStore.themeMode.collect { mode ->
                 _uiState.update { it.copy(themeMode = mode) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.accentColor.collect { color ->
-                _uiState.update { it.copy(accentColor = color) }
             }
         }
         viewModelScope.launch {
@@ -71,45 +58,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _uiState.update { it.copy(e2eKey = key) }
             }
         }
-        // Custom theme collectors
-        viewModelScope.launch {
-            dataStore.customThemeEnabled.collect { enabled ->
-                _uiState.update { it.copy(customThemeEnabled = enabled) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.customPrimaryColor.collect { color ->
-                _uiState.update { it.copy(customPrimaryColor = color) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.customAccentColor.collect { color ->
-                _uiState.update { it.copy(customAccentColor = color) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.customBackgroundColor.collect { color ->
-                _uiState.update { it.copy(customBackgroundColor = color) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.customFontSize.collect { size ->
-                _uiState.update { it.copy(customFontSize = size) }
-            }
-        }
-        viewModelScope.launch {
-            dataStore.customCornerRadius.collect { radius ->
-                _uiState.update { it.copy(customCornerRadius = radius) }
-            }
-        }
     }
 
     fun setThemeMode(mode: String) {
         viewModelScope.launch { dataStore.setThemeMode(mode) }
-    }
-
-    fun setAccentColor(color: String) {
-        viewModelScope.launch { dataStore.setAccentColor(color) }
     }
 
     fun setFontSize(size: String) {
@@ -151,32 +103,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 dataStore.setE2eEnabled(true)
             }
         }
-    }
-
-    // ── Custom Theme ──
-
-    fun setCustomThemeEnabled(enabled: Boolean) {
-        viewModelScope.launch { dataStore.setCustomThemeEnabled(enabled) }
-    }
-
-    fun setCustomPrimaryColor(color: String) {
-        viewModelScope.launch { dataStore.setCustomPrimaryColor(color) }
-    }
-
-    fun setCustomAccentColor(color: String) {
-        viewModelScope.launch { dataStore.setCustomAccentColor(color) }
-    }
-
-    fun setCustomBackgroundColor(color: String) {
-        viewModelScope.launch { dataStore.setCustomBackgroundColor(color) }
-    }
-
-    fun setCustomFontSize(size: String) {
-        viewModelScope.launch { dataStore.setCustomFontSize(size) }
-    }
-
-    fun setCustomCornerRadius(radius: Int) {
-        viewModelScope.launch { dataStore.setCustomCornerRadius(radius) }
     }
 
     private fun generateSecureKey(): String {
