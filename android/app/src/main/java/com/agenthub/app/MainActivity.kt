@@ -83,7 +83,13 @@ class MainActivity : ComponentActivity() {
             }
             AgentHubTheme(
                 themeMode = themeMode,
-                accentColor = settingsState.accentColor
+                accentColor = settingsState.accentColor,
+                fontSize = settingsState.fontSize,
+                customThemeEnabled = settingsState.customThemeEnabled,
+                customPrimaryColorHex = settingsState.customPrimaryColor,
+                customAccentColorHex = settingsState.customAccentColor,
+                customBackgroundColorHex = settingsState.customBackgroundColor,
+                customCornerRadius = settingsState.customCornerRadius
             ) {
                 val isGlass = LocalIsGlass.current
                 val isDark = isSystemInDarkTheme()
