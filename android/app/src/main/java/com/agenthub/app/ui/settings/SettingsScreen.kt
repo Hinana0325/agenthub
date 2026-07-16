@@ -27,6 +27,7 @@ import com.agenthub.app.R
 import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.data.AppModule
+import com.agenthub.app.data.update.UpdateManager
 import com.agenthub.app.ui.theme.GlassTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +71,44 @@ fun SettingsScreen(
     }
 
     val performanceMetrics by settingsViewModel.getPerformanceMetrics().collectAsState()
+
+    // --- In-app update check ---
+    val currentVersion = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0.0"
+        } catch (_: Exception) { "0.0.0" }
+    }
+    val updateManager = remember { UpdateManager() }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateCheckResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
+    var isChecking by remember { mutableStateOf(false) }
+    var triggerCheck by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(triggerCheck) {
+        if (triggerCheck == 0) return@LaunchedEffect
+        isChecking = true
+        updateCheckResult = null
+        showUpdateDialog = false
+        val result = updateManager.checkForUpdates(currentVersion)
+        updateCheckResult = when {
+            result.isFailure ->
+                UpdateCheckResult.Error(result.exceptionOrNull()?.message ?: "Network error")
+            result.getOrNull() != null ->
+                UpdateCheckResult.Available(result.getOrNull()!!)
+            else -> UpdateCheckResult.UpToDate
+        }
+        isChecking = false
+        showUpdateDialog = true
+    }
+
+    if (showUpdateDialog && updateCheckResult != null) {
+        UpdateCheckDialog(
+            result = updateCheckResult!!,
+            currentVersion = currentVersion,
+            onDownload = { info -> updateManager.downloadUpdate(context, info) },
+            onDismiss = { showUpdateDialog = false }
+        )
+    }
 
     if (showThemeDialog) {
         ThemePickerDialog(
@@ -378,6 +417,14 @@ fun SettingsScreen(
                             "about" -> {
                                 item { SettingsHeader(stringResource(R.string.about)) }
                                 item {
+                                    SettingsItem(
+                                        title = "检查更新",
+                                        subtitle = if (isChecking) "检查中…" else "v$currentVersion",
+                                        icon = Icons.Default.SystemUpdate,
+                                        onClick = { triggerCheck++ }
+                                    )
+                                }
+                                item {
                                     VersionSettingsItem()
                                 }
                             }
@@ -477,6 +524,14 @@ fun SettingsScreen(
                         }
 
                         item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.about)) }
+                        item {
+                            SettingsItem(
+                                title = "检查更新",
+                                subtitle = if (isChecking) "检查中…" else "v$currentVersion",
+                                icon = Icons.Default.SystemUpdate,
+                                onClick = { triggerCheck++ }
+                            )
+                        }
                         item {
                             VersionSettingsItem()
                         }
@@ -763,6 +818,74 @@ private fun VersionSettingsItem() {
             )
         }
     }
+}
+
+// ── In-app update check ──
+
+private sealed class UpdateCheckResult {
+    data class Available(val info: UpdateManager.UpdateInfo) : UpdateCheckResult()
+    data object UpToDate : UpdateCheckResult()
+    data class Error(val message: String) : UpdateCheckResult()
+}
+
+@Composable
+private fun UpdateCheckDialog(
+    result: UpdateCheckResult,
+    currentVersion: String,
+    onDownload: (UpdateManager.UpdateInfo) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                when (result) {
+                    is UpdateCheckResult.UpToDate -> "✔ Up to date"
+                    is UpdateCheckResult.Available -> "Update available"
+                    is UpdateCheckResult.Error -> "Check failed"
+                }
+            )
+        },
+        text = {
+            when (result) {
+                is UpdateCheckResult.UpToDate ->
+                    Text("You are on the latest version (v$currentVersion).")
+                is UpdateCheckResult.Available -> {
+                    val info = result.info
+                    Column {
+                        Text(
+                            "v$currentVersion → v${info.version}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        if (info.changelog.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                info.changelog.take(500),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+                is UpdateCheckResult.Error ->
+                    Text(result.message, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            when (result) {
+                is UpdateCheckResult.Available ->
+                    TextButton(onClick = { onDownload(result.info); onDismiss() }) {
+                        Text("Download")
+                    }
+                else ->
+                    TextButton(onClick = onDismiss) { Text("OK") }
+            }
+        },
+        dismissButton = if (result is UpdateCheckResult.Available)
+            ({ TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } })
+        else null
+    )
 }
 
 @Composable
