@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agenthub.app.R
+import com.agenthub.app.data.marketplace.MarketplaceClient
 import com.agenthub.app.data.model.AgentType
 import com.agenthub.app.data.model.MarketplaceAgent
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
@@ -41,10 +42,38 @@ fun AgentMarketScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTag by remember { mutableStateOf<String?>(null) }
     var installedIds by remember { mutableStateOf(setOf<String>()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Load agents from raw resource
+    val marketClient = remember { MarketplaceClient() }
+
+    // Load agents from live OpenClaw + ClawHub APIs
     LaunchedEffect(Unit) {
-        agents = loadMarketplaceAgents(context)
+        isLoading = true
+        errorMessage = null
+        val result = marketClient.fetchAll()
+        if (result.isSuccess) {
+            agents = result.getOrNull() ?: emptyList()
+        } else {
+            // Fallback to local data if network fails
+            agents = loadMarketplaceAgents(context)
+            errorMessage = result.exceptionOrNull()?.message ?: "Network error — showing offline agents"
+        }
+        isLoading = false
+    }
+
+    // Debounced search — re-fetch from API when query changes
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length < 2 && searchQuery.isNotEmpty()) return@LaunchedEffect
+        isLoading = true
+        errorMessage = null
+        val result = marketClient.fetchAll(searchQuery.takeIf { it.isNotBlank() })
+        if (result.isSuccess) {
+            agents = result.getOrNull() ?: emptyList()
+        } else {
+            errorMessage = result.exceptionOrNull()?.message
+        }
+        isLoading = false
     }
 
     val allTags = remember(agents) {
@@ -133,7 +162,42 @@ fun AgentMarketScreen(
             )
 
             // Agent list
-            if (filteredAgents.isEmpty()) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "从 OpenClaw / ClawHub 拉取真实 Agent…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            } else if (errorMessage != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.WifiOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            errorMessage!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            } else if (filteredAgents.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
