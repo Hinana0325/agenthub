@@ -1,11 +1,11 @@
 ext {
-    kotlinVersion = '2.1.0'
+    kotlinVersion = '2.2.0'
     minSdkVersion = 24
     compileSdkVersion = 36
     targetSdkVersion = 36
 
     // Compose
-    composeBomVersion = '2025.01.01'
+    composeBomVersion = '2025.07.00'
 
     // AndroidX
     androidxActivityVersion = '1.10.1'
@@ -14,16 +14,16 @@ ext {
     androidxCoreVersion = '1.12.0'
     androidxFragmentVersion = '1.6.2'
     coreSplashScreenVersion = '1.0.1'
-    navigationComposeVersion = '2.8.9'
-    lifecycleVersion = '2.8.7'
+    navigationComposeVersion = '2.9.2'
+    lifecycleVersion = '2.9.2'
 
     // Data
-    roomVersion = '2.7.1'
-    datastoreVersion = '1.1.2'
+    roomVersion = '2.7.2'
+    datastoreVersion = '1.1.7'
     gsonVersion = '2.10.1'
 
     // Network
-    ktorVersion = '3.0.3'
+    ktorVersion = '3.2.3'
 
     // Test
     junitVersion = '4.13.2'
