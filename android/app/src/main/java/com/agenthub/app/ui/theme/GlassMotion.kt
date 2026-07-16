@@ -50,14 +50,16 @@ val SpringExit = spring<Float>(
     stiffness = Spring.StiffnessHigh
 )
 
-/** Elastic enter transition — fade + spring scale (Android 17 entrance) */
-val GlassEnterTransition: EnterTransition
-    get() = fadeIn(animationSpec = tween(220, easing = LinearEasing)) +
+/** Elastic enter transition — fade + spring scale (Android 17 entrance).
+ *  Computed once (not a `get()`) so every AnimatedVisibility that references it
+ *  reuses the same transition instance instead of rebuilding fadeIn + scaleIn. */
+val GlassEnterTransition: EnterTransition =
+    fadeIn(animationSpec = tween(220, easing = LinearEasing)) +
             scaleIn(initialScale = 0.92f, animationSpec = SpringBounce)
 
 /** Elastic exit transition */
-val GlassExitTransition: ExitTransition
-    get() = fadeOut(animationSpec = tween(160, easing = LinearEasing)) +
+val GlassExitTransition: ExitTransition =
+    fadeOut(animationSpec = tween(160, easing = LinearEasing)) +
             scaleOut(targetScale = 0.96f, animationSpec = SpringExit)
 
 /**

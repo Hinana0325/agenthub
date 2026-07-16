@@ -277,3 +277,18 @@ fun GlassBackdrop(
       （发送按钮当前用 `scaleOnPress`，已有按压反馈，可后续统一为 `glassPress`）。
 - [x] `assembleDebug` 已通过编译验证（`BUILD SUCCESSFUL`，commit `eccb3f2`），0 个 Java 文件，纯 Kotlin + Compose。
 - [x] 打磨批次（滚动重播 + 双重阴影）：`assembleDebug` 再次通过（`BUILD SUCCESSFUL`，commit 见下）。
+
+### 渲染热路径优化（"全面优化"批次）
+
+- [x] **`glassBackground` 每帧分配消除**：`drawBehind` lambda 内原本每帧 `listOf(...)` 新建光泽色表、
+      `Color.copy` 新建 tint/edge/dispersion 颜色。全部 `remember` 提升到帧外（`tintColorTinted` /
+      `tintColorShine` / `edgeColor` / `dispRed` / `dispCyan` / `shineColors`），所有玻璃表面每帧少分配 6 个对象。
+- [x] **小表面关闭动态光泽动画**：`glassBackground` 新增 `animateShine: Boolean = true` 开关。
+      `MessageBubble` 与 `GlassPill` 传 `animateShine = false`——小气泡/胶囊上光泽漂移不可见，但此前每条气泡都各跑一个
+      `rememberInfiniteTransition` 常驻循环；关闭后聊天列表里数十个无限动画循环被消除（CPU/电量实打实收益）。
+- [x] **`GlassBackdrop` 每帧色表消除**：4 个渐变 `colors` 列表（`baseColors` / `glowAColors` / `glowBColors` /
+      `glowCColors`）`remember` 化，根背景 ~60fps 持续重绘不再每帧新建 List。
+- [x] **`MessageBubble.bubbleShape` 提升**：`remember(isUser) { RoundedCornerShape(...) }`，避免流式更新时每条气泡重组重分配圆角 Shape。
+- [x] **`GlassEnterTransition` / `GlassExitTransition` 改为一次性初始化**（`val =` 而非 `val get()`），所有 `AnimatedVisibility` 共享同一实例。
+- [ ] 可选：Agents/Sessions 列表项里的内联 `RoundedCornerShape` 可提升为模块级常量（廉价 data-class，优先级低，暂未改）。
+- [x] 优化批次：`assembleDebug` 通过（`BUILD SUCCESSFUL`，commit 见下）。

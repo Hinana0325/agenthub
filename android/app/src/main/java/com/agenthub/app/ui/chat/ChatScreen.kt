@@ -799,12 +799,14 @@ fun MessageBubble(
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Box {
-            val bubbleShape = RoundedCornerShape(
-                topStart = 16.dp,
-                topEnd = 16.dp,
-                bottomStart = if (isUser) 16.dp else 4.dp,
-                bottomEnd = if (isUser) 4.dp else 16.dp
-            )
+            val bubbleShape = remember(isUser) {
+                RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 16.dp,
+                    bottomStart = if (isUser) 16.dp else 4.dp,
+                    bottomEnd = if (isUser) 4.dp else 16.dp
+                )
+            }
             val isGlassBubble = LocalIsGlass.current
             Surface(
                 shape = bubbleShape,
@@ -816,7 +818,8 @@ fun MessageBubble(
                     .then(
                         if (isGlassBubble) Modifier.glassBackground(
                             tintColor = if (isUser) MaterialTheme.colorScheme.primary else Color.White,
-                            shape = bubbleShape
+                            shape = bubbleShape,
+                            animateShine = false
                         ) else Modifier
                     )
                     .combinedClickable(

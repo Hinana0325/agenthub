@@ -87,6 +87,11 @@ fun Modifier.glassBackground(
     tintColor: Color = Color.White,
     borderColor: Color = Color.White,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    // Dynamic shine drift is only worth the (per-surface) infinite animation on larger
+    // surfaces. Tiny surfaces — chat bubbles, pills — set this false: the drift is
+    // imperceptible there, yet each instance would otherwise spin up its own forever
+    // animation loop (dozens of them in a chat list = needless CPU/battery).
+    animateShine: Boolean = true,
 ): Modifier {
     val isGlass = LocalIsGlass.current
     if (!isGlass) return this
@@ -101,16 +106,32 @@ fun Modifier.glassBackground(
     val borderPx = with(density) { 0.5.dp.toPx() }
     val dispPx = with(density) { dispersion.dp.toPx() }
 
-    val infinite = rememberInfiniteTransition(label = "glass-shine")
-    val shinePhase by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shine-phase"
-    )
+    // --- Values that are constant across draw frames: hoist out of drawBehind so we
+    //     don't re-allocate Color copies / color lists on every animation frame. ---
+    val tintColorTinted = remember(tintColor, tintAlpha) { tintColor.copy(alpha = tintAlpha) }
+    val tintColorShine = remember(tintColor, shineAlpha) { tintColor.copy(alpha = shineAlpha) }
+    val edgeColor = remember(borderColor, borderAlpha) { borderColor.copy(alpha = borderAlpha) }
+    val dispRed = remember { Color.Red.copy(alpha = 0.04f) }
+    val dispCyan = remember { Color.Cyan.copy(alpha = 0.04f) }
+    val shineColors = remember(tintColorShine) {
+        listOf(Color.Transparent, tintColorShine, Color.Transparent)
+    }
+
+    // Shine phase — only run the infinite animation when requested.
+    val shinePhase = if (animateShine) {
+        val infinite = rememberInfiniteTransition(label = "glass-shine")
+        infinite.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "shine-phase"
+        ).value
+    } else {
+        0.5f
+    }
 
     var result: Modifier = this
 
@@ -136,18 +157,18 @@ fun Modifier.glassBackground(
     // 2. Tint + edge light + dispersion + dynamic shine (clipped to [shape] above)
     result = result.drawBehind {
         // Base tint (wallpaper bleed-through)
-        drawRect(color = tintColor.copy(alpha = tintAlpha), size = size)
+        drawRect(color = tintColorTinted, size = size)
 
         // Chromatic dispersion — subtle red/cyan offset edges (Android 17 soul)
         if (dispersion > 0f) {
             val disp = dispPx
             drawRect(
-                color = Color.Red.copy(alpha = 0.04f),
+                color = dispRed,
                 topLeft = androidx.compose.ui.geometry.Offset(disp, 0f),
                 size = androidx.compose.ui.geometry.Size(borderPx, size.height)
             )
             drawRect(
-                color = Color.Cyan.copy(alpha = 0.04f),
+                color = dispCyan,
                 topLeft = androidx.compose.ui.geometry.Offset(-disp, 0f),
                 size = androidx.compose.ui.geometry.Size(borderPx, size.height)
             )
@@ -156,11 +177,7 @@ fun Modifier.glassBackground(
         // Dynamic diagonal shine — drifts with phase
         val shineStart = 0.15f + shinePhase * 0.4f
         val shineBrush = Brush.linearGradient(
-            colors = listOf(
-                Color.Transparent,
-                tintColor.copy(alpha = shineAlpha),
-                Color.Transparent
-            ),
+            colors = shineColors,
             start = androidx.compose.ui.geometry.Offset(size.width * shineStart, 0f),
             end = androidx.compose.ui.geometry.Offset(size.width * (shineStart + 0.35f), size.height)
         )
@@ -168,11 +185,10 @@ fun Modifier.glassBackground(
 
         // Edge-light refraction (4 borders, brighter top)
         if (borderAlpha > 0f) {
-            val edge = borderColor.copy(alpha = borderAlpha)
-            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(size.width, borderPx))
-            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(borderPx, size.height))
-            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - borderPx), size = androidx.compose.ui.geometry.Size(size.width, borderPx))
-            drawRect(color = edge, topLeft = androidx.compose.ui.geometry.Offset(size.width - borderPx, 0f), size = androidx.compose.ui.geometry.Size(borderPx, size.height))
+            drawRect(color = edgeColor, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(size.width, borderPx))
+            drawRect(color = edgeColor, topLeft = androidx.compose.ui.geometry.Offset.Zero, size = androidx.compose.ui.geometry.Size(borderPx, size.height))
+            drawRect(color = edgeColor, topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - borderPx), size = androidx.compose.ui.geometry.Size(size.width, borderPx))
+            drawRect(color = edgeColor, topLeft = androidx.compose.ui.geometry.Offset(size.width - borderPx, 0f), size = androidx.compose.ui.geometry.Size(borderPx, size.height))
         }
     }
 
@@ -435,7 +451,7 @@ fun GlassPill(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(100.dp))
-            .then(if (isGlass) Modifier.glassBackground(tintColor, shape = RoundedCornerShape(100.dp)) else Modifier)
+            .then(if (isGlass) Modifier.glassBackground(tintColor, shape = RoundedCornerShape(100.dp), animateShine = false) else Modifier)
             .background(
                 if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
                 RoundedCornerShape(100.dp)

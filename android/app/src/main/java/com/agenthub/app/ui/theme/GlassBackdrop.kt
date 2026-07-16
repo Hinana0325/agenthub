@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +38,13 @@ fun GlassBackdrop(
     val glowB = if (isDark) Color(0x3322D3EE) else Color(0x2006B6D4)   // cyan
     val glowC = if (isDark) Color(0x26C084FC) else Color(0x1FEC4899)   // purple/pink
 
+    // Color-stop lists are constant per theme — hoist out of the per-frame draw lambda
+    // so we don't allocate a fresh List on every one of the ~60 draw passes per second.
+    val baseColors = remember(top, bottom) { listOf(top, bottom) }
+    val glowAColors = remember(glowA) { listOf(glowA, Color.Transparent) }
+    val glowBColors = remember(glowB) { listOf(glowB, Color.Transparent) }
+    val glowCColors = remember(glowC) { listOf(glowC, Color.Transparent) }
+
     val infinite = rememberInfiniteTransition(label = "backdrop-drift")
     val ax by infinite.animateFloat(0.15f, 0.85f, infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse), label = "ax")
     val ay by infinite.animateFloat(0.1f, 0.7f, infiniteRepeatable(tween(22000, easing = LinearEasing), RepeatMode.Reverse), label = "ay")
@@ -50,7 +58,7 @@ fun GlassBackdrop(
             // Base vertical gradient
             drawRect(
                 brush = Brush.linearGradient(
-                    colors = listOf(top, bottom),
+                    colors = baseColors,
                     start = Offset(0f, 0f),
                     end = Offset(size.width * 0.3f, size.height)
                 )
@@ -58,7 +66,7 @@ fun GlassBackdrop(
             // Ambient glow A (indigo, top-left)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(glowA, Color.Transparent),
+                    colors = glowAColors,
                     center = Offset(size.width * ax, size.height * ay),
                     radius = size.maxDimension * 0.55f
                 ),
@@ -68,7 +76,7 @@ fun GlassBackdrop(
             // Ambient glow B (cyan, bottom-right)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(glowB, Color.Transparent),
+                    colors = glowBColors,
                     center = Offset(size.width * bx, size.height * by),
                     radius = size.maxDimension * 0.5f
                 ),
@@ -78,7 +86,7 @@ fun GlassBackdrop(
             // Ambient glow C (purple, center)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(glowC, Color.Transparent),
+                    colors = glowCColors,
                     center = Offset(size.width * cx, size.height * cy),
                     radius = size.maxDimension * 0.45f
                 ),
