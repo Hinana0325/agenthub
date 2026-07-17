@@ -1,6 +1,6 @@
 package com.agenthub.app.util
 
-import android.util.Base64
+// Base64 编解码见 object 内的 b64Encode/b64Decode（兼容 JVM 单测）
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
@@ -33,6 +33,20 @@ object CryptoManager {
 
     private val secureRandom = SecureRandom()
 
+    // Base64 编解码：真机优先 android.util.Base64（API 24+ 可用）；
+    // 本地 JVM 单测中 android.jar 为桩会抛 RuntimeException，此时回退 java.util.Base64（JVM/API 26+）。
+    private fun b64Encode(bytes: ByteArray): String = try {
+        android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+    } catch (_: Throwable) {
+        java.util.Base64.getEncoder().encodeToString(bytes)
+    }
+
+    private fun b64Decode(s: String): ByteArray = try {
+        android.util.Base64.decode(s, android.util.Base64.NO_WRAP)
+    } catch (_: Throwable) {
+        java.util.Base64.getDecoder().decode(s)
+    }
+
     private fun deriveKey(passphrase: String, salt: ByteArray): SecretKeySpec {
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val spec = PBEKeySpec(passphrase.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_LENGTH)
@@ -49,7 +63,7 @@ object CryptoManager {
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_LENGTH, iv))
         val ciphertext = cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8))
         val payload = iv + salt + ciphertext
-        return PREFIX + Base64.encodeToString(payload, Base64.NO_WRAP)
+        return PREFIX + b64Encode(payload)
     }
 
     /**
@@ -59,7 +73,7 @@ object CryptoManager {
     fun decrypt(payload: String, passphrase: String): String? {
         if (!payload.startsWith(PREFIX)) return null
         return try {
-            val raw = Base64.decode(payload.removePrefix(PREFIX), Base64.NO_WRAP)
+            val raw = b64Decode(payload.removePrefix(PREFIX))
             val iv = raw.copyOfRange(0, GCM_IV_LENGTH)
             val salt = raw.copyOfRange(GCM_IV_LENGTH, GCM_IV_LENGTH + PBKDF2_SALT_LENGTH)
             val ciphertext = raw.copyOfRange(GCM_IV_LENGTH + PBKDF2_SALT_LENGTH, raw.size)
