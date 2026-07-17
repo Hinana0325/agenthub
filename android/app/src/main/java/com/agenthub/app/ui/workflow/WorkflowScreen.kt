@@ -511,6 +511,14 @@ private fun CreateWorkflowDialog(
         stringResource(R.string.workflow_tpl_research) to stringResource(R.string.workflow_tpl_research_desc)
     )
 
+    // 预计算模板默认名称/描述（stringResource 需 @Composable 上下文，不能在 onClick lambda 内调用）
+    val tplTranslateName = stringResource(R.string.workflow_tpl_translate)
+    val tplTranslateDesc = stringResource(R.string.workflow_tpl_translate_desc)
+    val tplCodeReviewName = stringResource(R.string.workflow_tpl_code_review)
+    val tplCodeReviewDesc = stringResource(R.string.workflow_tpl_code_review_desc)
+    val tplResearchName = stringResource(R.string.workflow_tpl_research)
+    val tplResearchDesc = stringResource(R.string.workflow_tpl_research_desc)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.workflow_create)) },
@@ -576,16 +584,16 @@ private fun CreateWorkflowDialog(
                             edges = listOf(WorkflowEdge(fromNodeId = "input", toNodeId = "output"))
                         )
                         1 -> WorkflowTemplates.translationChain().copy(
-                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_translate) },
-                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_translate_desc) }
+                            name = name.ifEmpty { tplTranslateName },
+                            description = description.ifEmpty { tplTranslateDesc }
                         )
                         2 -> WorkflowTemplates.codeReview().copy(
-                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_code_review) },
-                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_code_review_desc) }
+                            name = name.ifEmpty { tplCodeReviewName },
+                            description = description.ifEmpty { tplCodeReviewDesc }
                         )
                         3 -> WorkflowTemplates.researchAssistant().copy(
-                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_research) },
-                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_research_desc) }
+                            name = name.ifEmpty { tplResearchName },
+                            description = description.ifEmpty { tplResearchDesc }
                         )
                         else -> WorkflowTemplates.translationChain()
                     }
