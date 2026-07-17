@@ -76,6 +76,7 @@ data class ChatUiState(
 )
 
 
+class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppModule.getRepository(application)
     private val settingsDataStore = SettingsDataStore(getApplication())
     // private val repository = AppModule.getRepository(application)

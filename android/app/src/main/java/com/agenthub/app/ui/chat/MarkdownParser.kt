@@ -122,7 +122,14 @@ object MarkdownParser {
                 paraLines.add(lines[i])
                 i++
             }
-            blocks.add(MarkdownBlock.Paragraph(parseInline(paraLines.joinToString("\n"))))
+            if (paraLines.isEmpty()) {
+                // 当前行不匹配任何块类型且无法归入段落（如 "#NoSpace"），
+                // 作为单行段落处理并推进 i，避免外层 while 死循环导致 OOM。
+                blocks.add(MarkdownBlock.Paragraph(parseInline(line)))
+                i++
+            } else {
+                blocks.add(MarkdownBlock.Paragraph(parseInline(paraLines.joinToString("\n"))))
+            }
         }
 
         return blocks

@@ -414,6 +414,7 @@ private fun SessionsSinglePaneLayout(
                             }
                         }
                     }
+                    } // PullToRefreshBox content
                 }
             }
         }
