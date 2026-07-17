@@ -520,7 +520,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             "/export" -> {
                 // Export handled by SettingsViewModel; signal via activity log
-                repository.logActivity("command", "Export requested via /export command")
+                viewModelScope.launch {
+                    repository.logActivity("command", "Export requested via /export command")
+                }
                 return true
             }
             "/help" -> {
@@ -545,7 +547,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             "/compare" -> {
                 // Compare mode not yet implemented; log the request
-                repository.logActivity("command", "Compare mode requested (not yet implemented)")
+                viewModelScope.launch {
+                    repository.logActivity("command", "Compare mode requested (not yet implemented)")
+                }
                 return true
             }
             else -> return false
