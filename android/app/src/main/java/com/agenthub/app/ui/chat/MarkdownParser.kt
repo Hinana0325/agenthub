@@ -130,7 +130,7 @@ object MarkdownParser {
 
     /** Parse inline spans: bold, italic, bold+italic, code, links, images */
     fun parseInline(text: String): List<MarkdownSpan> {
-        if (text.isEmpty()) return listOf(MarkdownSpan.Text(""))
+        if (text.isBlank()) return listOf(MarkdownSpan.Text(""))
 
         val spans = mutableListOf<MarkdownSpan>()
         // Pattern: ***bold+italic***, **bold**, *italic*, `code`, ![img](url), [link](url), plain text

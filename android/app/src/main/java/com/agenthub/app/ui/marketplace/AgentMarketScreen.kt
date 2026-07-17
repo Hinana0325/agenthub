@@ -171,7 +171,7 @@ fun AgentMarketScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "从 OpenClaw / ClawHub 拉取真实 Agent…",
+                            stringResource(R.string.marketplace_loading),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )

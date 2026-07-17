@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.agenthub.app.util.KeystoreManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -41,13 +42,16 @@ class SettingsDataStore(private val context: Context) {
     }
 
     // ── E2E Encryption ──
+    // e2eKey 通过 Android Keystore 硬件级加密存储，防止 root 或数据库导出导致密钥泄露。
+    // 读取时自动处理旧版明文数据（decryptOrRaw），写入时强制加密。
 
     val e2eEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[E2E_ENABLED] ?: DEFAULT_E2E_ENABLED
     }
 
     val e2eKey: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[E2E_KEY] ?: DEFAULT_E2E_KEY
+        val stored = prefs[E2E_KEY] ?: DEFAULT_E2E_KEY
+        if (stored.isBlank()) stored else KeystoreManager.decryptOrRaw(stored)
     }
 
     suspend fun setE2eEnabled(enabled: Boolean) {
@@ -55,6 +59,7 @@ class SettingsDataStore(private val context: Context) {
     }
 
     suspend fun setE2eKey(key: String) {
-        context.dataStore.edit { it[E2E_KEY] = key }
+        val encrypted = if (key.isBlank()) key else KeystoreManager.encrypt(key)
+        context.dataStore.edit { it[E2E_KEY] = encrypted }
     }
 }

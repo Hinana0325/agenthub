@@ -137,7 +137,8 @@ fun SettingsScreen(
             GlassTopAppBar(
                 title = { Text(stringResource(R.string.nav_settings)) }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         if (useDualPane) {
             // Dual-pane: left = category list, right = settings detail
@@ -418,8 +419,8 @@ fun SettingsScreen(
                                 item { SettingsHeader(stringResource(R.string.about)) }
                                 item {
                                     SettingsItem(
-                                        title = "检查更新",
-                                        subtitle = if (isChecking) "检查中…" else "v$currentVersion",
+                                        title = stringResource(R.string.check_update),
+                                        subtitle = if (isChecking) stringResource(R.string.checking_update) else "v$currentVersion",
                                         icon = Icons.Default.SystemUpdate,
                                         onClick = { triggerCheck++ }
                                     )
@@ -526,8 +527,8 @@ fun SettingsScreen(
                         item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.about)) }
                         item {
                             SettingsItem(
-                                title = "检查更新",
-                                subtitle = if (isChecking) "检查中…" else "v$currentVersion",
+                                title = stringResource(R.string.check_update),
+                                subtitle = if (isChecking) stringResource(R.string.checking_update) else "v$currentVersion",
                                 icon = Icons.Default.SystemUpdate,
                                 onClick = { triggerCheck++ }
                             )

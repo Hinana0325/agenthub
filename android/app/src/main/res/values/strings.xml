@@ -94,8 +94,8 @@
 
     <!-- Error / Status -->
     <string name="connection_failed">Connection failed</string>
-    <string name="connection_failed_attempts">Connection failed after %d attempts: %s</string>
-    <string name="connection_failed_retry">Connection failed (retry %d/%d): %s</string>
+    <string name="connection_failed_attempts" formatted="false">Connection failed after %d attempts: %s</string>
+    <string name="connection_failed_retry" formatted="false">Connection failed (retry %d/%d): %s</string>
     <string name="unknown_error">Unknown error</string>
     <string name="btn_dismiss">Dismiss</string>
     <string name="btn_retry">Retry</string>
@@ -308,6 +308,7 @@
     <string name="marketplace_results">%d agents found</string>
     <string name="marketplace_no_results">No agents found</string>
     <string name="marketplace_subtitle">Discover and install community agents</string>
+    <string name="marketplace_loading">Fetching agents from OpenClaw / ClawHub…</string>
 
     <!-- Data Insights -->
     <string name="insights_title">Insights</string>
@@ -380,4 +381,9 @@
 
     <!-- Font sizes -->
     <string name="font_xlarge">Extra Large</string>
+
+    <!-- Update check -->
+    <string name="check_update">Check for updates</string>
+    <string name="checking_update">Checking…</string>
+    <string name="api_key_saved_masked">API key saved</string>
 </resources>

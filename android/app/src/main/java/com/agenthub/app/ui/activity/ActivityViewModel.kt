@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 data class ActivityUiState(
@@ -42,7 +43,10 @@ class ActivityViewModel(application: Application) : AndroidViewModel(application
      */
     fun refreshActivities() {
         viewModelScope.launch {
-            delay(300) // Brief delay to show refresh indicator
+            // Force re-read from Room to trigger the Flow emission
+            val activities = repository.getAllActivities().firstOrNull() ?: emptyList()
+            _uiState.update { it.copy(activities = activities) }
+            delay(300) // Brief delay for pull-to-refresh indicator visibility
         }
     }
 }

@@ -82,6 +82,12 @@ object PerformanceMonitor {
         }
     }
 
+    /** Public refresh: updates uptime, avg latency, and memory. Call periodically. */
+    fun refresh(context: Context) {
+        updateMemoryUsage(context)
+        updateMetrics()
+    }
+
     fun reset() {
         synchronized(latencySamples) {
             latencySamples.clear()

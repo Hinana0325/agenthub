@@ -52,3 +52,4 @@ __pycache__/
 
 # Capacitor
 capacitor.android.gradle
+android/local.properties

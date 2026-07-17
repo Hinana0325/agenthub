@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.security.SecureRandom
@@ -56,6 +57,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             dataStore.e2eKey.collect { key ->
                 _uiState.update { it.copy(e2eKey = key) }
+            }
+        }
+        // Periodically refresh performance metrics (memory, uptime) every 3 seconds
+        viewModelScope.launch {
+            while (isActive) {
+                PerformanceMonitor.refresh(getApplication())
+                kotlinx.coroutines.delay(3000)
             }
         }
     }

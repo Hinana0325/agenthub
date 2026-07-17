@@ -297,6 +297,7 @@
     <string name="marketplace_results">%d개의 Agent</string>
     <string name="marketplace_no_results">Agent를 찾을 수 없습니다</string>
     <string name="marketplace_subtitle">커뮤니티 Agent를 발견하고 설치하세요</string>
+    <string name="marketplace_loading">OpenClaw / ClawHub에서 Agent를 가져오는 중…</string>
 
     <!-- 데이터 인사이트 -->
     <string name="insights_title">인사이트</string>
@@ -319,4 +320,9 @@
     <string name="insights_export">보고서 내보내기</string>
     <string name="insights_export_success">보고서가 %s에 저장되었습니다</string>
     <string name="insights_export_failed">내보내기 실패：%s</string>
+
+    <!-- Update check -->
+    <string name="check_update">업데이트 확인</string>
+    <string name="checking_update">확인 중…</string>
+    <string name="api_key_saved_masked">API Key 저장됨</string>
 </resources>

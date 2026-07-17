@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,23 +113,29 @@ fun ChatScreen(
                 viewModel.sendMessage()
             }
         )
-    } else if (adaptive.shouldShowSidebar) {
-        TabletChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
     } else {
-        PhoneChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
-    }
+        // Box ensures SearchOverlay floats on top of the main layout instead of
+        // stacking below it (which caused the "AgentHub" title to overlap with the search bar).
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (adaptive.shouldShowSidebar) {
+                TabletChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
+            } else {
+                PhoneChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
+            }
 
-    // Search overlay
-    if (uiState.isSearchActive) {
-        SearchOverlay(
-            query = uiState.searchQuery,
-            results = uiState.searchResults,
-            onQueryChange = { viewModel.searchMessages(it) },
-            onResultClick = { msg ->
-                viewModel.closeSearch()
-            },
-            onClose = { viewModel.closeSearch() }
-        )
+            // Search overlay — rendered on top of the main layout
+            if (uiState.isSearchActive) {
+                SearchOverlay(
+                    query = uiState.searchQuery,
+                    results = uiState.searchResults,
+                    onQueryChange = { viewModel.searchMessages(it) },
+                    onResultClick = { msg ->
+                        viewModel.closeSearch()
+                    },
+                    onClose = { viewModel.closeSearch() }
+                )
+            }
+        }
     }
 }
 
@@ -185,6 +192,7 @@ private fun PhoneChatLayout(
     // 正常聊天模式
     Scaffold(
         topBar = { ChatTopBar(uiState, viewModel, onNavigateToSettings) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             Column {
                 // Command palette
@@ -258,6 +266,36 @@ private fun TabletChatLayout(
         return
     }
 
+    // Voice + Attachment integration (same as Phone layout)
+    val context = LocalContext.current
+    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.setPendingAttachment(context, it, isImage = true) }
+    }
+    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.setPendingAttachment(context, it, isImage = false) }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.initVoiceInput(context)
+        viewModel.initVoiceChatMode(context)
+    }
+
+    val voiceManager = viewModel.getVoiceInputManager()
+    if (voiceManager != null) {
+        LaunchedEffect(voiceManager) {
+            voiceManager.recognizedText.collect { text ->
+                if (text.isNotEmpty()) {
+                    val current = uiState.inputText
+                    viewModel.updateInput(if (current.isEmpty()) text else "$current $text")
+                }
+            }
+        }
+    }
+
     val sidebarWidth = adaptive.panelConfig.sidebarWidth
 
     Row(modifier = Modifier.fillMaxSize()) {
@@ -329,6 +367,7 @@ private fun TabletChatLayout(
         Scaffold(
             modifier = Modifier.weight(1f),
             topBar = { ChatTopBar(uiState, viewModel, onNavigateToSettings) },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 Column {
                     // Command palette
@@ -351,7 +390,14 @@ private fun TabletChatLayout(
                         isStreaming = uiState.isStreaming,
                         onInputChange = { viewModel.updateInput(it) },
                         onSend = { viewModel.sendMessage() },
-                        adaptive = adaptive
+                        adaptive = adaptive,
+                        isVoiceListening = uiState.isVoiceListening,
+                        onVoiceToggle = { viewModel.toggleVoiceInput() },
+                        onAttachImage = { imagePickerLauncher.launch("image/*") },
+                        onAttachFile = { filePickerLauncher.launch("*/*") },
+                        pendingAttachmentType = uiState.pendingAttachmentType,
+                        pendingAttachmentName = uiState.pendingAttachmentName,
+                        onClearAttachment = { viewModel.clearPendingAttachment() }
                     )
                 }
             }
@@ -376,75 +422,67 @@ private fun ChatTopBar(
 ) {
     GlassTopAppBar(
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        // 连接状态指示器
-                        val statusColor = when {
-                            uiState.connectionState.isConnected -> MaterialTheme.colorScheme.primary
-                            uiState.isConnecting -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                        }
-
-                        val statusText = when {
-                            uiState.connectionState.isConnected -> stringResource(R.string.status_connected)
-                            uiState.isConnecting -> stringResource(R.string.btn_connecting)
-                            else -> stringResource(R.string.status_disconnected)
-                        }
-
-                        // 脉冲动画（仅连接中时）
-                        val infiniteTransition = rememberInfiniteTransition(label = "status-pulse")
-                        val pulseAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.4f,
-                            targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(800, easing = EaseInOut),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "pulse-alpha"
-                        )
-
-                        // 状态指示器
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .semantics {
-                                    contentDescription = statusText
-                                }
-                                .clickable { }
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(10.dp),
-                                shape = CircleShape,
-                                color = statusColor.copy(alpha = if (uiState.isConnecting) pulseAlpha else 1f)
-                            ) {}
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // 连接状态指示器
+                    val statusColor = when {
+                        uiState.connectionState.isConnected -> MaterialTheme.colorScheme.primary
+                        uiState.isConnecting -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                     }
-                    if (uiState.isStreaming) {
+                    val statusText = when {
+                        uiState.connectionState.isConnected -> stringResource(R.string.status_connected)
+                        uiState.isConnecting -> stringResource(R.string.btn_connecting)
+                        else -> stringResource(R.string.status_disconnected)
+                    }
+                    val infiniteTransition = rememberInfiniteTransition(label = "status-pulse")
+                    val pulseAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.4f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(800, easing = EaseInOut),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulse-alpha"
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .semantics { contentDescription = statusText }
+                            .clickable { }
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(10.dp),
+                            shape = CircleShape,
+                            color = statusColor.copy(alpha = if (uiState.isConnecting) pulseAlpha else 1f)
+                        ) {}
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                // Streaming / collab sub-line — only shown when active, with proper spacing
+                if (uiState.isStreaming) {
                     Text(
                         stringResource(R.string.streaming),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                // Collaboration indicator
                 val collabManager = remember { com.agenthub.app.data.collab.CollaborationManager() }
                 val collabState by collabManager.collabState.collectAsState()
                 if (collabState.isInSession && collabState.session != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 1.dp)
                     ) {
                         Surface(
-                            modifier = Modifier.size(8.dp),
+                            modifier = Modifier.size(6.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.tertiary
                         ) {}
@@ -457,7 +495,6 @@ private fun ChatTopBar(
                     }
                 }
             }
-        }
         },
         actions = {
             IconButton(onClick = { viewModel.openSearch() }) {
@@ -500,7 +537,11 @@ private fun ChatContent(
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 离线横幅：未连接且非连接中时，醒目提示用户去连接模型端点
-        if (!uiState.connectionState.isConnected && !uiState.isConnecting) {
+        AnimatedVisibility(
+            visible = !uiState.connectionState.isConnected && !uiState.isConnecting,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+        ) {
             OfflineBanner(onConnect = { viewModel.openConnectWizard() })
         }
         Box(modifier = Modifier.weight(1f)) {
@@ -1349,8 +1390,17 @@ fun WizardOverlay(
     fun normalizeUrl(url: String): String {
         val trimmed = url.trim()
         if (trimmed.isBlank()) return ""
-        if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
-            return "ws://$trimmed"
+        // Only add ws:// prefix for WebSocket-based agents (Hermes/OpenClaw/OpenCode)
+        // HTTP-based agents (OpenAI/LocalModel/XiaomiMiMo) should keep their http(s):// URL
+        if (selectedType in setOf(
+                com.agenthub.app.data.model.AgentType.Hermes,
+                com.agenthub.app.data.model.AgentType.OpenClaw,
+                com.agenthub.app.data.model.AgentType.OpenCode
+            )
+        ) {
+            if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
+                return "ws://$trimmed"
+            }
         }
         return trimmed
     }
@@ -1480,6 +1530,13 @@ fun WizardOverlay(
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
+                                            if (agent.apiKey.isNotBlank()) {
+                                                Text(
+                                                    stringResource(R.string.api_key_saved_masked),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                )
+                                            }
                                         }
                                         if (isSelected) {
                                             Icon(
@@ -1519,6 +1576,7 @@ fun WizardOverlay(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(12.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))

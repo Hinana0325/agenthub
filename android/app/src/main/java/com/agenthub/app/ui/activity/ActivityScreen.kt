@@ -64,7 +64,8 @@ fun ActivityScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         if (useDualPane) {
             // Dual-pane: left = timeline list, right = selected activity details

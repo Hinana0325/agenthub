@@ -86,7 +86,8 @@ private fun SessionsDualPaneLayout(
             GlassTopAppBar(
                 title = { Text(stringResource(R.string.nav_sessions)) }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Row(
             modifier = Modifier
@@ -287,7 +288,8 @@ private fun SessionsSinglePaneLayout(
             GlassTopAppBar(
                 title = { Text(stringResource(R.string.nav_sessions)) }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),

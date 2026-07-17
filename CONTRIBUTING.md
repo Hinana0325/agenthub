@@ -7,29 +7,7 @@ Thank you for your interest in contributing! Here's how to get started.
 ```bash
 # Clone the repository
 git clone https://github.com/Hinana0325/agenthub.git
-cd agenthub
-
-# Install dependencies
-npm install
-
-# Run PWA locally
-npx serve .
-
-# Run tests
-node tests.js
-```
-
-### Android Development
-
-```bash
-# Sync Capacitor
-npx cap sync android
-
-# Build debug APK
-cd android && ./gradlew assembleDebug
-
-# Open in Android Studio
-npx cap open android
+cd agenthub/android
 ```
 
 **Requirements:**
@@ -37,23 +15,55 @@ npx cap open android
 - Android SDK (compileSdk 36)
 - Android Studio (recommended)
 
+### Build & Run
+
+```bash
+# Build debug APK
+./gradlew assembleDebug
+
+# Install on connected device
+./gradlew installDebug
+
+# Run unit tests
+./gradlew testDebugUnitTest
+
+# Run instrumented tests
+./gradlew connectedDebugAndroidTest
+```
+
 ## Project Structure
 
-- **Web layer** (PWA): `*.js`, `*.css`, `*.html` — vanilla JS, zero dependencies
-- **Android layer**: `android/app/src/main/java/` — Kotlin + Jetpack Compose
-- **Tests**: `tests.js` — 47 unit tests, run with `node tests.js`
+```
+android/app/src/main/java/com/agenthub/app/
+├── data/           # Data layer: Room DB, DataStore, repositories
+│   ├── local/      # Room entities, DAOs, database
+│   ├── model/      # Domain models
+│   ├── repository/ # ChatRepository
+│   ├── settings/   # SettingsDataStore
+│   └── plugin/     # Plugin system
+├── provider/       # Transport layer: AgentTransport, WebSocket, OpenAI HTTP
+├── ui/             # Compose UI screens & ViewModels
+│   ├── chat/       # Chat screen & related
+│   ├── agents/     # Agent management
+│   ├── settings/   # Settings screen
+│   └── theme/      # Material 3 theming (incl. Liquid Glass)
+├── navigation/     # Navigation graph
+└── util/           # Utilities: CryptoManager, VoiceInput, LocalModel, etc.
+```
 
 ## Code Style
 
 ### Kotlin
 - Follow [Kotlin Coding Conventions](https://kotlinlang.org/docs/coding-conventions.html)
 - Use Compose Material3 components
-- All screens must support adaptive layouts (phone + tablet)
+- All screens must support adaptive layouts (phone + tablet / foldable)
+- Use `StateFlow` + `collectAsState()` for reactive UI
+- Prefer `sealed interface` for UI state
 
-### JavaScript
-- Vanilla JS, no frameworks
-- Use `escapeHtml()` for all user-generated content (XSS protection)
-- Run tests before submitting: `node tests.js`
+### Testing
+- Unit tests: `src/test/` — JUnit 4 + kotlinx-coroutines-test
+- Instrumented tests: `src/androidTest/` — Espresso + Compose Testing
+- Run `./gradlew testDebugUnitTest` before submitting
 
 ## Submitting Changes
 

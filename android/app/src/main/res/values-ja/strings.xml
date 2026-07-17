@@ -297,6 +297,7 @@
     <string name="marketplace_results">%d 件の Agent</string>
     <string name="marketplace_no_results">Agent が見つかりません</string>
     <string name="marketplace_subtitle">コミュニティ Agent を発見してインストール</string>
+    <string name="marketplace_loading">OpenClaw / ClawHub から Agent を取得中…</string>
 
     <!-- データインサイト -->
     <string name="insights_title">インサイト</string>
@@ -319,4 +320,9 @@
     <string name="insights_export">レポートをエクスポート</string>
     <string name="insights_export_success">レポートを %s に保存しました</string>
     <string name="insights_export_failed">エクスポート失敗：%s</string>
+
+    <!-- Update check -->
+    <string name="check_update">アップデートを確認</string>
+    <string name="checking_update">確認中…</string>
+    <string name="api_key_saved_masked">API Key 保存済み</string>
 </resources>

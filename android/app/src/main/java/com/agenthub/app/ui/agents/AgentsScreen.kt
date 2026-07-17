@@ -80,6 +80,7 @@ fun AgentsScreen(
                 title = { Text(stringResource(R.string.nav_agents)) }
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
@@ -453,7 +454,7 @@ private fun AgentFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (agent.id == "default" && agent.name == "Default Agent") "New Agent" else "Edit Agent") },
+        title = { Text(if (agent.serverUrl.isBlank()) stringResource(R.string.new_agent) else stringResource(R.string.btn_edit) + " " + agent.name) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
@@ -572,7 +573,7 @@ private fun TypeSelector(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            AgentType.values().forEach { agentType ->
+            AgentType.entries.forEach { agentType ->
                 GlassDropdownMenuItem(
                     text = { Text(agentType.displayName) },
                     onClick = { onSelect(agentType); expanded = false }

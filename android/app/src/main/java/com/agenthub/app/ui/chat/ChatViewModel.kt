@@ -149,30 +149,34 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     if (lastIdx >= 0) {
                         val last = _uiState.value.messages[lastIdx]
                         if (last.role == MessageRole.Assistant) {
+                            val newContent = last.content + event.content
                             _uiState.update { state ->
                                 val updated = state.messages.toMutableList()
                                 updated[lastIdx] = last.copy(
-                                    content = last.content + event.content,
+                                    content = newContent,
                                     status = MessageStatus.Received
                                 )
                                 state.copy(messages = updated)
                             }
+                            // Persist accumulated delta to Room so it survives app restarts
+                            repository.updateMessageStatus(last.id, newContent, MessageStatus.Received)
                             return
                         }
                     }
                 }
 
-                val msg = Message(
-                    id = java.util.UUID.randomUUID().toString(),
-                    sessionId = sessionId,
-                    role = MessageRole.Assistant,
-                    content = event.content,
-                    status = MessageStatus.Received
-                )
-                repository.sendMessage(sessionId, event.content, MessageRole.Assistant)
+                // Non-delta: persist via repository and use returned message (same ID) to avoid duplicates
+                val persistedMsg = repository.sendMessage(sessionId, event.content, MessageRole.Assistant)
                 repository.logActivity("message", "Agent response received", event.content.take(80))
                 _uiState.update { state ->
-                    state.copy(messages = state.messages + msg, isStreaming = false)
+                    val filtered = state.messages.filter { it.id != persistedMsg.id }
+                    state.copy(
+                        messages = filtered + Message(
+                            id = persistedMsg.id, sessionId = sessionId, role = MessageRole.Assistant,
+                            content = event.content, status = MessageStatus.Received
+                        ),
+                        isStreaming = false
+                    )
                 }
             }
             is AgentEvent.Error -> {
@@ -292,9 +296,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         repository.sendMessage(sessionId, reply, MessageRole.Assistant).let { msg ->
             _uiState.update { state ->
+                // Deduplicate: use returned message ID to avoid Room flow creating a second copy
+                val filtered = state.messages.filter { it.id != msg.id }
                 state.copy(
-                    messages = state.messages + Message(
-                        id = msg.id, sessionId = msg.sessionId, role = MessageRole.Assistant,
+                    messages = filtered + Message(
+                        id = msg.id, sessionId = sessionId, role = MessageRole.Assistant,
                         content = reply, status = MessageStatus.Received
                     ),
                     isStreaming = false
@@ -417,10 +423,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun refreshSessions() {
         viewModelScope.launch {
-            // Force re-collect from the repository flow
-            // The init block already collects, so we just need a brief delay
-            // to allow the DB to settle, then the flow will emit updated data
-            delay(300)
+            // Force re-read from Room to trigger the Flow emission
+            val sessions = repository.getAllSessionsList()
+            _uiState.update { it.copy(sessions = sessions) }
+            delay(300) // Brief delay for pull-to-refresh indicator visibility
         }
     }
 
@@ -497,6 +503,51 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 return true
             }
+            "/model" -> {
+                // Cycle to next agent config
+                val configs = _uiState.value.agentConfigs
+                if (configs.size > 1) {
+                    val currentId = _uiState.value.agentConfig.id
+                    val currentIdx = configs.indexOfFirst { it.id == currentId }
+                    val nextIdx = (currentIdx + 1) % configs.size
+                    val nextConfig = configs[nextIdx]
+                    viewModelScope.launch {
+                        connectWith(nextConfig)
+                        _uiState.update { it.copy(agentConfig = nextConfig, isConnecting = true) }
+                    }
+                }
+                return true
+            }
+            "/export" -> {
+                // Export handled by SettingsViewModel; signal via activity log
+                repository.logActivity("command", "Export requested via /export command")
+                return true
+            }
+            "/help" -> {
+                val helpText = "Available commands:\n" +
+                    "/clear — Clear current chat\n" +
+                    "/new — Create new session\n" +
+                    "/search — Search messages\n" +
+                    "/reconnect — Reconnect to agent\n" +
+                    "/model — Switch to next agent\n" +
+                    "/export — Export chat history\n" +
+                    "/help — Show this help"
+                viewModelScope.launch {
+                    val sessionId = _uiState.value.currentSessionId
+                        ?: repository.createSession("Help").let { session ->
+                            _currentSessionId.value = session.id
+                            _uiState.update { it.copy(currentSessionId = session.id) }
+                            session.id
+                        }
+                    repository.sendMessage(sessionId, helpText, MessageRole.Assistant)
+                }
+                return true
+            }
+            "/compare" -> {
+                // Compare mode not yet implemented; log the request
+                repository.logActivity("command", "Compare mode requested (not yet implemented)")
+                return true
+            }
             else -> return false
         }
     }
@@ -542,7 +593,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         role = MessageRole.User,
                         content = text,
                         status = MessageStatus.Sent
-                    )
+                    ),
+                    isStreaming = true
                 )
             }
             if (_uiState.value.connectionState.isConnected) {

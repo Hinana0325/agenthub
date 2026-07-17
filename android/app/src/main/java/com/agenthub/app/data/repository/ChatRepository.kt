@@ -15,6 +15,7 @@ import com.agenthub.app.data.model.Message
 import com.agenthub.app.data.model.MessageRole
 import com.agenthub.app.data.model.MessageStatus
 import com.agenthub.app.data.model.Session
+import com.agenthub.app.util.KeystoreManager
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -228,7 +229,7 @@ class ChatRepository(
         name = name,
         type = type.name,
         serverUrl = serverUrl,
-        apiKey = apiKey,
+        apiKey = if (apiKey.isBlank()) apiKey else KeystoreManager.encrypt(apiKey),
         model = model,
         systemPrompt = systemPrompt,
         temperature = temperature,
@@ -240,7 +241,7 @@ class ChatRepository(
         name = name,
         type = try { AgentType.valueOf(type) } catch (_: Exception) { AgentType.Hermes },
         serverUrl = serverUrl,
-        apiKey = apiKey,
+        apiKey = KeystoreManager.decryptOrRaw(apiKey),
         model = model,
         systemPrompt = systemPrompt,
         temperature = temperature,

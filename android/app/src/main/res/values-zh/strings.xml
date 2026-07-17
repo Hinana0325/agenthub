@@ -308,6 +308,7 @@
     <string name="marketplace_results">找到 %d 个 Agent</string>
     <string name="marketplace_no_results">未找到 Agent</string>
     <string name="marketplace_subtitle">发现并安装社区 Agent</string>
+    <string name="marketplace_loading">正在从 OpenClaw / ClawHub 拉取 Agent…</string>
 
     <!-- 数据洞察 -->
     <string name="insights_title">数据洞察</string>
@@ -380,4 +381,9 @@
 
     <!-- Font sizes -->
     <string name="font_xlarge">特大</string>
+
+    <!-- Update check -->
+    <string name="check_update">检查更新</string>
+    <string name="checking_update">检查中…</string>
+    <string name="api_key_saved_masked">API Key 已保存</string>
 </resources>

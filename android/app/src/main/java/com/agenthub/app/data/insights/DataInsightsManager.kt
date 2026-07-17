@@ -100,8 +100,15 @@ class DataInsightsManager(
     }
 
     private fun groupByAgent(sessions: List<com.agenthub.app.data.local.entity.SessionEntity>): Map<String, Long> {
-        return sessions.groupBy { it.title.take(20) }
+        if (sessions.isEmpty()) return emptyMap()
+        // 按 session 标题分组，取前 15 字符避免过长，并合并同名
+        return sessions
+            .groupBy { it.title.take(15).ifEmpty { "Untitled" } }
             .mapValues { it.value.size.toLong() }
+            .toList()
+            .sortedByDescending { it.second }
+            .take(8)
+            .toMap()
     }
 
     private fun calculateAvgLength(messages: List<MessageEntity>): Int {
