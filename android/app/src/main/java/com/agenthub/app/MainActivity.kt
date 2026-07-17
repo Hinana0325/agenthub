@@ -33,7 +33,6 @@ import com.agenthub.app.ui.theme.AgentHubTheme
 import com.agenthub.app.ui.theme.ThemeMode
 import com.agenthub.app.util.SuperIslandManager
 import com.agenthub.app.util.LocalNotificationManager
-import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * AgentHub MainActivity — Compose 原生入口
@@ -43,7 +42,6 @@ import dagger.hilt.android.AndroidEntryPoint
  * - 启动 Foreground Service 后台保活
  * - Android Share Sheet 处理
  */
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private var shareHandled = false

@@ -27,7 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -57,7 +57,7 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val adaptive = currentAdaptiveConfig()
-    val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = hiltViewModel()
+    val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = viewModel()
 
     if (adaptive.shouldShowRail) {
         Row(modifier = Modifier.fillMaxSize()) {
