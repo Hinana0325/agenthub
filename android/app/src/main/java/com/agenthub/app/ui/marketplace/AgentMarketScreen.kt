@@ -26,7 +26,6 @@ import com.agenthub.app.data.model.MarketplaceAgent
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
-import org.json.JSONArray
 import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,10 +53,11 @@ fun AgentMarketScreen(
         val result = marketClient.fetchAll()
         if (result.isSuccess) {
             agents = result.getOrNull() ?: emptyList()
+            errorMessage = null
         } else {
-            // Fallback to local data if network fails
-            agents = loadMarketplaceAgents(context)
-            errorMessage = result.exceptionOrNull()?.message ?: "Network error — showing offline agents"
+            // 网络失败时不再回退到写死的本地假数据，仅展示错误并允许重试
+            agents = emptyList()
+            errorMessage = result.exceptionOrNull()?.message ?: "Network error"
         }
         isLoading = false
     }
@@ -326,41 +326,45 @@ private fun MarketplaceAgentCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Stats row: rating + downloads + tags
+            // Stats row: rating + downloads + tags（仅在有真实数据时展示统计）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Rating
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.tertiary
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = String.format("%.1f", agent.rating),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                // Rating（仅当 API 真实提供时）
+                agent.rating?.let { rating ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = String.format("%.1f", rating),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
                 }
-                // Downloads
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.CloudDownload,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = NumberFormat.getIntegerInstance().format(agent.downloads),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                // Downloads（仅当 API 真实提供时）
+                agent.downloads?.let { downloads ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.CloudDownload,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = NumberFormat.getIntegerInstance().format(downloads),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 // Tags
@@ -379,31 +383,5 @@ private fun MarketplaceAgentCard(
                 }
             }
         }
-    }
-}
-
-private fun loadMarketplaceAgents(context: android.content.Context): List<MarketplaceAgent> {
-    return try {
-        val inputStream = context.resources.openRawResource(R.raw.marketplace_agents)
-        val json = inputStream.bufferedReader().use { it.readText() }
-        val array = JSONArray(json)
-        (0 until array.length()).map { i ->
-            val obj = array.getJSONObject(i)
-            val tagsArray = obj.getJSONArray("tags")
-            val tags = (0 until tagsArray.length()).map { tagsArray.getString(it) }
-            MarketplaceAgent(
-                id = obj.getString("id"),
-                name = obj.getString("name"),
-                description = obj.getString("description"),
-                type = try { AgentType.valueOf(obj.getString("type")) } catch (_: Exception) { AgentType.Hermes },
-                serverUrl = obj.getString("serverUrl"),
-                author = obj.getString("author"),
-                downloads = obj.getInt("downloads"),
-                rating = obj.getDouble("rating").toFloat(),
-                tags = tags
-            )
-        }
-    } catch (_: Exception) {
-        emptyList()
     }
 }

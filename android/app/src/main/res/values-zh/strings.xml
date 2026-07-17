@@ -29,6 +29,9 @@
     <string name="btn_skip">跳过 — 稍后配置</string>
     <string name="status_connected">已连接</string>
     <string name="status_disconnected">未连接</string>
+    <string name="offline_banner_title">未连接 AI 服务</string>
+    <string name="offline_banner_subtitle">前往「Agents」添加并连接一个模型端点，即可开启实时对话</string>
+    <string name="offline_banner_action">去连接</string>
     <string name="saved_agents">已保存的 Agent（%d）</string>
     <string name="optional">可选</string>
 

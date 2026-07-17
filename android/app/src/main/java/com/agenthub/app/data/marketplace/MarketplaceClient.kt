@@ -180,8 +180,8 @@ class MarketplaceClient {
         type = AgentType.OpenClaw,
         serverUrl = "https://openclaw.supplies/marketplace/$slug",
         author = "OpenClaw",
-        downloads = is_featured.let { if (it) 10000 else 1000 }, // estimate; API doesn't expose real count
-        rating = if (is_featured) 4.8f else 4.5f, // estimate
+        downloads = null, // OpenClaw API 不暴露下载量，不编造
+        rating = null,    // OpenClaw API 不暴露评分，不编造
         tags = listOfNotNull(category?.name) + if (is_featured) listOf("Featured") else emptyList()
     )
 
@@ -192,8 +192,8 @@ class MarketplaceClient {
         type = AgentType.OpenClaw,
         serverUrl = "https://clawhub.ai/skills/$slug",
         author = "ClawHub",
-        downloads = stats?.downloads ?: 0,
-        rating = 4.5f, // ClawHub doesn't expose ratings; use neutral default
+        downloads = stats?.downloads, // 仅当 API 真实提供时展示
+        rating = null,                // ClawHub 不暴露评分，不编造
         tags = topics ?: emptyList()
     )
 

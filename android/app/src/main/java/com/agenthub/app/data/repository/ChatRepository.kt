@@ -16,8 +16,12 @@ import com.agenthub.app.data.model.MessageRole
 import com.agenthub.app.data.model.MessageStatus
 import com.agenthub.app.data.model.Session
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class ChatRepository(
     private val sessionDao: SessionDao,
@@ -26,6 +30,27 @@ class ChatRepository(
     private val activityDao: ActivityDao
 ) {
     private val gson = Gson()
+
+    // 首次启动播种一个本地 Ollama 默认端点（id 以 "seed_" 开头，开屏不自动连，
+    // 仅作为「Agents」里的一键连接起点；若本机未运行 Ollama 则连接会如实报错）。
+    private val seedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    init {
+        seedScope.launch {
+            try {
+                if (agentConfigDao.getAllConfigsOnce().isEmpty()) {
+                    saveConfig(
+                        AgentConfig(
+                            id = "seed_ollama",
+                            name = "Local Ollama",
+                            type = AgentType.LocalModel,
+                            serverUrl = "http://127.0.0.1:11434",
+                            model = "llama3"
+                        )
+                    )
+                }
+            } catch (_: Exception) { /* 忽略种子失败，不影响主流程 */ }
+        }
+    }
 
     // ── Sessions ──
 

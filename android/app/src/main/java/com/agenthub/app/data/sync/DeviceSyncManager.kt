@@ -3,7 +3,6 @@ package com.agenthub.app.data.sync
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.util.UUID
 
 /**
  * 设备间同步 — P2P 方案
@@ -46,16 +45,15 @@ class DeviceSyncManager {
 
     /**
      * 发现附近的设备
+     *
+     * 真实的 P2P / Wi-Fi Direct 设备发现尚未接入，此处不再返回写死的
+     * 假设备（"My Tablet" / "Office PC" / "Living Room TV"），以免误导用户。
+     * 返回空列表，UI 会正确显示「未发现设备」。
      */
     suspend fun discoverDevices(): List<DiscoveredDevice> {
-        // Simulate network discovery delay
-        delay(1500)
-        val devices = listOf(
-            DiscoveredDevice(UUID.randomUUID().toString(), "My Tablet", 85),
-            DiscoveredDevice(UUID.randomUUID().toString(), "Office PC", 62),
-            DiscoveredDevice(UUID.randomUUID().toString(), "Living Room TV", 40)
-        )
-        return devices
+        // 保留短暂延迟以呈现扫描态，但不编造任何设备
+        delay(800)
+        return emptyList()
     }
 
     /**
@@ -86,7 +84,8 @@ class DeviceSyncManager {
     suspend fun syncMessages(deviceId: String): Int {
         _syncState.value = _syncState.value.copy(isSyncing = true)
         delay(1000)
-        val count = (5..20).random()
+        // 真实同步后端未接入：不编造同步条数，返回实际已同步数量（当前为 0）
+        val count = 0
         _syncState.value = _syncState.value.copy(
             isSyncing = false,
             lastSyncTime = System.currentTimeMillis(),
@@ -101,7 +100,8 @@ class DeviceSyncManager {
     suspend fun syncConfigs(deviceId: String): Int {
         _syncState.value = _syncState.value.copy(isSyncing = true)
         delay(800)
-        val count = (1..5).random()
+        // 真实同步后端未接入：不编造同步条数，返回实际已同步数量（当前为 0）
+        val count = 0
         _syncState.value = _syncState.value.copy(
             isSyncing = false,
             lastSyncTime = System.currentTimeMillis(),

@@ -7,6 +7,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.preparePost
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * OpenAI 兼容 HTTP + SSE 传输层。
@@ -55,13 +57,40 @@ class OpenAIHttpTransport(
     override fun connect(config: AgentConfig, e2eKey: String?) {
         // HTTP 传输：对端是 LLM 服务，需要明文请求体，E2E 不适用（忽略 e2eKey）。
         currentConfig = config
-        _connectionState.value = _connectionState.value.copy(
-            isConnected = true,
-            serverUrl = config.serverUrl,
-            agentType = config.type
-        )
         eventScope.launch {
-            _events.send(AgentEvent.Connected(config.serverUrl, config.type))
+            // 连接自检：先探测 /v1/models 探活。任意 HTTP 响应视为可达；
+            // 仅网络层失败（UnknownHost / 连接拒绝 / 超时）才判为不可达。
+            val reachable = probeEndpoint(config)
+            if (reachable) {
+                _connectionState.value = _connectionState.value.copy(
+                    isConnected = true,
+                    serverUrl = config.serverUrl,
+                    agentType = config.type
+                )
+                _events.send(AgentEvent.Connected(config.serverUrl, config.type))
+            } else {
+                _connectionState.value = _connectionState.value.copy(isConnected = false)
+                _events.send(AgentEvent.Error("无法连接到 ${config.serverUrl}（请确认服务已启动、地址与端口正确）"))
+            }
+        }
+    }
+
+    /**
+     * 探测端点是否可达：GET {base}/v1/models（base 已含 /v1 时则为 {base}/models）。
+     * 仅当抛出异常（网络层失败）时返回 false；任何 HTTP 响应都返回 true。
+     */
+    private suspend fun probeEndpoint(config: AgentConfig): Boolean {
+        val base = config.serverUrl.trimEnd('/')
+        val probeUrl = if (base.endsWith("/v1")) "$base/models" else "$base/v1/models"
+        return try {
+            withTimeout(5000) {
+                client.get(probeUrl) {
+                    if (config.apiKey.isNotBlank()) header("Authorization", "Bearer ${config.apiKey}")
+                }
+            }
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 

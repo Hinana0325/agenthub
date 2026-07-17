@@ -98,7 +98,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val savedConfig = repository.getAllConfigs().let { flow ->
-                flow.first().firstOrNull { it.serverUrl.isNotBlank() }
+                flow.first().firstOrNull { it.serverUrl.isNotBlank() && !it.id.startsWith("seed_") }
             }
             if (savedConfig != null) {
                 _uiState.update { it.copy(showWizard = false) }
@@ -314,6 +314,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissWizard() {
         _uiState.update { it.copy(showWizard = false, isConnecting = false) }
+    }
+
+    /** 打开连接向导（供离线横幅的「去连接」按钮调用）。 */
+    fun openConnectWizard() {
+        _uiState.update { it.copy(showWizard = true) }
     }
 
     fun connectToServer(url: String, apiKey: String, agentType: AgentType) {

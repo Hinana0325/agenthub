@@ -498,7 +498,12 @@ private fun ChatContent(
         mutableSetOf<String>().apply { addAll(uiState.messages.map { it.id }) }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 离线横幅：未连接且非连接中时，醒目提示用户去连接模型端点
+        if (!uiState.connectionState.isConnected && !uiState.isConnecting) {
+            OfflineBanner(onConnect = { viewModel.openConnectWizard() })
+        }
+        Box(modifier = Modifier.weight(1f)) {
         if (uiState.messages.isEmpty()) {
             EmptyChatPlaceholder(
                 connectionState = uiState.connectionState,
@@ -540,6 +545,7 @@ private fun ChatContent(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)
             )
+        }
         }
     }
 }
@@ -1250,6 +1256,48 @@ private fun ClickableAnnotatedText(
             }
         }
     )
+}
+
+@Composable
+private fun OfflineBanner(onConnect: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.92f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.CloudOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.offline_banner_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    text = stringResource(R.string.offline_banner_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                )
+            }
+            TextButton(onClick = onConnect) {
+                Text(
+                    text = stringResource(R.string.offline_banner_action),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
 }
 
 @Composable
