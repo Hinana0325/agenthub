@@ -104,8 +104,8 @@
 
     <!-- Error / Status -->
     <string name="connection_failed">接続に失敗しました</string>
-    <string name="connection_failed_attempts">接続に失敗しました（%d 回試行）：%s</string>
-    <string name="connection_failed_retry">接続に失敗しました（リトライ %d/%d）：%s</string>
+    <string name="connection_failed_attempts" formatted="false">接続に失敗しました（%d 回試行）：%s</string>
+    <string name="connection_failed_retry" formatted="false">接続に失敗しました（リトライ %d/%d）：%s</string>
     <string name="unknown_error">不明なエラー</string>
     <string name="btn_dismiss">閉じる</string>
     <string name="btn_retry">再試行</string>
@@ -345,6 +345,14 @@
     <string name="workflow_tpl_research">リサーチアシスタント</string>
     <string name="workflow_tpl_research_desc">検索 → まとめ</string>
     <string name="action_edit">編集</string>
+    <string name="action_reply">返信</string>
     <string name="search_sessions">セッションを検索…</string>
     <string name="editing_message">メッセージ編集中…</string>
+
+    <!-- Compare -->
+    <string name="compare_title">比較</string>
+    <string name="compare_agent_a">Agent A</string>
+    <string name="compare_agent_b">Agent B</string>
+    <string name="compare_cancel">キャンセル</string>
+    <string name="compare_select_hint">比較する2つのエージェントを選択してください</string>
 </resources>

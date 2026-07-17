@@ -62,7 +62,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         // Periodically refresh performance metrics (memory, uptime) every 3 seconds
         viewModelScope.launch {
             while (isActive) {
-                PerformanceMonitor.refresh(getApplication())
+                try {
+                    PerformanceMonitor.refresh(getApplication())
+                } catch (_: Exception) {
+                    // ignore — non-critical background refresh
+                }
                 kotlinx.coroutines.delay(3000)
             }
         }

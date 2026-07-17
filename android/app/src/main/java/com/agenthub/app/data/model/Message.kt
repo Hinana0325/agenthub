@@ -11,7 +11,8 @@ data class Message(
     val attachmentType: String? = null, // "image", "file"
     val attachmentData: String? = null, // base64 or path
     val attachmentName: String? = null, // display name
-    val reaction: String = "" // emoji reaction, e.g. "👍", "❤️"
+    val reaction: String = "", // emoji reaction, e.g. "👍", "❤️"
+    val replyToId: String? = null
 )
 
 enum class MessageRole { User, Assistant, System, Tool }

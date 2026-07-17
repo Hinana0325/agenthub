@@ -104,8 +104,8 @@
 
     <!-- Error / Status -->
     <string name="connection_failed">연결 실패</string>
-    <string name="connection_failed_attempts">연결 실패（%d 회 시도）：%s</string>
-    <string name="connection_failed_retry">연결 실패（재시도 %d/%d）：%s</string>
+    <string name="connection_failed_attempts" formatted="false">연결 실패（%d 회 시도）：%s</string>
+    <string name="connection_failed_retry" formatted="false">연결 실패（재시도 %d/%d）：%s</string>
     <string name="unknown_error">알 수 없는 오류</string>
     <string name="btn_dismiss">닫기</string>
     <string name="btn_retry">재시도</string>
@@ -345,6 +345,14 @@
     <string name="workflow_tpl_research">리서치 어시스턴트</string>
     <string name="workflow_tpl_research_desc">검색 → 요약</string>
     <string name="action_edit">편집</string>
+    <string name="action_reply">답장</string>
     <string name="search_sessions">세션 검색…</string>
     <string name="editing_message">메시지 편집 중…</string>
+
+    <!-- Compare -->
+    <string name="compare_title">비교</string>
+    <string name="compare_agent_a">Agent A</string>
+    <string name="compare_agent_b">Agent B</string>
+    <string name="compare_cancel">취소</string>
+    <string name="compare_select_hint">비교할 두 개의 에이전트를 선택하세요</string>
 </resources>

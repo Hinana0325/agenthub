@@ -26,5 +26,6 @@ data class MessageEntity(
     val attachmentType: String? = null,
     val attachmentData: String? = null,
     val attachmentName: String? = null,
-    val reaction: String = ""
+    val reaction: String = "",
+    val replyToId: String? = null
 )

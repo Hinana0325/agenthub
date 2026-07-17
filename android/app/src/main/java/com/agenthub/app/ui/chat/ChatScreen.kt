@@ -59,6 +59,7 @@ import com.agenthub.app.data.model.MessageRole
 import com.agenthub.app.data.model.MessageStatus
 import com.agenthub.app.ui.adaptive.AdaptiveConfig
 import android.net.Uri
+import com.agenthub.app.navigation.Screen
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.adaptive.shouldShowSidebar
 import com.agenthub.app.ui.components.ErrorSnackbar
@@ -71,12 +72,14 @@ import com.agenthub.app.ui.theme.GlassEnterTransition
 import com.agenthub.app.ui.theme.GlassDropdownMenu
 import com.agenthub.app.ui.theme.GlassDropdownMenuItem
 import androidx.compose.ui.graphics.Color
+import androidx.navigation.NavHostController
 import com.agenthub.app.util.HapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel = viewModel(),
+    navController: NavHostController? = null,
     onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -99,6 +102,13 @@ fun ChatScreen(
     LaunchedEffect(uiState.errorMessage) {
         if (uiState.errorMessage != null) {
             HapticFeedback.error(context)
+        }
+    }
+
+    LaunchedEffect(uiState.comparePending) {
+        if (uiState.comparePending && navController != null) {
+            navController.navigate(Screen.Compare.route)
+            viewModel.resetComparePending()
         }
     }
 
@@ -226,7 +236,9 @@ private fun PhoneChatLayout(
                     pendingAttachmentName = uiState.pendingAttachmentName,
                     onClearAttachment = { viewModel.clearPendingAttachment() },
                     isEditing = uiState.editingMessageId != null,
-                    onCancelEdit = { viewModel.cancelEdit() }
+                    onCancelEdit = { viewModel.cancelEdit() },
+                    replyContent = uiState.replyingToMessageContent,
+                    onCancelReply = { viewModel.cancelReply() }
                 )
             }
         }
@@ -403,7 +415,9 @@ private fun TabletChatLayout(
                         pendingAttachmentName = uiState.pendingAttachmentName,
                         onClearAttachment = { viewModel.clearPendingAttachment() },
                         isEditing = uiState.editingMessageId != null,
-                        onCancelEdit = { viewModel.cancelEdit() }
+                        onCancelEdit = { viewModel.cancelEdit() },
+                        replyContent = uiState.replyingToMessageContent,
+                        onCancelReply = { viewModel.cancelReply() }
                     )
                 }
             }
@@ -567,7 +581,8 @@ private fun ChatContent(
                         onReaction = { viewModel.toggleMessageReaction(message.id) },
                         onEdit = if (message.role == MessageRole.User) {
                             { viewModel.startEditMessage(message.id, message.content) }
-                        } else null
+                        } else null,
+                        onReply = { viewModel.startReply(message.id, message.content) }
                     )
                 }
             }
@@ -602,7 +617,9 @@ fun ChatInputBar(
     pendingAttachmentName: String? = null,
     onClearAttachment: () -> Unit = {},
     isEditing: Boolean = false,
-    onCancelEdit: () -> Unit = {}
+    onCancelEdit: () -> Unit = {},
+    replyContent: String? = null,
+    onCancelReply: () -> Unit = {}
 ) {
     val inputMaxWidth = adaptive.panelConfig.inputMaxWidth
     val context = LocalContext.current
@@ -668,6 +685,45 @@ fun ChatInputBar(
                                 Icons.Default.Close,
                                 contentDescription = stringResource(R.string.action_close),
                                 modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            // Reply indicator
+            if (replyContent != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Reply,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            replyContent,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        IconButton(
+                            onClick = onCancelReply,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -853,6 +909,7 @@ fun MessageBubble(
     onCopy: () -> Unit = {},
     onReaction: () -> Unit = {},
     onEdit: (() -> Unit)? = null,
+    onReply: (() -> Unit)? = null,
     // Ids already shown at least once. Bubble only plays the spring entrance for
     // genuinely-new messages; once seen it is added here so scrolling back never
     // replays the animation. We drive the *enter transition* (not visibility) so a
@@ -926,6 +983,27 @@ fun MessageBubble(
                     )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
+                    // Reply reference indicator
+                    if (message.replyToId != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 6.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Reply,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                     if (isStreaming) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -1008,6 +1086,22 @@ fun MessageBubble(
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+                if (onReply != null) {
+                    GlassDropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_reply)) },
+                        onClick = {
+                            showContextMenu = false
+                            onReply()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Reply,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )

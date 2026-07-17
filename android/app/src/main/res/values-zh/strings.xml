@@ -94,8 +94,8 @@
 
     <!-- Error / Status -->
     <string name="connection_failed">连接失败</string>
-    <string name="connection_failed_attempts">连接失败，已重试 %d 次：%s</string>
-    <string name="connection_failed_retry">连接失败（重试 %d/%d）：%s</string>
+    <string name="connection_failed_attempts" formatted="false">连接失败，已重试 %d 次：%s</string>
+    <string name="connection_failed_retry" formatted="false">连接失败（重试 %d/%d）：%s</string>
     <string name="unknown_error">未知错误</string>
     <string name="btn_dismiss">关闭</string>
     <string name="btn_retry">重试</string>
@@ -406,6 +406,14 @@
     <string name="workflow_tpl_research">研究助手</string>
     <string name="workflow_tpl_research_desc">搜索 → 总结</string>
     <string name="action_edit">编辑</string>
+    <string name="action_reply">回复</string>
     <string name="search_sessions">搜索会话…</string>
     <string name="editing_message">编辑消息中…</string>
+
+    <!-- Compare -->
+    <string name="compare_title">对比</string>
+    <string name="compare_agent_a">Agent A</string>
+    <string name="compare_agent_b">Agent B</string>
+    <string name="compare_cancel">取消</string>
+    <string name="compare_select_hint">选择两个 Agent 进行对比</string>
 </resources>

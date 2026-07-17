@@ -109,7 +109,8 @@ class ChatRepository(
         role: MessageRole,
         attachmentType: String? = null,
         attachmentData: String? = null,
-        attachmentName: String? = null
+        attachmentName: String? = null,
+        replyToId: String? = null
     ): Message {
         val message = MessageEntity(
             id = java.util.UUID.randomUUID().toString(),
@@ -120,7 +121,8 @@ class ChatRepository(
             status = MessageStatus.Sending.name,
             attachmentType = attachmentType,
             attachmentData = attachmentData,
-            attachmentName = attachmentName
+            attachmentName = attachmentName,
+            replyToId = replyToId
         )
         messageDao.insertMessage(message)
         sessionDao.incrementMessageCount(sessionId, System.currentTimeMillis())
@@ -147,7 +149,8 @@ class ChatRepository(
             content = message.content,
             timestamp = message.timestamp,
             status = message.status.name,
-            metadataJson = Gson().toJson(message.metadata)
+            metadataJson = Gson().toJson(message.metadata),
+            replyToId = message.replyToId
         ))
     }
 
@@ -221,7 +224,8 @@ class ChatRepository(
         attachmentType = attachmentType,
         attachmentData = attachmentData,
         attachmentName = attachmentName,
-        reaction = reaction
+        reaction = reaction,
+        replyToId = replyToId
     )
 
     private fun AgentConfig.toEntity() = AgentConfigEntity(

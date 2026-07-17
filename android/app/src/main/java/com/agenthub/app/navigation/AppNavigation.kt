@@ -41,6 +41,8 @@ import com.agenthub.app.ui.agents.AgentsScreen
 import com.agenthub.app.ui.chat.ChatScreen
 import com.agenthub.app.ui.sessions.SessionsScreen
 import com.agenthub.app.ui.settings.SettingsScreen
+import com.agenthub.app.ui.compare.CompareScreen
+import com.agenthub.app.ui.compare.CompareViewModel
 import com.agenthub.app.ui.marketplace.AgentMarketScreen
 import com.agenthub.app.ui.sync.DeviceSyncScreen
 import com.agenthub.app.ui.plugin.PluginScreen
@@ -102,7 +104,7 @@ fun AppNavigation() {
                     startDestination = Screen.Chat.route,
                     modifier = Modifier.padding(paddingValues)
                 ) {
-                    composable(Screen.Chat.route) { ChatScreen(chatViewModel) }
+                    composable(Screen.Chat.route) { ChatScreen(chatViewModel, navController) }
                     composable(Screen.Sessions.route) { SessionsScreen(chatViewModel) }
                     composable(Screen.Activity.route) { ActivityScreen() }
                     composable(Screen.Settings.route) {
@@ -137,6 +139,10 @@ fun AppNavigation() {
                     }
                     composable("plugins") {
                         PluginScreen(onBack = { navController.popBackStack() })
+                    }
+                    composable(Screen.Compare.route) {
+                        val compareViewModel: CompareViewModel = viewModel()
+                        CompareScreen(viewModel = compareViewModel, navController = navController)
                     }
                 }
             }
@@ -180,43 +186,47 @@ fun AppNavigation() {
                 startDestination = Screen.Chat.route,
                 modifier = Modifier.padding(paddingValues)
             ) {
-                composable(Screen.Chat.route) { ChatScreen(chatViewModel) }
-                composable(Screen.Sessions.route) { SessionsScreen(chatViewModel) }
-                composable(Screen.Activity.route) { ActivityScreen() }
-                composable(Screen.Settings.route) {
-                    SettingsScreen(
-                        onNavigateToAgents = { navController.navigate(Screen.Agents.route) },
-                        onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
-                        onNavigateToInsights = { navController.navigate(Screen.Insights.route) },
-                        onNavigateToDeviceSync = { navController.navigate("device_sync") },
-                        onNavigateToPlugins = { navController.navigate("plugins") }
-                    )
-                }
-                composable(Screen.Agents.route) { AgentsScreen() }
-                composable(Screen.Marketplace.route) {
-                    AgentMarketScreen(
-                        onInstall = { agent ->
-                            val config = AgentConfig(
-                                id = agent.id,
-                                name = agent.name,
-                                type = agent.type,
-                                serverUrl = agent.serverUrl
-                            )
-                            chatViewModel.installMarketplaceAgent(config)
-                        },
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-                composable(Screen.Insights.route) {
-                    InsightsScreen(onBack = { navController.popBackStack() })
-                }
-                composable("device_sync") {
-                    DeviceSyncScreen(onBack = { navController.popBackStack() })
-                }
-                composable("plugins") {
-                    PluginScreen(onBack = { navController.popBackStack() })
-                }
+            composable(Screen.Chat.route) { ChatScreen(chatViewModel, navController) }
+            composable(Screen.Sessions.route) { SessionsScreen(chatViewModel) }
+            composable(Screen.Activity.route) { ActivityScreen() }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onNavigateToAgents = { navController.navigate(Screen.Agents.route) },
+                    onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
+                    onNavigateToInsights = { navController.navigate(Screen.Insights.route) },
+                    onNavigateToDeviceSync = { navController.navigate("device_sync") },
+                    onNavigateToPlugins = { navController.navigate("plugins") }
+                )
+            }
+            composable(Screen.Agents.route) { AgentsScreen() }
+            composable(Screen.Marketplace.route) {
+                AgentMarketScreen(
+                    onInstall = { agent ->
+                        val config = AgentConfig(
+                            id = agent.id,
+                            name = agent.name,
+                            type = agent.type,
+                            serverUrl = agent.serverUrl
+                        )
+                        chatViewModel.installMarketplaceAgent(config)
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.Insights.route) {
+                InsightsScreen(onBack = { navController.popBackStack() })
+            }
+            composable("device_sync") {
+                DeviceSyncScreen(onBack = { navController.popBackStack() })
+            }
+            composable("plugins") {
+                PluginScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.Compare.route) {
+                val compareViewModel: CompareViewModel = viewModel()
+                CompareScreen(viewModel = compareViewModel, navController = navController)
             }
         }
+    }
     }
 }

@@ -26,6 +26,7 @@ sealed class Screen(
     data object Marketplace : Screen("marketplace", R.string.nav_marketplace, Icons.Default.Storefront)
     data object Insights : Screen("insights", R.string.insights_title, Icons.Default.BarChart)
     data object Workflow : Screen("workflow", R.string.nav_workflow, Icons.Default.AccountTree)
+    data object Compare : Screen("compare", R.string.compare_title, Icons.Default.Chat)
 
     companion object {
         val tabs = listOf(Chat, Sessions, Activity, Settings)

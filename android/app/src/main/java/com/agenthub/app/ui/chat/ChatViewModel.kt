@@ -72,7 +72,12 @@ data class ChatUiState(
     val pendingAttachmentData: String? = null,
     val pendingAttachmentName: String? = null,
     // Edit state
-    val editingMessageId: String? = null
+    val editingMessageId: String? = null,
+    // Compare mode navigation trigger
+    val comparePending: Boolean = false,
+    // Reply state
+    val replyingToMessageId: String? = null,
+    val replyingToMessageContent: String? = null
 )
 
 
@@ -265,36 +270,40 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     session.id
                 }
 
-            val userMsg = repository.sendMessage(
-                sessionId = sessionId,
-                content = text,
+        val userMsg = repository.sendMessage(
+            sessionId = sessionId,
+            content = text,
+            role = MessageRole.User,
+            attachmentType = state.pendingAttachmentType,
+            attachmentData = state.pendingAttachmentData,
+            attachmentName = state.pendingAttachmentName,
+            replyToId = state.replyingToMessageId
+        )
+        repository.logActivity("message", "Message sent", text.take(80))
+
+        _uiState.update { s ->
+            val stateMsg = Message(
+                id = userMsg.id,
+                sessionId = userMsg.sessionId,
                 role = MessageRole.User,
+                content = text,
+                status = MessageStatus.Sent,
                 attachmentType = state.pendingAttachmentType,
                 attachmentData = state.pendingAttachmentData,
-                attachmentName = state.pendingAttachmentName
+                attachmentName = state.pendingAttachmentName,
+                replyToId = state.replyingToMessageId
             )
-            repository.logActivity("message", "Message sent", text.take(80))
-
-            _uiState.update { s ->
-                val stateMsg = Message(
-                    id = userMsg.id,
-                    sessionId = userMsg.sessionId,
-                    role = MessageRole.User,
-                    content = text,
-                    status = MessageStatus.Sent,
-                    attachmentType = state.pendingAttachmentType,
-                    attachmentData = state.pendingAttachmentData,
-                    attachmentName = state.pendingAttachmentName
-                )
-                s.copy(
-                    messages = s.messages + stateMsg,
-                    inputText = "",
-                    isStreaming = true,
-                    pendingAttachmentType = null,
-                    pendingAttachmentData = null,
-                    pendingAttachmentName = null
-                )
-            }
+            s.copy(
+                messages = s.messages + stateMsg,
+                inputText = "",
+                isStreaming = true,
+                pendingAttachmentType = null,
+                pendingAttachmentData = null,
+                pendingAttachmentName = null,
+                replyingToMessageId = null,
+                replyingToMessageContent = null
+            )
+        }
 
             if (_uiState.value.connectionState.isConnected) {
                 _transport.value?.sendMessage(sessionId, text)
@@ -333,6 +342,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun cancelEdit() {
         _uiState.update { it.copy(editingMessageId = null) }
+    }
+
+    // ── Message Reply ──
+
+    fun startReply(messageId: String, content: String) {
+        _uiState.update { it.copy(
+            replyingToMessageId = messageId,
+            replyingToMessageContent = content.trim().take(100)
+        ) }
+    }
+
+    fun cancelReply() {
+        _uiState.update { it.copy(
+            replyingToMessageId = null,
+            replyingToMessageContent = null
+        ) }
     }
 
     fun editMessage(messageId: String, newContent: String) {
@@ -587,10 +612,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 return true
             }
             "/compare" -> {
-                // Compare mode not yet implemented; log the request
-                viewModelScope.launch {
-                    repository.logActivity("command", "Compare mode requested (not yet implemented)")
-                }
+                _uiState.update { it.copy(comparePending = true) }
                 return true
             }
             else -> return false
@@ -833,6 +855,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun clearLocalModelError() {
         _uiState.update { it.copy(localModelError = null) }
         localModelManager.clearError()
+    }
+
+    fun resetComparePending() {
+        _uiState.update { it.copy(comparePending = false) }
     }
 
     override fun onCleared() {

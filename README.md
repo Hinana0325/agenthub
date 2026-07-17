@@ -11,11 +11,11 @@
 
 | 层 | 选型 |
 |:---|:---|
-| 语言 / UI | **Kotlin 2.1** + **Jetpack Compose**（Material 3） |
+| 语言 / UI | **Kotlin 2.2.0** + **Jetpack Compose**（Material 3） |
 | 架构 | MVVM（`AndroidViewModel` + `StateFlow`）+ 单向数据流 |
 | 网络 | **Ktor**（WebSocket / HTTP + SSE） |
 | 持久化 | **Room**（会话 / 消息 / 配置 / 活动）+ **DataStore**（设置） |
-| 依赖注入 | **Hilt**（`DatabaseModule` / `RepositoryModule`） |
+| 依赖注入 | 手动 DI（`AppModule` 单例 + `AndroidViewModel` 构造函数注入） |
 | 测试 | 10 个单元测试文件，50+ 测试用例（`src/test/`） |
 | 构建 | Gradle Kotlin DSL（`gradlew`），AGP + KSP |
 | 目标 | `minSdk` 24，`targetSdk` 最新；支持手机 / 平板 / 折叠屏自适应布局 |
@@ -40,7 +40,7 @@
 
 - 🔐 **KeystoreManager 硬件加密**：API 密钥与端到端密钥均使用 Android Keystore 硬件后端加密存储
 - 🛡️ **网络安全加固**：默认禁止明文流量（`cleartextTrafficPermitted=false`）
-- 💉 **Hilt 依赖注入**：引入 `DatabaseModule` / `RepositoryModule`，替代手动单例
+- 💉 **依赖注入（已 Revert）**：v2.0.1 曾尝试引入 Hilt（`DatabaseModule` / `RepositoryModule`），但因 KSP 构建问题已 revert。当前使用手动 DI（`AppModule` 单例 + `AndroidViewModel` 构造函数注入）
 - ✅ **单元测试**：10 个测试文件、50+ 测试用例，覆盖模型、传输、加密、工作流等核心模块
 - 🌐 **国际化 (i18n)**：完整支持英文 / 中文 / 日文 / 韩文
 - 📊 **性能监控面板**：`PerformanceMonitor` 实时展示性能指标
@@ -70,8 +70,8 @@ android/app/src/main/java/com/agenthub/app/
 ├── App.kt
 ├── AgentConnectionService.kt          # 前台服务 + 通知内联回复
 ├── di/
-│   ├── DatabaseModule.kt               # Hilt 数据库模块
-│   └── RepositoryModule.kt             # Hilt Repository 模块
+│   ├── DatabaseModule.kt               # 数据库模块（Hilt revert 残留，未使用）
+│   └── RepositoryModule.kt             # Repository 模块（Hilt revert 残留，未使用）
 ├── data/
 │   ├── AppModule.kt                    # 依赖装配（Repository 单例）
 │   ├── model/                          # AgentConfig, AgentType, Message, Session, ConnectionState

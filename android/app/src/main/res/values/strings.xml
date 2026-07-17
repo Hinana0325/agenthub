@@ -410,6 +410,14 @@
     <string name="workflow_tpl_research">Research Assistant</string>
     <string name="workflow_tpl_research_desc">Search → Summarize</string>
     <string name="action_edit">Edit</string>
+    <string name="action_reply">Reply</string>
     <string name="search_sessions">Search sessions…</string>
     <string name="editing_message">Editing message…</string>
+
+    <!-- Compare -->
+    <string name="compare_title">Compare</string>
+    <string name="compare_agent_a">Agent A</string>
+    <string name="compare_agent_b">Agent B</string>
+    <string name="compare_cancel">Cancel</string>
+    <string name="compare_select_hint">Select two agents to compare</string>
 </resources>

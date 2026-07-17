@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Hilt Dependency Injection**
+- **Hilt Dependency Injection** [REVERTED in final release due to KSP build issue]
   - @HiltAndroidApp Application class
   - @AndroidEntryPoint on MainActivity
   - @HiltViewModel on ChatViewModel, SettingsViewModel
