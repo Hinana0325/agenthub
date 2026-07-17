@@ -224,7 +224,9 @@ private fun PhoneChatLayout(
                     onAttachFile = { filePickerLauncher.launch("*/*") },
                     pendingAttachmentType = uiState.pendingAttachmentType,
                     pendingAttachmentName = uiState.pendingAttachmentName,
-                    onClearAttachment = { viewModel.clearPendingAttachment() }
+                    onClearAttachment = { viewModel.clearPendingAttachment() },
+                    isEditing = uiState.editingMessageId != null,
+                    onCancelEdit = { viewModel.cancelEdit() }
                 )
             }
         }
@@ -399,7 +401,9 @@ private fun TabletChatLayout(
                         onAttachFile = { filePickerLauncher.launch("*/*") },
                         pendingAttachmentType = uiState.pendingAttachmentType,
                         pendingAttachmentName = uiState.pendingAttachmentName,
-                        onClearAttachment = { viewModel.clearPendingAttachment() }
+                        onClearAttachment = { viewModel.clearPendingAttachment() },
+                        isEditing = uiState.editingMessageId != null,
+                        onCancelEdit = { viewModel.cancelEdit() }
                     )
                 }
             }
@@ -560,7 +564,10 @@ private fun ChatContent(
                         seenMessageIds = seenMessageIds,
                         onDelete = { viewModel.deleteMessage(message.id) },
                         onCopy = { viewModel.copyToClipboard(context, message.content) },
-                        onReaction = { viewModel.toggleMessageReaction(message.id) }
+                        onReaction = { viewModel.toggleMessageReaction(message.id) },
+                        onEdit = if (message.role == MessageRole.User) {
+                            { viewModel.startEditMessage(message.id, message.content) }
+                        } else null
                     )
                 }
             }
@@ -593,7 +600,9 @@ fun ChatInputBar(
     onAttachFile: () -> Unit = {},
     pendingAttachmentType: String? = null,
     pendingAttachmentName: String? = null,
-    onClearAttachment: () -> Unit = {}
+    onClearAttachment: () -> Unit = {},
+    isEditing: Boolean = false,
+    onCancelEdit: () -> Unit = {}
 ) {
     val inputMaxWidth = adaptive.panelConfig.inputMaxWidth
     val context = LocalContext.current
@@ -625,6 +634,45 @@ fun ChatInputBar(
         ) else Modifier
     ) {
         Column {
+            // Editing indicator
+            if (isEditing) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.editing_message),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = onCancelEdit,
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.action_close),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+            }
             // Pending attachment preview
             if (pendingAttachmentType != null) {
                 Surface(
@@ -804,6 +852,7 @@ fun MessageBubble(
     onDelete: () -> Unit = {},
     onCopy: () -> Unit = {},
     onReaction: () -> Unit = {},
+    onEdit: (() -> Unit)? = null,
     // Ids already shown at least once. Bubble only plays the spring entrance for
     // genuinely-new messages; once seen it is added here so scrolling back never
     // replays the animation. We drive the *enter transition* (not visibility) so a
@@ -858,6 +907,12 @@ fun MessageBubble(
                             animateShine = false
                         ) else Modifier
                     )
+                    .semantics {
+                        contentDescription = if (isUser)
+                            "User message: ${message.content.take(100)}"
+                        else
+                            "Agent message: ${message.content.take(100)}"
+                    }
                     .combinedClickable(
                         onClick = {},
                         onLongClick = {
@@ -943,6 +998,22 @@ fun MessageBubble(
                         Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.a11y_copy_message), modifier = Modifier.size(18.dp))
                     }
                 )
+                if (isUser && onEdit != null) {
+                    GlassDropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_edit)) },
+                        onClick = {
+                            showContextMenu = false
+                            onEdit()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
                 GlassDropdownMenuItem(
                     text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
                     onClick = {
@@ -984,7 +1055,7 @@ fun MessageStatusIndicator(status: MessageStatus) {
             )
             Icon(
                 Icons.Default.Schedule,
-                contentDescription = "Sending",
+                contentDescription = stringResource(R.string.status_sending),
                 modifier = Modifier
                     .size(12.dp)
                     .rotate(rotation),
@@ -995,7 +1066,7 @@ fun MessageStatusIndicator(status: MessageStatus) {
             // Single check
             Icon(
                 Icons.Default.Done,
-                contentDescription = "Sent",
+                contentDescription = stringResource(R.string.status_sent),
                 modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
             )
@@ -1004,7 +1075,7 @@ fun MessageStatusIndicator(status: MessageStatus) {
             // Double check
             Icon(
                 Icons.Default.DoneAll,
-                contentDescription = "Received",
+                contentDescription = stringResource(R.string.status_received),
                 modifier = Modifier.size(12.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -1017,7 +1088,7 @@ fun MessageStatusIndicator(status: MessageStatus) {
             ) {
                 Icon(
                     Icons.Default.ErrorOutline,
-                    contentDescription = "Failed",
+                    contentDescription = stringResource(R.string.status_failed),
                     modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.error
                 )

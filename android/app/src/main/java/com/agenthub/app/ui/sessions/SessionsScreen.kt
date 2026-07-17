@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agenthub.app.data.model.Session
@@ -80,6 +82,11 @@ private fun SessionsDualPaneLayout(
     val context = LocalContext.current
 
     var isRefreshing by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredSessions = remember(sessionList, searchQuery) {
+        if (searchQuery.isBlank()) sessionList
+        else sessionList.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -129,7 +136,22 @@ private fun SessionsDualPaneLayout(
                                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(18.dp))
                             }
                         }
-                        if (sessionList.isEmpty()) {
+                        // Search field
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text(stringResource(R.string.search_sessions), style = MaterialTheme.typography.bodySmall) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
+                        )
+                        if (filteredSessions.isEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -147,7 +169,7 @@ private fun SessionsDualPaneLayout(
                                 modifier = Modifier.weight(1f),
                                 contentPadding = PaddingValues(vertical = 4.dp)
                             ) {
-                                items(sessionList, key = { it.id }) { session ->
+                                items(filteredSessions, key = { it.id }) { session ->
                                     SwipeableSessionListItem(
                                         session = session,
                                         isSelected = session.id == currentSessionId,
@@ -282,6 +304,11 @@ private fun SessionsSinglePaneLayout(
     val context = LocalContext.current
 
     var isRefreshing by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredSessions = remember(sessionList, searchQuery) {
+        if (searchQuery.isBlank()) sessionList
+        else sessionList.filter { it.title.contains(searchQuery, ignoreCase = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -306,7 +333,23 @@ private fun SessionsSinglePaneLayout(
                         isRefreshing = false
                     }
                 ) {
-                    if (sessionList.isEmpty()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                    // Search field
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text(stringResource(R.string.search_sessions), style = MaterialTheme.typography.bodySmall) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                    )
+                    if (filteredSessions.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -333,10 +376,10 @@ private fun SessionsSinglePaneLayout(
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-                            items(sessionList, key = { it.id }) { session ->
+                            items(filteredSessions, key = { it.id }) { session ->
                                 SwipeableSessionCard(
                                     session = session,
                                     isSelected = session.id == currentSessionId,
@@ -533,6 +576,9 @@ private fun SessionListItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics {
+                contentDescription = "Session: ${session.title.ifEmpty { "untitled" }}, ${session.messageCount} messages"
+            }
             .clickable(onClick = onSelect),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
@@ -605,6 +651,9 @@ private fun SessionCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
+            .semantics {
+                contentDescription = "Session: ${session.title.ifEmpty { "untitled" }}, ${session.messageCount} messages"
+            }
             .clickable(onClick = onSelect),
         shape = RoundedCornerShape(12.dp)
     ) {

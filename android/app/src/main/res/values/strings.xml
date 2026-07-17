@@ -29,6 +29,10 @@
     <string name="btn_skip">Skip — I\'ll configure later</string>
     <string name="status_connected">Connected</string>
     <string name="status_disconnected">Disconnected</string>
+    <string name="status_sending">Sending</string>
+    <string name="status_sent">Sent</string>
+    <string name="status_received">Received</string>
+    <string name="status_failed">Failed</string>
     <string name="offline_banner_title">AI service not connected</string>
     <string name="offline_banner_subtitle">Add &amp; connect an agent endpoint in Agents to enable real-time chat</string>
     <string name="offline_banner_action">Connect</string>

@@ -69,7 +69,9 @@ data class ChatUiState(
     // Attachment state
     val pendingAttachmentType: String? = null,
     val pendingAttachmentData: String? = null,
-    val pendingAttachmentName: String? = null
+    val pendingAttachmentName: String? = null,
+    // Edit state
+    val editingMessageId: String? = null
 )
 
 @dagger.hilt.android.lifecycle.HiltViewModel
@@ -247,6 +249,13 @@ class ChatViewModel @javax.inject.Inject constructor(
         val state = _uiState.value
         if ((text.isEmpty() && state.pendingAttachmentType == null) || state.isStreaming) return
 
+        // If we're editing an existing message, update it instead of sending a new one
+        val editingId = state.editingMessageId
+        if (editingId != null) {
+            editMessage(editingId, text)
+            return
+        }
+
         lastUserMessageTime = System.currentTimeMillis()
 
         viewModelScope.launch {
@@ -312,6 +321,31 @@ class ChatViewModel @javax.inject.Inject constructor(
                         content = reply, status = MessageStatus.Received
                     ),
                     isStreaming = false
+                )
+            }
+        }
+    }
+
+    // ── Message Edit ──
+
+    fun startEditMessage(messageId: String, content: String) {
+        _uiState.update { it.copy(inputText = content, editingMessageId = messageId) }
+    }
+
+    fun cancelEdit() {
+        _uiState.update { it.copy(editingMessageId = null) }
+    }
+
+    fun editMessage(messageId: String, newContent: String) {
+        viewModelScope.launch {
+            repository.updateMessageStatus(messageId, newContent, MessageStatus.Sent)
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages.map {
+                        if (it.id == messageId) it.copy(content = newContent) else it
+                    },
+                    inputText = "",
+                    editingMessageId = null
                 )
             }
         }

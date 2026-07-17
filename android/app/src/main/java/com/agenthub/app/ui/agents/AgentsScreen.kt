@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -230,7 +232,9 @@ private fun AgentGridCard(
 
     Box {
     GlassCard(
-        modifier = Modifier.fillMaxWidth().combinedClickable(
+        modifier = Modifier.fillMaxWidth().semantics {
+            contentDescription = "Agent: ${agent.name}, type: ${agent.type.displayName}"
+        }.combinedClickable(
             onClick = onEdit,
             onLongClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -354,7 +358,9 @@ private fun AgentCard(
 
     Box {
     GlassCard(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).combinedClickable(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).semantics {
+            contentDescription = "Agent: ${agent.name}, type: ${agent.type.displayName}"
+        }.combinedClickable(
             onClick = onEdit,
             onLongClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
