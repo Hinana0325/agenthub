@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-07-17
+
+### Security
+
+- **KeystoreManager**: Hardware-backed AES-256-GCM encryption for API keys and E2E keys via Android Keystore
+- **Network Security**: Cleartext traffic denied by default; only local model endpoints (127.0.0.1, 10.x, 192.168.x) allow HTTP
+- **API Key Masking**: Password visual transformation on API key input fields
+- **Permissions**: Documented REQUEST_INSTALL_PACKAGES usage for self-update
+
+### Added
+
+- **Hilt Dependency Injection**
+  - @HiltAndroidApp Application class
+  - @AndroidEntryPoint on MainActivity
+  - @HiltViewModel on ChatViewModel, SettingsViewModel
+  - @Inject on all 5 ViewModels
+  - DatabaseModule (Room, DAOs, SettingsDataStore)
+  - RepositoryModule (ChatRepository)
+
+- **Unit Tests** (7 → 10 files, 50+ test cases)
+  - MarkdownParserTest (30 tests: headings, code, bold/italic, links, lists, tables)
+  - TransportFactoryTest (9 tests: AgentType routing)
+  - WorkflowEngineTest (12 tests: nodes, edges, templates)
+  - CryptoManagerTest, AgentConfigTest, AgentTypeTest, MessageTest, SessionTest, ConnectionStateTest, UpdateManagerTest
+
+- **UX Improvements**
+  - Message edit via long-press context menu (User messages only)
+  - Session search bar in SessionsScreen (filters by title)
+  - Message reactions via double-tap
+
+- **Performance**
+  - Room composite index on messages(sessionId, timestamp)
+  - Image auto-compression for attachments > 1MB (720p, JPEG 85%)
+  - PerformanceMonitor periodic refresh (memory, uptime, latency)
+
+- **Accessibility**
+  - ContentDescription on key interactive elements
+  - Architecture documentation (docs/architecture.md)
+
+- **i18n**
+  - Full 4-language support (EN/ZH/JA/KO) for all screens
+  - 30+ new string keys per language
+
+### Fixed
+
+- **Message duplication** in ChatViewModel (handleAgentEvent + simulateResponse)
+- **Tablet voice/attachment** callbacks missing in TabletChatLayout
+- **URL normalization** breaking HTTP endpoints (ws:// now only for WebSocket agents)
+- **Search overlay** overlapping with AgentHub title (wrapped in Box)
+- **ChatTopBar** streaming text overlapping with title (restructured layout)
+- **OfflineBanner** layout shift (added AnimatedVisibility)
+- **Inner Scaffold** double-padding (contentWindowInsets = WindowInsets(0))
+- **New Agent title** always showing 'Edit Agent' (fixed condition)
+- **ExposedDropdownMenuBox** not responding to clicks (interactionSource + menuAnchor)
+- **Hardcoded strings** in SettingsScreen, AgentMarketScreen, PluginScreen, WorkflowScreen
+- **Pull-to-refresh** not actually refreshing data
+- **handleSharedText** missing isStreaming flag
+
+### Changed
+
+- **CollaborationManager** indicator disabled (pending v2.2.0 real implementation)
+- **AgentType.values()** → AgentType.entries (deprecation fix)
+- **CONTRIBUTING.md** updated for pure Android project (removed PWA/JS references)
+- **SECURITY.md** updated with full security feature documentation
+
+### Removed
+
+- Capacitor remnants (capacitor.build.gradle, capacitor.settings.gradle)
+- PWA remnants (manifest.json, build.sh, package-lock.json)
+
+---
+
 ## [2.0.0] - 2025-07-06
 
 ### Changed
