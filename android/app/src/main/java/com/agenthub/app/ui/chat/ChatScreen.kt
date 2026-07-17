@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1583,6 +1585,15 @@ fun WizardOverlay(
 
                 // Protocol selector — dropdown menu (no text overflow)
                 var expanded by remember { mutableStateOf(false) }
+                val interactionSource = remember { MutableInteractionSource() }
+                // Listen for click events on the text field to toggle dropdown
+                LaunchedEffect(interactionSource) {
+                    interactionSource.interactions.collect { interaction ->
+                        if (interaction is PressInteraction.Release) {
+                            expanded = !expanded
+                        }
+                    }
+                }
                 Text(stringResource(R.string.label_agent_protocol), style = MaterialTheme.typography.labelLarge)
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -1596,7 +1607,10 @@ fun WizardOverlay(
                         readOnly = true,
                         label = { Text(stringResource(R.string.label_protocol)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth(),
+                        interactionSource = interactionSource,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
                         shape = RoundedCornerShape(12.dp)
                     )
                     ExposedDropdownMenu(
