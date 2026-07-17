@@ -151,7 +151,7 @@ private fun SessionsDualPaneLayout(
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                             )
                         )
-                        if (filteredSessions.isEmpty()) {
+                        if (sessionList.isEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -160,6 +160,19 @@ private fun SessionsDualPaneLayout(
                             ) {
                                 Text(
                                     stringResource(R.string.no_sessions),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+                        } else if (filteredSessions.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    stringResource(R.string.search_no_results),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
@@ -349,7 +362,7 @@ private fun SessionsSinglePaneLayout(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
                     )
-                    if (filteredSessions.isEmpty()) {
+                    if (sessionList.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -372,6 +385,17 @@ private fun SessionsSinglePaneLayout(
                                 stringResource(R.string.no_sessions_subtitle),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        }
+                    } else if (filteredSessions.isEmpty()) {
+                        Box(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                stringResource(R.string.search_no_results),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
                         }
                     } else {

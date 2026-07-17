@@ -344,4 +344,7 @@
     <string name="workflow_tpl_code_review_desc">分析 → 提案</string>
     <string name="workflow_tpl_research">リサーチアシスタント</string>
     <string name="workflow_tpl_research_desc">検索 → まとめ</string>
+    <string name="action_edit">編集</string>
+    <string name="search_sessions">セッションを検索…</string>
+    <string name="editing_message">メッセージ編集中…</string>
 </resources>

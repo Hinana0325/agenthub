@@ -409,4 +409,7 @@
     <string name="workflow_tpl_code_review_desc">Analyze → Suggest</string>
     <string name="workflow_tpl_research">Research Assistant</string>
     <string name="workflow_tpl_research_desc">Search → Summarize</string>
+    <string name="action_edit">Edit</string>
+    <string name="search_sessions">Search sessions…</string>
+    <string name="editing_message">Editing message…</string>
 </resources>

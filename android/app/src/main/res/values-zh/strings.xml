@@ -405,4 +405,7 @@
     <string name="workflow_tpl_code_review_desc">分析 → 建议</string>
     <string name="workflow_tpl_research">研究助手</string>
     <string name="workflow_tpl_research_desc">搜索 → 总结</string>
+    <string name="action_edit">编辑</string>
+    <string name="search_sessions">搜索会话…</string>
+    <string name="editing_message">编辑消息中…</string>
 </resources>

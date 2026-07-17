@@ -344,4 +344,7 @@
     <string name="workflow_tpl_code_review_desc">분석 → 제안</string>
     <string name="workflow_tpl_research">리서치 어시스턴트</string>
     <string name="workflow_tpl_research_desc">검색 → 요약</string>
+    <string name="action_edit">편집</string>
+    <string name="search_sessions">세션 검색…</string>
+    <string name="editing_message">메시지 편집 중…</string>
 </resources>
