@@ -3,7 +3,6 @@ package com.agenthub.app.ui.activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.ActivityItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +16,11 @@ data class ActivityUiState(
     val activities: List<ActivityItem> = emptyList()
 )
 
-class ActivityViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
+class ActivityViewModel @javax.inject.Inject constructor(
+    application: Application,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
+    // private val repository = AppModule.getRepository(application)
 
     private val _uiState = MutableStateFlow(ActivityUiState())
     val uiState: StateFlow<ActivityUiState> = _uiState.asStateFlow()

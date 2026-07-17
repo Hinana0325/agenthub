@@ -14,7 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
-class InsightsViewModel(application: Application) : AndroidViewModel(application) {
+class InsightsViewModel @javax.inject.Inject constructor(
+    application: Application
+) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
     private val insightsManager = DataInsightsManager(db.messageDao(), db.sessionDao())

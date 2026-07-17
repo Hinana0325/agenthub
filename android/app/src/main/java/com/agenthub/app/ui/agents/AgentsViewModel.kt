@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.data.model.AgentType
 import com.google.gson.Gson
@@ -26,8 +25,11 @@ data class AgentsUiState(
     val exportMessage: String? = null
 )
 
-class AgentsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
+class AgentsViewModel @javax.inject.Inject constructor(
+    application: Application,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
+    // private val repository = AppModule.getRepository(application)
 
     private val _uiState = MutableStateFlow(AgentsUiState())
     val uiState: StateFlow<AgentsUiState> = _uiState.asStateFlow()

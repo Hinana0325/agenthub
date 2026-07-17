@@ -2,8 +2,8 @@
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.data.model.AgentType
 import com.agenthub.app.data.model.ConnectionState
@@ -69,9 +69,14 @@ data class ChatUiState(
     val pendingAttachmentName: String? = null
 )
 
-class ChatViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
-    private val settingsDataStore = SettingsDataStore(getApplication())
+@dagger.hilt.android.lifecycle.HiltViewModel
+class ChatViewModel @javax.inject.Inject constructor(
+    application: Application,
+    private val repository: ChatRepository,
+    private val settingsDataStore: SettingsDataStore
+) : AndroidViewModel(application) {
+    // private val repository = AppModule.getRepository(application)
+    // private val settingsDataStore = SettingsDataStore(getApplication())
     private val _transport = MutableStateFlow<AgentTransport?>(null)
     private var voiceInputManager: VoiceInputManager? = null
     private var voiceChatManager: VoiceChatManager? = null
