@@ -386,4 +386,23 @@
     <string name="check_update">检查更新</string>
     <string name="checking_update">检查中…</string>
     <string name="api_key_saved_masked">API Key 已保存</string>
+    <!-- Plugin screen -->
+    <string name="plugin_run">运行</string>
+    <string name="plugin_input_hint">输入（可选）</string>
+    <string name="plugin_run_action">运行插件</string>
+    <string name="plugin_send_to_agent">发送给 Agent</string>
+    <string name="plugin_result">结果</string>
+    <string name="plugin_no_action">此插件没有可执行的操作。</string>
+    <string name="plugin_prompt_hint">e.g. London  or  2+2*3</string>
+    <!-- Workflow screen -->
+    <string name="workflow_blank">空白</string>
+    <string name="workflow_blank_desc">从零开始</string>
+    <string name="workflow_node_count">%d 个节点</string>
+    <string name="workflow_agent_count">%d 个 Agent</string>
+    <string name="workflow_tpl_translate">翻译链</string>
+    <string name="workflow_tpl_translate_desc">翻译 → 审校</string>
+    <string name="workflow_tpl_code_review">代码审查</string>
+    <string name="workflow_tpl_code_review_desc">分析 → 建议</string>
+    <string name="workflow_tpl_research">研究助手</string>
+    <string name="workflow_tpl_research_desc">搜索 → 总结</string>
 </resources>

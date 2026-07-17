@@ -325,4 +325,23 @@
     <string name="check_update">アップデートを確認</string>
     <string name="checking_update">確認中…</string>
     <string name="api_key_saved_masked">API Key 保存済み</string>
+    <!-- Plugin screen -->
+    <string name="plugin_run">実行</string>
+    <string name="plugin_input_hint">入力（任意）</string>
+    <string name="plugin_run_action">プラグイン実行</string>
+    <string name="plugin_send_to_agent">Agent に送信</string>
+    <string name="plugin_result">結果</string>
+    <string name="plugin_no_action">このプラグインには実行可能なアクションがありません。</string>
+    <string name="plugin_prompt_hint">e.g. London  or  2+2*3</string>
+    <!-- Workflow screen -->
+    <string name="workflow_blank">空白</string>
+    <string name="workflow_blank_desc">最初から始める</string>
+    <string name="workflow_node_count">%d ノード</string>
+    <string name="workflow_agent_count">%d Agent</string>
+    <string name="workflow_tpl_translate">翻訳チェーン</string>
+    <string name="workflow_tpl_translate_desc">翻訳 → 校正</string>
+    <string name="workflow_tpl_code_review">コードレビュー</string>
+    <string name="workflow_tpl_code_review_desc">分析 → 提案</string>
+    <string name="workflow_tpl_research">リサーチアシスタント</string>
+    <string name="workflow_tpl_research_desc">検索 → まとめ</string>
 </resources>

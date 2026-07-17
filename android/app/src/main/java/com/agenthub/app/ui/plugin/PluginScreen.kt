@@ -109,7 +109,7 @@ fun PluginScreen(
         val result = runResult!!
         AlertDialog(
             onDismissRequest = { runResult = null },
-            title = { Text(if (result.sendToAgent) "Send to Agent" else "Result") },
+            title = { Text(if (result.sendToAgent) stringResource(R.string.plugin_send_to_agent) else stringResource(R.string.plugin_result)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (result.sendToAgent) {
@@ -138,7 +138,7 @@ fun PluginScreen(
                         clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AgentHub Plugin Prompt", result.content))
                         runResult = null
                     }) {
-                        Text("Copy")
+                        Text(stringResource(R.string.action_copy))
                     }
                 } else {
                     TextButton(onClick = { runResult = null }) {
@@ -357,15 +357,15 @@ private fun PluginDetailDialog(
                 // Run section (only when the plugin has an executable action)
                 if (plugin.action != null) {
                     Text(
-                        text = "Run",
+                        text = stringResource(R.string.plugin_run),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                     OutlinedTextField(
                         value = runInput,
                         onValueChange = onRunInputChange,
-                        label = { Text("Input (optional)") },
-                        placeholder = { Text("e.g. London  or  2+2*3") },
+                        label = { Text(stringResource(R.string.plugin_input_hint)) },
+                        placeholder = { Text(stringResource(R.string.plugin_prompt_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -375,11 +375,11 @@ private fun PluginDetailDialog(
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Run Plugin")
+                        Text(stringResource(R.string.plugin_run_action))
                     }
                 } else {
                     Text(
-                        text = "This plugin has no executable action.",
+                        text = stringResource(R.string.plugin_no_action),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

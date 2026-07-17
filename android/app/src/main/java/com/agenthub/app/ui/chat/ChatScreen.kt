@@ -476,26 +476,13 @@ private fun ChatTopBar(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                val collabManager = remember { com.agenthub.app.data.collab.CollaborationManager() }
-                val collabState by collabManager.collabState.collectAsState()
-                if (collabState.isInSession && collabState.session != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 1.dp)
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(6.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiary
-                        ) {}
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(R.string.collab_indicator, collabState.session!!.participants.size),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                }
+                // Collaboration indicator — disabled until real implementation (v2.2.0)
+                // val isCollabEnabled = false
+                // if (isCollabEnabled) {
+                //     val collabManager = remember { com.agenthub.app.data.collab.CollaborationManager() }
+                //     val collabState by collabManager.collabState.collectAsState()
+                //     if (collabState.isInSession && collabState.session != null) { ... }
+                // }
             }
         },
         actions = {

@@ -386,4 +386,23 @@
     <string name="check_update">Check for updates</string>
     <string name="checking_update">Checking…</string>
     <string name="api_key_saved_masked">API key saved</string>
+    <!-- Plugin screen -->
+    <string name="plugin_run">Run</string>
+    <string name="plugin_input_hint">Input (optional)</string>
+    <string name="plugin_run_action">Run Plugin</string>
+    <string name="plugin_send_to_agent">Send to Agent</string>
+    <string name="plugin_result">Result</string>
+    <string name="plugin_no_action">This plugin has no executable action.</string>
+    <string name="plugin_prompt_hint">e.g. London  or  2+2*3</string>
+    <!-- Workflow screen -->
+    <string name="workflow_blank">Blank</string>
+    <string name="workflow_blank_desc">Start from scratch</string>
+    <string name="workflow_node_count">%d nodes</string>
+    <string name="workflow_agent_count">%d agents</string>
+    <string name="workflow_tpl_translate">Translation Chain</string>
+    <string name="workflow_tpl_translate_desc">Translate → Review</string>
+    <string name="workflow_tpl_code_review">Code Review</string>
+    <string name="workflow_tpl_code_review_desc">Analyze → Suggest</string>
+    <string name="workflow_tpl_research">Research Assistant</string>
+    <string name="workflow_tpl_research_desc">Search → Summarize</string>
 </resources>

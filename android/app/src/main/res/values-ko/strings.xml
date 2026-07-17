@@ -325,4 +325,23 @@
     <string name="check_update">업데이트 확인</string>
     <string name="checking_update">확인 중…</string>
     <string name="api_key_saved_masked">API Key 저장됨</string>
+    <!-- Plugin screen -->
+    <string name="plugin_run">실행</string>
+    <string name="plugin_input_hint">입력 (선택)</string>
+    <string name="plugin_run_action">플러그인 실행</string>
+    <string name="plugin_send_to_agent">Agent에게 보내기</string>
+    <string name="plugin_result">결과</string>
+    <string name="plugin_no_action">이 플러그인에는 실행 가능한 작업이 없습니다.</string>
+    <string name="plugin_prompt_hint">e.g. London  or  2+2*3</string>
+    <!-- Workflow screen -->
+    <string name="workflow_blank">빈 워크플로우</string>
+    <string name="workflow_blank_desc">처음부터 시작</string>
+    <string name="workflow_node_count">%d 노드</string>
+    <string name="workflow_agent_count">%d Agent</string>
+    <string name="workflow_tpl_translate">번역 체인</string>
+    <string name="workflow_tpl_translate_desc">번역 → 교정</string>
+    <string name="workflow_tpl_code_review">코드 리뷰</string>
+    <string name="workflow_tpl_code_review_desc">분석 → 제안</string>
+    <string name="workflow_tpl_research">리서치 어시스턴트</string>
+    <string name="workflow_tpl_research_desc">검색 → 요약</string>
 </resources>

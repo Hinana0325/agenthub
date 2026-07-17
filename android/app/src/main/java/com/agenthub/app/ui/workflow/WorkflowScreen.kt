@@ -187,11 +187,11 @@ private fun WorkflowCard(
                 ) {
                     WorkflowBadge(
                         icon = Icons.Default.Hub,
-                        text = "$nodeCount nodes"
+                        text = stringResource(R.string.workflow_node_count, nodeCount)
                     )
                     WorkflowBadge(
                         icon = Icons.Default.SmartToy,
-                        text = "$agentCount agents"
+                        text = stringResource(R.string.workflow_agent_count, agentCount)
                     )
                 }
             }
@@ -505,10 +505,10 @@ private fun CreateWorkflowDialog(
     var selectedTemplate by remember { mutableStateOf(0) }
 
     val templates = listOf(
-        "Blank" to "Start from scratch",
-        "Translation Chain" to "Translate → Review",
-        "Code Review" to "Analyze → Suggest",
-        "Research Assistant" to "Search → Summarize"
+        stringResource(R.string.workflow_blank) to stringResource(R.string.workflow_blank_desc),
+        stringResource(R.string.workflow_tpl_translate) to stringResource(R.string.workflow_tpl_translate_desc),
+        stringResource(R.string.workflow_tpl_code_review) to stringResource(R.string.workflow_tpl_code_review_desc),
+        stringResource(R.string.workflow_tpl_research) to stringResource(R.string.workflow_tpl_research_desc)
     )
 
     AlertDialog(
@@ -576,16 +576,16 @@ private fun CreateWorkflowDialog(
                             edges = listOf(WorkflowEdge(fromNodeId = "input", toNodeId = "output"))
                         )
                         1 -> WorkflowTemplates.translationChain().copy(
-                            name = name.ifEmpty { "Translation Chain" },
-                            description = description.ifEmpty { "Translate → Review & Polish" }
+                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_translate) },
+                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_translate_desc) }
                         )
                         2 -> WorkflowTemplates.codeReview().copy(
-                            name = name.ifEmpty { "Code Review" },
-                            description = description.ifEmpty { "Analyze → Suggest Improvements" }
+                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_code_review) },
+                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_code_review_desc) }
                         )
                         3 -> WorkflowTemplates.researchAssistant().copy(
-                            name = name.ifEmpty { "Research Assistant" },
-                            description = description.ifEmpty { "Search → Summarize" }
+                            name = name.ifEmpty { stringResource(R.string.workflow_tpl_research) },
+                            description = description.ifEmpty { stringResource(R.string.workflow_tpl_research_desc) }
                         )
                         else -> WorkflowTemplates.translationChain()
                     }
