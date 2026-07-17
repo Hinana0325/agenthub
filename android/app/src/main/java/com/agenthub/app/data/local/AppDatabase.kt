@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.agenthub.app.data.local.dao.ActivityDao
 import com.agenthub.app.data.local.dao.AgentConfigDao
 import com.agenthub.app.data.local.dao.MessageDao
@@ -24,7 +26,7 @@ import com.agenthub.app.data.local.entity.SessionEntity
         ActivityLogEntity::class,
         PluginEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -39,13 +41,19 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_sessionId_timestamp ON messages (sessionId, timestamp)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "agenthub.db"
-                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_4_5).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
         }
     }

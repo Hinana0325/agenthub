@@ -35,7 +35,10 @@ import com.agenthub.app.util.VoiceChatManager
 import com.agenthub.app.util.LocalModelManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 
 data class ChatUiState(
     val messages: List<Message> = emptyList(),
@@ -649,7 +652,34 @@ class ChatViewModel @javax.inject.Inject constructor(
                 val bytes = inputStream?.readBytes()
                 inputStream?.close()
                 if (bytes != null) {
-                    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                    val finalBytes = if (isImage && bytes.size > 1_000_000) {
+                        try {
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bitmap != null) {
+                                val maxDim = 720
+                                val scale = minOf(maxDim.toFloat() / bitmap.width, maxDim.toFloat() / bitmap.height, 1f)
+                                if (scale < 1f) {
+                                    val scaled = Bitmap.createScaledBitmap(
+                                        bitmap,
+                                        (bitmap.width * scale).toInt(),
+                                        (bitmap.height * scale).toInt(),
+                                        true
+                                    )
+                                    val out = ByteArrayOutputStream()
+                                    scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                                    if (scaled !== bitmap) scaled.recycle()
+                                    bitmap.recycle()
+                                    out.toByteArray()
+                                } else {
+                                    val out = ByteArrayOutputStream()
+                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                                    bitmap.recycle()
+                                    out.toByteArray()
+                                }
+                            } else bytes
+                        } catch (_: Exception) { bytes }
+                    } else bytes
+                    val base64 = Base64.encodeToString(finalBytes, Base64.NO_WRAP)
                     val name = uri.lastPathSegment ?: if (isImage) "image" else "file"
                     _uiState.update {
                         it.copy(
