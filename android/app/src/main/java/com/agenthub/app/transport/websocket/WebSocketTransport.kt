@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -315,5 +316,18 @@ class WebSocketTransport(
             _connectionState.value = AgentConnectionState()
             _events.send(AgentEvent.Disconnected())
         }
+    }
+
+    override fun shutdown() {
+        // 1. 取消协程作用域：终止 connectJob、connectLoop 中的 webSocket 会话
+        //    以及任何活跃的 incoming frame 收集协程。取消会传播到子协程，
+        //    WebSocketSession 也会被相应取消。
+        scope.cancel()
+        // 2. 关闭事件 Channel：使所有 events 收集者收到关闭信号并正常退出。
+        _events.close()
+        // 3. 关闭 HttpClient：释放底层连接池与线程资源。
+        client.close()
+        // 4. 重置连接状态。
+        _connectionState.value = AgentConnectionState()
     }
 }

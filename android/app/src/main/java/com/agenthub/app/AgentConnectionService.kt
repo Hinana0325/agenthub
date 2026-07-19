@@ -16,8 +16,7 @@ import androidx.core.app.RemoteInput
 import com.agenthub.app.data.notification.SmartNotificationManager
 import com.agenthub.app.data.repository.ChatRepository
 import com.agenthub.app.core.datastore.SettingsDataStore
-import com.agenthub.app.transport.TransportFactory
-import com.agenthub.app.transport.protocol.AgentTransport
+import com.agenthub.app.transport.ConnectionRepository
 import com.agenthub.app.widget.WidgetDataProvider
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -35,30 +34,25 @@ import javax.inject.Inject
  * 保持 Agent WebSocket/SSE 连接在后台不被系统杀死。
  * Android 8+ 要求前台服务显示持久通知。
  *
- * 架构说明（待重构）：
- *  当前 Agent 连接的实际维持逻辑位于 [com.agenthub.app.feature.chat.ChatViewModel]，
- *  Activity 销毁后 ViewModel 被清除，连接随之断开，前台服务形同虚设。
+ * 架构说明（已重构）：
+ *  Transport 所有权由 [ConnectionRepository]（@Singleton）统一管理。
+ *  本 Service 和 [com.agenthub.app.feature.chat.ChatViewModel] 共享同一个
+ *  transport 实例，彻底消除了此前各自创建独立 transport 导致的双连接问题。
  *
- *  本 Service 作为最小可行修复（Critical 4）：通过 Hilt 注入 [ChatRepository] 与
- *  [SettingsDataStore]，在 [onStartCommand] 中读取已保存的 AgentConfig，独立建立一条
- *  keep-alive 传输连接，并观察其 [AgentTransport.connectionState]，断开时自动重连。
- *  连接状态同步到 [WidgetDataProvider] 供 Widget 显示。
- *
- *  完整架构重构应将 transport 所有权上移至本 Service，让 ChatViewModel 通过 Service
- *  暴露的 Flow/事件流订阅连接状态与消息，彻底消除 Service 与 ViewModel 的双连接问题。
+ *  本 Service 通过注入的 [ConnectionRepository] 建立连接、监控连接状态并
+ *  在断开时自动重连。连接状态同步到 [WidgetDataProvider] 供 Widget 显示。
  */
 @AndroidEntryPoint
 class AgentConnectionService : Service() {
 
     @Inject lateinit var repository: ChatRepository
     @Inject lateinit var settingsDataStore: SettingsDataStore
+    @Inject lateinit var connectionRepository: ConnectionRepository
 
     private val smartNotificationManager = SmartNotificationManager()
 
     /** Service 级别的协程作用域，用于后台连接维持与重连 */
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    /** 后台维护的 keep-alive 传输实例 */
-    private var transport: AgentTransport? = null
     /** 连接状态监控协程，便于在 onDestroy 中取消 */
     private var connectionMonitorJob: Job? = null
 
@@ -110,10 +104,11 @@ class AgentConnectionService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        // Critical 4 修复：停止连接监控、断开 keep-alive 连接并取消协程作用域
+        // 停止连接监控并取消协程作用域。
+        // Transport 生命周期由 ConnectionRepository (@Singleton) 管理，
+        // Service 销毁时不 disconnect/shutdown —— ChatViewModel 或其他消费者
+        // 可能仍在使用连接。
         connectionMonitorJob?.cancel()
-        try { transport?.disconnect() } catch (_: Exception) {}
-        transport = null
         serviceScope.cancel()
         try { unregisterReceiver(replyReceiver) } catch (_: Exception) {}
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -121,20 +116,18 @@ class AgentConnectionService : Service() {
     }
 
     /**
-     * Critical 4 修复：启动后台连接维持。
+     * 启动后台连接维持。
      *
      * 1. 读取已保存的 AgentConfig（与 ChatViewModel.connectWith 一致的过滤条件）
      * 2. 若无可用配置，保持前台服务以便后续重试
-     * 3. 通过 [TransportFactory] 创建 transport 并建立 keep-alive 连接（含 E2E 密钥）
-     * 4. 观察 [AgentTransport.connectionState]：同步到 [WidgetDataProvider] 供 Widget 显示，
-     *    断开时带退避自动重连
-     *
-     * 注：完整架构应将 transport 所有权上移至本 Service，此处为最小可行修复，
-     * 仅保证进程存活期间服务器会话不因 Activity 销毁而中断。
+     * 3. 通过 [ConnectionRepository] 建立连接（含 E2E 密钥）—— Repository 作为
+     *    @Singleton 持有唯一 transport，与 ChatViewModel 共享同一连接
+     * 4. 观察 [ConnectionRepository.connectionState]：同步到 [WidgetDataProvider]
+     *    供 Widget 显示，断开时带退避自动重连
      */
     private fun startConnectionMaintenance() {
-        // High 10 修复：onStartCommand 可能多次触发，检查与 transport 赋值非原子会
-        // 导致并发创建多个 transport。若已有连接监控协程在运行则直接返回，避免重复启动。
+        // onStartCommand 可能多次触发，检查与监控协程赋值非原子会导致并发启动。
+        // 若已有连接监控协程在运行则直接返回，避免重复启动。
         if (connectionMonitorJob?.isActive == true) return
         serviceScope.launch {
             try {
@@ -147,8 +140,6 @@ class AgentConnectionService : Service() {
                     // 无可用配置，无法维持连接；保持前台服务以便后续重试
                     return@launch
                 }
-                // 已有 transport 则不重复建立
-                if (transport != null) return@launch
 
                 // E2E 密钥逻辑与 ChatViewModel.connectWith 保持一致
                 val e2eKey = if (savedConfig.type in setOf(
@@ -160,9 +151,8 @@ class AgentConnectionService : Service() {
                     if (enabled) settingsDataStore.e2eKey.first().takeIf { it.isNotBlank() } else null
                 } else null
 
-                val t = TransportFactory.create(savedConfig.type)
-                transport = t
-                t.connect(savedConfig, e2eKey = e2eKey)
+                // 通过 ConnectionRepository 建立连接（共享单例 transport）
+                connectionRepository.connect(savedConfig, e2eKey = e2eKey)
 
                 // 同步连接状态到 WidgetDataProvider，供 Widget 显示
                 WidgetDataProvider.updateConnectionState(
@@ -174,7 +164,7 @@ class AgentConnectionService : Service() {
                 // 监控连接状态：同步到 Widget 并在断开时带退避重连
                 connectionMonitorJob?.cancel()
                 connectionMonitorJob = serviceScope.launch {
-                    t.connectionState.collect { state ->
+                    connectionRepository.connectionState.collect { state ->
                         WidgetDataProvider.updateConnectionState(
                             this@AgentConnectionService,
                             isConnected = state.isConnected,
@@ -184,7 +174,7 @@ class AgentConnectionService : Service() {
                             // 退避后尝试重连，避免频繁重连消耗资源
                             delay(RECONNECT_BACKOFF_MS)
                             try {
-                                t.connect(savedConfig, e2eKey = e2eKey)
+                                connectionRepository.connect(savedConfig, e2eKey = e2eKey)
                             } catch (_: Exception) {
                                 // 重连失败，等待下一次状态变化触发重试
                             }

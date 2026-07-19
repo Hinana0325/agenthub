@@ -27,6 +27,19 @@ interface AgentTransport {
     fun disconnect()
 
     /**
+     * 彻底释放底层资源：取消协程作用域、关闭 HttpClient、关闭事件 Channel。
+     *
+     * 与 [disconnect] 的区别：
+     *  - [disconnect] 仅断开当前连接但保留 transport 实例以便后续 [connect] 重连。
+     *  - [shutdown] 释放所有底层资源（协程作用域、HttpClient、Channel），
+     *    调用后 transport 不再可用，应由 [TransportFactory] 创建新实例。
+     *
+     * 此方法解决了此前 transport 的 `CoroutineScope(SupervisorJob())` 和
+     * `HttpClient` 永不关闭导致的资源泄漏问题。
+     */
+    fun shutdown()
+
+    /**
      * 清空指定 [sessionId] 的本地会话历史。
      *
      * 对于 WebSocket 传输：仅清空客户端侧用于展示的本地消息缓存，
@@ -57,6 +70,18 @@ sealed class AgentEvent {
     data class MessageReceived(val content: String, val isDelta: Boolean = false) : AgentEvent()
     data class Error(val message: String) : AgentEvent()
     data object Reconnecting : AgentEvent()
+
+    /**
+     * 流式响应已结束。
+     *
+     * 由传输层在一次 [AgentTransport.sendMessage] 请求的流式响应完全接收后发出。
+     * 解决 HTTP SSE 纯增量流（delta-only）结束后 [com.agenthub.app.feature.chat.ChatUiState.isStreaming]
+     * 不被重置的问题：此前只有非增量 [MessageReceived]（isDelta=false）才会触发
+     * isStreaming=false，但 OpenAI SSE 流只发送增量，导致发送按钮一直停留在 Stop 状态。
+     *
+     * 上层在收到此事件后应将 isStreaming 置为 false。
+     */
+    data object StreamComplete : AgentEvent()
 }
 
 data class AgentConnectionState(

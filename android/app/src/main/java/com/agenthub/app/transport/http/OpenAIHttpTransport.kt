@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -173,6 +174,7 @@ class OpenAIHttpTransport(
             "temperature" to config.temperature,
             "max_tokens" to config.maxTokens
         )
+        var streamSucceeded = false
         try {
             client.preparePost(url) {
                 header("Authorization", "Bearer ${config.apiKey}")
@@ -189,6 +191,7 @@ class OpenAIHttpTransport(
                 // buffering the whole body with bodyAsText() — that would defeat
                 // the point of streaming and delay first-token latency.
                 parseStream(response.bodyAsChannel())
+                streamSucceeded = true
             }
             // 3. 流结束后，把累加的助手回复写入历史。此调用覆盖三种流结束情况：
             //    - SSE 流中收到 `data: [DONE]`（flushData 返回 false，循环退出）
@@ -196,6 +199,11 @@ class OpenAIHttpTransport(
             //    - 非 SSE 整包回退（emitFull 路径）
             //    若累加器为空（HTTP 非 200 / 请求失败），不会写入历史。
             saveAssistantResponse(sessionId)
+            // 4. 通知上层流式响应已结束，使其重置 isStreaming 状态。
+            //    仅在流成功完成时发送（HTTP 非 200 已通过 Error 事件通知上层）。
+            if (streamSucceeded) {
+                _events.send(AgentEvent.StreamComplete)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -379,6 +387,19 @@ class OpenAIHttpTransport(
             clearAllHistory()
             _events.send(AgentEvent.Disconnected())
         }
+    }
+
+    override fun shutdown() {
+        // 1. 取消协程作用域：终止所有正在进行的请求（connect 探活、sendMessage SSE 流）。
+        //    取消会触发 CancellationException，sendMessage 的 catch 块会正确处理。
+        eventScope.cancel()
+        // 2. 关闭事件 Channel：使所有 events 收集者收到 Channel 关闭信号并正常退出。
+        _events.close()
+        // 3. 关闭 HttpClient：释放 OkHttp 连接池、线程池等底层资源。
+        //    HttpClient 实现了 Closeable，close() 是同步调用。
+        client.close()
+        // 4. 重置连接状态。
+        _connectionState.value = AgentConnectionState()
     }
 
     companion object {

@@ -80,7 +80,7 @@ class CompareViewModel @Inject constructor(
                 transportA.connect(configA)
                 transportA.sendMessage("${sessionId}_a", prompt)
             } catch (e: Exception) {
-                _transportA.value?.disconnect()
+                _transportA.value?.shutdown()
                 _transportA.value = null
                 // A failed to start: mark A complete and only stop comparing if B is done.
                 _uiState.update {
@@ -95,7 +95,7 @@ class CompareViewModel @Inject constructor(
                 transportB.connect(configB)
                 transportB.sendMessage("${sessionId}_b", prompt)
             } catch (e: Exception) {
-                _transportB.value?.disconnect()
+                _transportB.value?.shutdown()
                 _transportB.value = null
                 // B failed to start: mark B complete and only stop comparing if A is done.
                 _uiState.update {
@@ -117,8 +117,11 @@ class CompareViewModel @Inject constructor(
     fun cancelCompare() {
         _uiState.update { it.copy(isCancelled = true) }
         viewModelScope.launch { repository.logActivity("compare", "Compare cancelled") }
-        _transportA.value?.disconnect()
-        _transportB.value?.disconnect()
+        // 使用 shutdown 而非 disconnect，彻底释放 transport 的协程作用域与 HttpClient。
+        // disconnect 只断开连接但不释放底层资源，CompareViewModel 频繁创建/销毁
+        // transport 会导致协程作用域与 HttpClient 泄漏。
+        _transportA.value?.shutdown()
+        _transportB.value?.shutdown()
         _transportA.value = null
         _transportB.value = null
         _uiState.update {
@@ -163,6 +166,12 @@ class CompareViewModel @Inject constructor(
                     it.copy(isAComplete = true, isComparing = !it.isBComplete)
                 }
             }
+            is AgentEvent.StreamComplete -> {
+                // HTTP SSE 纯增量流结束后触发，标记 A 完成并检查是否全部完成。
+                _uiState.update {
+                    it.copy(isAComplete = true, isComparing = !it.isBComplete)
+                }
+            }
             is AgentEvent.Connected -> { /* connected */ }
             is AgentEvent.Reconnecting -> { /* reconnecting */ }
         }
@@ -201,6 +210,12 @@ class CompareViewModel @Inject constructor(
                     it.copy(isBComplete = true, isComparing = !it.isAComplete)
                 }
             }
+            is AgentEvent.StreamComplete -> {
+                // HTTP SSE 纯增量流结束后触发，标记 B 完成并检查是否全部完成。
+                _uiState.update {
+                    it.copy(isBComplete = true, isComparing = !it.isAComplete)
+                }
+            }
             is AgentEvent.Connected -> { /* connected */ }
             is AgentEvent.Reconnecting -> { /* reconnecting */ }
         }
@@ -208,8 +223,10 @@ class CompareViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        _transportA.value?.disconnect()
-        _transportB.value?.disconnect()
+        // 使用 shutdown 彻底释放 transport 资源（协程作用域、HttpClient、Channel），
+        // 修复此前仅 disconnect 导致的协程作用域与 HttpClient 泄漏。
+        _transportA.value?.shutdown()
+        _transportB.value?.shutdown()
         _transportA.value = null
         _transportB.value = null
     }

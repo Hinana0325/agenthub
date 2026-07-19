@@ -13,14 +13,12 @@ import com.agenthub.app.data.model.MessageStatus
 import com.agenthub.app.data.model.Session
 import com.agenthub.app.transport.protocol.AgentConnectionState
 import com.agenthub.app.transport.protocol.AgentEvent
-import com.agenthub.app.transport.protocol.AgentTransport
-import com.agenthub.app.transport.TransportFactory
+import com.agenthub.app.transport.ConnectionRepository
 import com.agenthub.app.core.datastore.SettingsDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -94,9 +92,9 @@ data class ChatUiState(
 class ChatViewModel @Inject constructor(
     application: Application,
     private val repository: com.agenthub.app.data.repository.ChatRepository,
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val connectionRepository: ConnectionRepository
 ) : AndroidViewModel(application) {
-    private val _transport = MutableStateFlow<AgentTransport?>(null)
     private var voiceInputManager: VoiceInputManager? = null
     private var voiceChatManager: VoiceChatManager? = null
     private val localModelManager = LocalModelManager()
@@ -146,13 +144,12 @@ class ChatViewModel @Inject constructor(
         }
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         viewModelScope.launch {
-            _transport.filterNotNull().flatMapLatest { it.events }.collect { event ->
+            connectionRepository.events.collect { event ->
                 handleAgentEvent(event)
             }
         }
-        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         viewModelScope.launch {
-            _transport.filterNotNull().flatMapLatest { it.connectionState }.collect { state ->
+            connectionRepository.connectionState.collect { state ->
                 handleConnectionState(state)
             }
         }
@@ -277,6 +274,11 @@ class ChatViewModel @Inject constructor(
             is AgentEvent.Reconnecting -> {
                 repository.logActivity("connection", "Agent reconnecting...")
             }
+            is AgentEvent.StreamComplete -> {
+                // HTTP SSE 纯增量流结束后由传输层发出此事件，重置 isStreaming。
+                // 解决此前纯增量流结束后发送按钮一直停留在 Stop 状态的问题。
+                _uiState.update { it.copy(isStreaming = false) }
+            }
         }
     }
 
@@ -285,25 +287,20 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * 通过 [TransportFactory] 按 AgentType 获取传输实例并连接。
-     * 若已存在同类型的传输则复用，否则断开旧传输并创建新实例。
+     * 通过 [ConnectionRepository] 连接到指定 Agent。
+     *
+     * Repository 作为 @Singleton 持有唯一的 transport 实例，负责判断是否需要
+     * 切换 transport 类型（Hermes ↔ OpenAI 等）以及旧 transport 的 [com.agenthub.app.transport.protocol.AgentTransport.shutdown]。
+     * 本方法仅负责读取 E2E 设置并委托给 repository。
      */
     private suspend fun connectWith(config: AgentConfig) {
-        val current = _transport.value
-        val needsNew = current == null || current.connectionState.value.agentType != config.type
-        val transport = if (needsNew) {
-            current?.disconnect()
-            TransportFactory.create(config.type).also { _transport.value = it }
-        } else {
-            current
-        }
         // E2E 仅对 WebSocket 对等传输（Hermes/OpenClaw/OpenCode）生效；
         // 从全局设置读取开关与密钥，未启用则为 null。
         val e2eKey = if (config.type in setOf(AgentType.Hermes, AgentType.OpenClaw, AgentType.OpenCode)) {
             val enabled = settingsDataStore.e2eEnabled.first()
             if (enabled) settingsDataStore.e2eKey.first().takeIf { it.isNotBlank() } else null
         } else null
-        transport?.connect(config, e2eKey = e2eKey)
+        connectionRepository.connect(config, e2eKey = e2eKey)
     }
 
     private fun handleConnectionState(state: AgentConnectionState) {
@@ -375,7 +372,7 @@ class ChatViewModel @Inject constructor(
             }
 
             if (_uiState.value.connectionState.isConnected) {
-                _transport.value?.sendMessage(sessionId, text)
+                connectionRepository.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -467,7 +464,7 @@ class ChatViewModel @Inject constructor(
             _uiState.value.currentSessionId?.let { id ->
                 // 清空传输层中当前 session 的对话历史，确保下次发送的消息
                 // 不会携带清除前的上下文（/clear 命令的语义是「重新开始」）。
-                _transport.value?.clearHistory(id)
+                connectionRepository.clearHistory(id)
                 repository.deleteMessagesBySession(id)
             }
         }
@@ -548,7 +545,7 @@ class ChatViewModel @Inject constructor(
             // 同 sessionId（若被复用）的请求携带已删除会话的上下文。
             // transport 可能为 null（尚未连接），安全调用会跳过；
             // OpenAIHttpTransport 清空客户端历史，WebSocketTransport 清空本地缓存。
-            _transport.value?.clearHistory(sessionId)
+            connectionRepository.clearHistory(sessionId)
             repository.deleteSession(sessionId)
             if (_uiState.value.currentSessionId == sessionId) {
                 val sessions = _uiState.value.sessions
@@ -775,7 +772,7 @@ class ChatViewModel @Inject constructor(
                 )
             }
             if (_uiState.value.connectionState.isConnected) {
-                _transport.value?.sendMessage(sessionId, text)
+                connectionRepository.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -812,7 +809,7 @@ class ChatViewModel @Inject constructor(
                 )
             }
             if (_uiState.value.connectionState.isConnected) {
-                _transport.value?.sendMessage(sessionId, text)
+                connectionRepository.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -852,7 +849,7 @@ class ChatViewModel @Inject constructor(
                 )
             }
             if (_uiState.value.connectionState.isConnected) {
-                _transport.value?.sendMessage(sessionId, text)
+                connectionRepository.sendMessage(sessionId, text)
             } else {
                 simulateResponse()
             }
@@ -1061,7 +1058,8 @@ class ChatViewModel @Inject constructor(
         } catch (_: Exception) {
             // 接收器可能因异常路径未注册成功，忽略注销失败
         }
-        _transport.value?.disconnect()
+        // Transport 生命周期由 ConnectionRepository (@Singleton) 管理，ViewModel
+        // 销毁时不 disconnect/shutdown —— 前台服务及其他消费者可能仍在使用连接。
         voiceInputManager?.destroy()
         voiceChatManager?.destroy()
     }
