@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.ui.theme.GlassBackdropGradientBottomDark
 import com.agenthub.app.ui.theme.GlassBackdropGradientBottomLight
 import com.agenthub.app.ui.theme.GlassBackdropGradientTopDark
@@ -33,6 +34,7 @@ import com.agenthub.app.ui.theme.AgentHubTheme
 import com.agenthub.app.ui.theme.ThemeMode
 import com.agenthub.app.util.SuperIslandManager
 import com.agenthub.app.util.LocalNotificationManager
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * AgentHub MainActivity — Compose 原生入口
@@ -42,6 +44,7 @@ import com.agenthub.app.util.LocalNotificationManager
  * - 启动 Foreground Service 后台保活
  * - Android Share Sheet 处理
  */
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private var shareHandled = false
@@ -73,7 +76,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
-            val settingsViewModel: SettingsViewModel = viewModel()
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.uiState.collectAsState()
             val themeMode = when (settingsState.themeMode) {
                 "light" -> ThemeMode.Light
@@ -98,7 +101,7 @@ class MainActivity : ComponentActivity() {
             }
 
             // Handle share intent via ChatViewModel
-            val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = viewModel()
+            val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = hiltViewModel()
             LaunchedEffect(intent) {
                 handleShareIntent(intent, chatViewModel)
             }

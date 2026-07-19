@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.data.model.AgentType
 import com.agenthub.app.data.model.ConnectionState
@@ -17,6 +16,7 @@ import com.agenthub.app.provider.AgentEvent
 import com.agenthub.app.provider.AgentTransport
 import com.agenthub.app.provider.TransportFactory
 import com.agenthub.app.data.settings.SettingsDataStore
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,6 +32,7 @@ import android.content.Context
 import android.util.Base64
 import com.agenthub.app.util.PerformanceMonitor
 import com.agenthub.app.util.VoiceInputManager
+import javax.inject.Inject
 import com.agenthub.app.util.VoiceChatManager
 import com.agenthub.app.util.LocalModelManager
 import kotlinx.coroutines.delay
@@ -81,9 +82,12 @@ data class ChatUiState(
 )
 
 
-class ChatViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
-    private val settingsDataStore = SettingsDataStore(getApplication())
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    application: Application,
+    private val repository: com.agenthub.app.data.repository.ChatRepository,
+    private val settingsDataStore: SettingsDataStore
+) : AndroidViewModel(application) {
     // private val repository = AppModule.getRepository(application)
     // private val settingsDataStore = SettingsDataStore(getApplication())
     private val _transport = MutableStateFlow<AgentTransport?>(null)

@@ -3,11 +3,12 @@ package com.agenthub.app.ui.compare
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.AgentConfig
+import com.agenthub.app.data.repository.ChatRepository
 import com.agenthub.app.provider.AgentEvent
 import com.agenthub.app.provider.AgentTransport
 import com.agenthub.app.provider.TransportFactory
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class CompareUiState(
     val agentAName: String = "Agent A",
@@ -29,8 +31,11 @@ data class CompareUiState(
     val isCancelled: Boolean = false
 )
 
-class CompareViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
+@HiltViewModel
+class CompareViewModel @Inject constructor(
+    application: Application,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
     private val _transportA = MutableStateFlow<AgentTransport?>(null)
     private val _transportB = MutableStateFlow<AgentTransport?>(null)
 

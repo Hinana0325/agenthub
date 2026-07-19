@@ -6,9 +6,9 @@ import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.data.repository.ChatRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
+import javax.inject.Inject
 
 data class AgentsUiState(
     val agents: List<AgentConfig> = emptyList(),
@@ -26,8 +28,11 @@ data class AgentsUiState(
     val exportMessage: String? = null
 )
 
-class AgentsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = AppModule.getRepository(application)
+@HiltViewModel
+class AgentsViewModel @Inject constructor(
+    application: Application,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AgentsUiState())
     val uiState: StateFlow<AgentsUiState> = _uiState.asStateFlow()

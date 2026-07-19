@@ -8,13 +8,16 @@ import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
 import com.agenthub.app.data.local.AppDatabase
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
-class InsightsViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class InsightsViewModel @Inject constructor(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
     private val insightsManager = DataInsightsManager(db.messageDao(), db.sessionDao())

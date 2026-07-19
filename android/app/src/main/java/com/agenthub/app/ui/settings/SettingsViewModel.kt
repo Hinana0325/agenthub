@@ -10,10 +10,11 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.model.ChatBackup
+import com.agenthub.app.data.repository.ChatRepository
 import com.agenthub.app.data.settings.SettingsDataStore
 import com.agenthub.app.util.PerformanceMonitor
+import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.security.SecureRandom
+import javax.inject.Inject
 
 data class SettingsUiState(
     val themeMode: String = "system",
@@ -32,8 +34,12 @@ data class SettingsUiState(
     val backupMessage: String? = null
 )
 
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-    private val dataStore = SettingsDataStore(application)
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    application: Application,
+    private val dataStore: SettingsDataStore,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -129,7 +135,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun exportChatHistory(context: Context) {
         viewModelScope.launch {
             try {
-                val repository = AppModule.getRepository(context)
                 val sessions = repository.getAllSessionsList()
                 val allMessages = sessions.flatMap { session ->
                     repository.getMessagesBySessionList(session.id)
@@ -157,7 +162,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
                 if (json != null) {
                     val backup = Gson().fromJson(json, ChatBackup::class.java)
-                    val repository = AppModule.getRepository(context)
                     backup.sessions.forEach { session ->
                         repository.insertSessionDirect(session)
                     }

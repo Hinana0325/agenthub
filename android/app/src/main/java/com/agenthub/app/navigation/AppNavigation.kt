@@ -27,7 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -59,7 +59,7 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val adaptive = currentAdaptiveConfig()
-    val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = viewModel()
+    val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = hiltViewModel()
 
     if (adaptive.shouldShowRail) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -141,7 +141,7 @@ fun AppNavigation() {
                         PluginScreen(onBack = { navController.popBackStack() })
                     }
                     composable(Screen.Compare.route) {
-                        val compareViewModel: CompareViewModel = viewModel()
+                        val compareViewModel: CompareViewModel = hiltViewModel()
                         CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
                     }
                 }
@@ -223,7 +223,7 @@ fun AppNavigation() {
                 PluginScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Compare.route) {
-                val compareViewModel: CompareViewModel = viewModel()
+                val compareViewModel: CompareViewModel = hiltViewModel()
                 CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
             }
         }
