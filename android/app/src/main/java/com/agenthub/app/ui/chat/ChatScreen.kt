@@ -1458,11 +1458,12 @@ private fun ClickableAnnotatedText(
 
 @Composable
 private fun OfflineBanner(onConnect: () -> Unit) {
+    val bannerText = stringResource(R.string.a11y_offline_banner)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .semantics {
-                contentDescription = "${stringResource(R.string.a11y_offline_banner)}"
+                contentDescription = bannerText
             },
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.92f)
     ) {
@@ -1507,9 +1508,10 @@ fun EmptyChatPlaceholder(
     connectionState: com.agenthub.app.data.model.ConnectionState,
     modifier: Modifier = Modifier
 ) {
+    val emptyChatText = stringResource(R.string.a11y_empty_chat)
     Column(
         modifier = modifier.semantics {
-            contentDescription = stringResource(R.string.a11y_empty_chat)
+            contentDescription = emptyChatText
         },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
