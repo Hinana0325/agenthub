@@ -8,6 +8,7 @@ import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.transport.protocol.AgentConnectionState
 import com.agenthub.app.transport.protocol.AgentEvent
 import com.agenthub.app.transport.protocol.AgentTransport
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,7 +43,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class ConnectionRepository @Inject constructor(
-    private val appContext: Context
+    @ApplicationContext private val appContext: Context
 ) {
 
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
