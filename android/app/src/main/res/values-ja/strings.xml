@@ -355,4 +355,8 @@
     <string name="compare_agent_b">Agent B</string>
     <string name="compare_cancel">キャンセル</string>
     <string name="compare_select_hint">比較する2つのエージェントを選択してください</string>
+    <string name="compare_vs">VS</string>
+    <string name="compare_summary">比較サマリー</string>
+    <string name="compare_chars">%d 文字</string>
+    <string name="compare_words">%d 語</string>
 </resources>

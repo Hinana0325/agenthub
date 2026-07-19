@@ -420,4 +420,8 @@
     <string name="compare_agent_b">Agent B</string>
     <string name="compare_cancel">Cancel</string>
     <string name="compare_select_hint">Select two agents to compare</string>
+    <string name="compare_vs">VS</string>
+    <string name="compare_summary">Summary</string>
+    <string name="compare_chars">%d chars</string>
+    <string name="compare_words">%d words</string>
 </resources>

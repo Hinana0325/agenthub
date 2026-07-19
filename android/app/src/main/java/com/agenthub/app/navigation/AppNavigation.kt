@@ -142,7 +142,7 @@ fun AppNavigation() {
                     }
                     composable(Screen.Compare.route) {
                         val compareViewModel: CompareViewModel = viewModel()
-                        CompareScreen(viewModel = compareViewModel, navController = navController)
+                        CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
                     }
                 }
             }
@@ -224,7 +224,7 @@ fun AppNavigation() {
             }
             composable(Screen.Compare.route) {
                 val compareViewModel: CompareViewModel = viewModel()
-                CompareScreen(viewModel = compareViewModel, navController = navController)
+                CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
             }
         }
     }

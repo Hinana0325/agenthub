@@ -416,4 +416,8 @@
     <string name="compare_agent_b">Agent B</string>
     <string name="compare_cancel">取消</string>
     <string name="compare_select_hint">选择两个 Agent 进行对比</string>
+    <string name="compare_vs">VS</string>
+    <string name="compare_summary">对比摘要</string>
+    <string name="compare_chars">%d 字符</string>
+    <string name="compare_words">%d 词</string>
 </resources>

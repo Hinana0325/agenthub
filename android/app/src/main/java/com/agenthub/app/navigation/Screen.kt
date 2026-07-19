@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -26,7 +27,7 @@ sealed class Screen(
     data object Marketplace : Screen("marketplace", R.string.nav_marketplace, Icons.Default.Storefront)
     data object Insights : Screen("insights", R.string.insights_title, Icons.Default.BarChart)
     data object Workflow : Screen("workflow", R.string.nav_workflow, Icons.Default.AccountTree)
-    data object Compare : Screen("compare", R.string.compare_title, Icons.Default.Chat)
+    data object Compare : Screen("compare", R.string.compare_title, Icons.Default.CompareArrows)
 
     companion object {
         val tabs = listOf(Chat, Sessions, Activity, Settings)

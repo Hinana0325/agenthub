@@ -355,4 +355,8 @@
     <string name="compare_agent_b">Agent B</string>
     <string name="compare_cancel">취소</string>
     <string name="compare_select_hint">비교할 두 개의 에이전트를 선택하세요</string>
+    <string name="compare_vs">VS</string>
+    <string name="compare_summary">비교 요약</string>
+    <string name="compare_chars">%d 문자</string>
+    <string name="compare_words">%d 단어</string>
 </resources>

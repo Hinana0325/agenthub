@@ -17,17 +17,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import com.agenthub.app.R
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.chat.MarkdownText
 import com.agenthub.app.ui.theme.GlassTopAppBar
 
+private val WHITESPACE_REGEX = "\\s+".toRegex()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompareScreen(
     viewModel: CompareViewModel,
-    navController: NavHostController
+    onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
@@ -39,7 +40,7 @@ fun CompareScreen(
                     Text(stringResource(R.string.compare_title))
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.btn_back)
@@ -49,7 +50,7 @@ fun CompareScreen(
                 actions = {
                     IconButton(onClick = {
                         viewModel.cancelCompare()
-                        navController.popBackStack()
+                        onBack()
                     }) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -98,7 +99,7 @@ fun CompareScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "VS",
+                    text = stringResource(R.string.compare_vs),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -272,8 +273,8 @@ private fun ComparePreview(
     agentBName: String,
     modifier: Modifier = Modifier
 ) {
-    val wordCountA = responseA.split("\\s+".toRegex()).filter { it.isNotBlank() }.size
-    val wordCountB = responseB.split("\\s+".toRegex()).filter { it.isNotBlank() }.size
+    val wordCountA = responseA.split(WHITESPACE_REGEX).filter { it.isNotBlank() }.size
+    val wordCountB = responseB.split(WHITESPACE_REGEX).filter { it.isNotBlank() }.size
 
     Surface(
         modifier = modifier,
@@ -283,7 +284,7 @@ private fun ComparePreview(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Summary",
+                text = stringResource(R.string.compare_summary),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -320,11 +321,11 @@ private fun CompareStat(
             color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "$chars chars",
+            text = stringResource(R.string.compare_chars, chars),
             style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "$words words",
+            text = stringResource(R.string.compare_words, words),
             style = MaterialTheme.typography.bodySmall
         )
     }
