@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App -->
-    <string name="app_name">AgentHub</string>
-    <string name="title_activity_main">AgentHub</string>
+    <string name="app_name">Agent Control Center</string>
+    <string name="title_activity_main">Agent Control Center</string>
     <string name="package_name">com.agenthub.app</string>
     <string name="custom_url_scheme">com.agenthub.app</string>
 
@@ -85,15 +85,15 @@
 
     <!-- Notification / Service -->
     <string name="notif_channel_name">Agent 연결</string>
-    <string name="notif_channel_desc">AgentHub 백그라운드 연결 상태</string>
-    <string name="notif_connected_title">AgentHub 연결됨</string>
-    <string name="notif_connected_text">AgentHub가 백그라운드에서 실행 중입니다</string>
-    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_channel_desc">Agent Control Center 백그라운드 연결 상태</string>
+    <string name="notif_connected_title">Agent Control Center 연결됨</string>
+    <string name="notif_connected_text">Agent Control Center가 백그라운드에서 실행 중입니다</string>
+    <string name="notif_service_title">Agent Control Center</string>
     <string name="notif_service_text">백그라운드에서 실행 중</string>
 
     <!-- Widget -->
-    <string name="widget_description">AgentHub · Agent 상태를 빠르게 확인</string>
-    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_description">Agent Control Center · Agent 상태를 빠르게 확인</string>
+    <string name="widget_title">🤖 Agent Control Center</string>
     <string name="widget_status_connected">연결됨 · %s</string>
     <string name="widget_status_disconnected">연결 끊김</string>
     <string name="widget_last_message_empty">메시지 없음</string>
@@ -126,7 +126,7 @@
     <string name="label_model">모델（선택）</string>
 
     <!-- Clipboard -->
-    <string name="clipboard_label">AgentHub 메시지</string>
+    <string name="clipboard_label">Agent Control Center 메시지</string>
 
     <!-- Import/Export -->
     <string name="import_configs">설정 가져오기</string>

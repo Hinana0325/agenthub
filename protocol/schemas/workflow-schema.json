@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/workflow-schema.json",
-  "title": "AgentHub Workflow Schema",
+  "title": "Agent Control Center Workflow Schema",
   "description": "工作流模型永久统一契约。基于 Android (Kotlin) 实际实现，Android (Kotlin) 与 iOS (Swift) 共享此定义。工作流是由节点 (Node) 和边 (Edge) 组成的有向无环图 (DAG)，通过拓扑排序执行，每个 AGENT 节点调用单次 60 秒超时。",
   "type": "object",
   "definitions": {

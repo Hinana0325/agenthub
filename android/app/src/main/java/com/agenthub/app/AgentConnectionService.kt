@@ -90,7 +90,7 @@ class AgentConnectionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val agentName = intent?.getStringExtra("agent_name") ?: "AgentHub"
+        val agentName = intent?.getStringExtra("agent_name") ?: "Agent Control Center"
         val notification = buildNotification(agentName)
         startForeground(NOTIFICATION_ID, notification)
 

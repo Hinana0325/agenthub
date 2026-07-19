@@ -1,6 +1,6 @@
-# AgentHub 协议层
+# Agent Control Center 协议层
 
-AgentHub Android (Kotlin) 与 iOS (Swift) 之间永久统一的协议契约。
+Agent Control Center Android (Kotlin) 与 iOS (Swift) 之间永久统一的协议契约。
 
 ## 设计原则
 

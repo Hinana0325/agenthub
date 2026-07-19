@@ -142,7 +142,7 @@ fun ChatScreen(
         )
     } else {
         // Box ensures SearchOverlay floats on top of the main layout instead of
-        // stacking below it (which caused the "AgentHub" title to overlap with the search bar).
+        // stacking below it (which caused the "Agent Control Center" title to overlap with the search bar).
         Box(modifier = Modifier.fillMaxSize()) {
             if (adaptive.shouldShowSidebar) {
                 TabletChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)

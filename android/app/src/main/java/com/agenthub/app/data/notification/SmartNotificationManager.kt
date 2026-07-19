@@ -115,8 +115,8 @@ class SmartNotificationManager {
     fun getNotificationTitle(message: Message): String {
         return when (shouldNotify(message)) {
             Priority.HIGH -> "\u26A0\uFE0F Important"
-            Priority.MEDIUM -> "AgentHub"
-            Priority.LOW -> "AgentHub"
+            Priority.MEDIUM -> "Agent Control Center"
+            Priority.LOW -> "Agent Control Center"
         }
     }
 

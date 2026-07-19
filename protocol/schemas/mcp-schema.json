@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/mcp-schema.json",
-  "title": "AgentHub MCP Bridge Schema",
-  "description": "MCP (Model Context Protocol) 桥接协议永久统一契约。基于 MCP 2025-03-26 规范，Android (Kotlin) 与 iOS (Swift) 共享此定义。定义 MCP Server 配置、工具发现 (tools/list)、工具调用 (tools/call)、JSON-RPC 2.0 信封与传输层约定。AgentHub 通过 McpBridge 将远程 MCP Server 的工具能力接入 Agent 生态。",
+  "title": "Agent Control Center MCP Bridge Schema",
+  "description": "MCP (Model Context Protocol) 桥接协议永久统一契约。基于 MCP 2025-03-26 规范，Android (Kotlin) 与 iOS (Swift) 共享此定义。定义 MCP Server 配置、工具发现 (tools/list)、工具调用 (tools/call)、JSON-RPC 2.0 信封与传输层约定。Agent Control Center 通过 McpBridge 将远程 MCP Server 的工具能力接入 Agent 生态。",
   "type": "object",
   "definitions": {
     "McpTransportType": {
       "title": "McpTransportType",
-      "description": "MCP 传输类型枚举。STDIO=标准输入输出（本地进程），SSE=Server-Sent Events，HTTP=HTTP 请求/响应。当前 AgentHub 默认使用 SSE。",
+      "description": "MCP 传输类型枚举。STDIO=标准输入输出（本地进程），SSE=Server-Sent Events，HTTP=HTTP 请求/响应。当前 Agent Control Center 默认使用 SSE。",
       "type": "string",
       "enum": ["STDIO", "SSE", "HTTP"]
     },
@@ -40,7 +40,7 @@
     },
     "McpServer": {
       "title": "McpServer",
-      "description": "MCP Server 配置。AgentHub 通过 transportUrl 连接 MCP Server，使用 apiKey 做 Bearer 认证。",
+      "description": "MCP Server 配置。Agent Control Center 通过 transportUrl 连接 MCP Server，使用 apiKey 做 Bearer 认证。",
       "type": "object",
       "required": ["id", "name", "transportUrl"],
       "properties": {
@@ -320,8 +320,8 @@
           "properties": {
             "name": {
               "type": "string",
-              "description": "客户端名称，固定 'AgentHub'",
-              "default": "AgentHub"
+              "description": "客户端名称，固定 'Agent Control Center'",
+              "default": "Agent Control Center"
             },
             "version": {
               "type": "string",
@@ -329,7 +329,7 @@
             }
           },
           "required": ["name", "version"],
-          "default": { "name": "AgentHub", "version": "1.0.0" }
+          "default": { "name": "Agent Control Center", "version": "1.0.0" }
         }
       }
     },
@@ -358,11 +358,11 @@
     }
   },
   "methods": {
-    "description": "AgentHub MCP Bridge 支持的 JSON-RPC 方法集。每个方法对应 JsonRpcRequest.method 的取值。",
+    "description": "Agent Control Center MCP Bridge 支持的 JSON-RPC 方法集。每个方法对应 JsonRpcRequest.method 的取值。",
     "initialize": {
       "method": "initialize",
       "params": { "$ref": "#/definitions/InitializeParams" },
-      "description": "初始化握手。客户端发送 protocolVersion='2025-03-26'、capabilities={}、clientInfo={name:'AgentHub', version}。失败时触发错误码 8004 MCP_INITIALIZATION_FAILED。"
+      "description": "初始化握手。客户端发送 protocolVersion='2025-03-26'、capabilities={}、clientInfo={name:'Agent Control Center', version}。失败时触发错误码 8004 MCP_INITIALIZATION_FAILED。"
     },
     "tools/list": {
       "method": "tools/list",
@@ -376,7 +376,7 @@
     }
   },
   "transport": {
-    "description": "传输层约定。当前 AgentHub 默认通过 HTTP/SSE 传输。",
+    "description": "传输层约定。当前 Agent Control Center 默认通过 HTTP/SSE 传输。",
     "http": {
       "method": "POST",
       "url": "{transportUrl}",

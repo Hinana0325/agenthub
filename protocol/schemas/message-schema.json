@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/message-schema.json",
-  "title": "AgentHub Message Schema",
+  "title": "Agent Control Center Message Schema",
   "description": "聊天消息模型契约。Message 隶属于 Session，包含角色、内容、状态和可选附件。",
   "type": "object",
   "definitions": {

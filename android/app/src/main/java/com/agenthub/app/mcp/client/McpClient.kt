@@ -69,7 +69,7 @@ class McpClient @Inject constructor() {
             params = mapOf(
                 "protocolVersion" to "2025-03-26",
                 "capabilities" to emptyMap<String, Any>(),
-                "clientInfo" to mapOf("name" to "AgentHub", "version" to "2.1.3")
+                "clientInfo" to mapOf("name" to "Agent Control Center", "version" to "2.1.3")
             )
         )
 

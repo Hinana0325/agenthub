@@ -1,6 +1,6 @@
-# AgentHub WebSocket 双向传输协议规范
+# Agent Control Center WebSocket 双向传输协议规范
 
-本文件定义 AgentHub 统一协议层中基于 WebSocket 的双向实时通信协议，用于需要全双工交互的场景（如 P2P/中继对话、低延迟增量响应）。与 HTTP/SSE 传输不同，WebSocket 传输下会话状态由服务端维护，客户端无需重放历史。本规范为 Android（Kotlin）与 iOS（Swift）双端共享的永久契约。
+本文件定义 Agent Control Center 统一协议层中基于 WebSocket 的双向实时通信协议，用于需要全双工交互的场景（如 P2P/中继对话、低延迟增量响应）。与 HTTP/SSE 传输不同，WebSocket 传输下会话状态由服务端维护，客户端无需重放历史。本规范为 Android（Kotlin）与 iOS（Swift）双端共享的永久契约。
 
 ## 1. URL 构造
 

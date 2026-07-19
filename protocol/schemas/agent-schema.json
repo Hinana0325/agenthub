@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/agent-schema.json",
-  "title": "AgentHub Agent Schema",
+  "title": "Agent Control Center Agent Schema",
   "description": "Agent 标识、信息模型、配置的永久统一契约。Android (Kotlin) 与 iOS (Swift) 共享此定义。",
   "type": "object",
   "definitions": {

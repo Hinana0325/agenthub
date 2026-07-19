@@ -61,7 +61,7 @@ class LocalNotificationManager(private val context: Context) {
         data: Map<String, String> = emptyMap()
     ): Boolean {
         try {
-            val safeTitle = title ?: "AgentHub"
+            val safeTitle = title ?: "Agent Control Center"
             val safeContent = content ?: ""
 
             val intent = Intent(context, MainActivity::class.java).apply {

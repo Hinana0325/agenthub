@@ -107,7 +107,7 @@ class AgentHubWidget : AppWidgetProvider() {
                 )
 
                 // 更新 Agent 名称
-                val displayName = if (agentName.isNotEmpty()) agentName else "AgentHub"
+                val displayName = if (agentName.isNotEmpty()) agentName else "Agent Control Center"
                 views.setTextViewText(R.id.widget_agent_name, "\uD83E\uDD16 $displayName")
 
                 // 更新延迟

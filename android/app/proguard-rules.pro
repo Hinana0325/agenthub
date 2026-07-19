@@ -1,4 +1,4 @@
-# AgentHub ProGuard Rules
+# Agent Control Center ProGuard Rules
 
 # === Keep line numbers for debugging ===
 -keepattributes SourceFile,LineNumberTable

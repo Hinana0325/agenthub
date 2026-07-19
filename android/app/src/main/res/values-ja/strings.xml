@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App -->
-    <string name="app_name">AgentHub</string>
-    <string name="title_activity_main">AgentHub</string>
+    <string name="app_name">Agent Control Center</string>
+    <string name="title_activity_main">Agent Control Center</string>
     <string name="package_name">com.agenthub.app</string>
     <string name="custom_url_scheme">com.agenthub.app</string>
 
@@ -85,15 +85,15 @@
 
     <!-- Notification / Service -->
     <string name="notif_channel_name">Agent 接続</string>
-    <string name="notif_channel_desc">AgentHub バックグラウンド接続ステータス</string>
-    <string name="notif_connected_title">AgentHub 接続済み</string>
-    <string name="notif_connected_text">AgentHub はバックグラウンドで実行中です</string>
-    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_channel_desc">Agent Control Center バックグラウンド接続ステータス</string>
+    <string name="notif_connected_title">Agent Control Center 接続済み</string>
+    <string name="notif_connected_text">Agent Control Center はバックグラウンドで実行中です</string>
+    <string name="notif_service_title">Agent Control Center</string>
     <string name="notif_service_text">バックグラウンドで実行中</string>
 
     <!-- Widget -->
-    <string name="widget_description">AgentHub · Agent ステータスをすばやく確認</string>
-    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_description">Agent Control Center · Agent ステータスをすばやく確認</string>
+    <string name="widget_title">🤖 Agent Control Center</string>
     <string name="widget_status_connected">接続済み · %s</string>
     <string name="widget_status_disconnected">未接続</string>
     <string name="widget_last_message_empty">メッセージなし</string>
@@ -126,7 +126,7 @@
     <string name="label_model">モデル（任意）</string>
 
     <!-- Clipboard -->
-    <string name="clipboard_label">AgentHub メッセージ</string>
+    <string name="clipboard_label">Agent Control Center メッセージ</string>
 
     <!-- Import/Export -->
     <string name="import_configs">設定をインポート</string>

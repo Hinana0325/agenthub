@@ -20,7 +20,7 @@ class CryptoManagerTest {
 
     @Test
     fun `decrypt recovers original plaintext`() {
-        val original = "Hello, AgentHub! 🔐"
+        val original = "Hello, Agent Control Center! 🔐"
         val encrypted = CryptoManager.encrypt(original, testPassphrase)
         val decrypted = CryptoManager.decrypt(encrypted, testPassphrase)
         assertEquals(original, decrypted)

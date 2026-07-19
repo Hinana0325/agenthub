@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/error-codes.json",
-  "title": "AgentHub Error Code Registry",
+  "title": "Agent Control Center Error Code Registry",
   "description": "错误码永久注册表契约。当前代码库没有统一错误码系统，错误以散落字符串形式存在。本契约 DEFINES（定义）统一错误码注册表，作为 Android (Kotlin) 与 iOS (Swift) 共享的永久错误码来源。错误码按类别分区间：Transport(1xxx)、Protocol(2xxx)、Agent(3xxx)、Session(4xxx)、Task(5xxx)、Workflow(6xxx)、Plugin(7xxx)、MCP(8xxx)、File(9xxx)、Crypto(10xxx)。新增错误码必须在此注册表登记，禁止两端硬编码字符串错误。",
   "type": "object",
   "definitions": {

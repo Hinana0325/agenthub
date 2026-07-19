@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App -->
-    <string name="app_name">AgentHub</string>
-    <string name="title_activity_main">AgentHub</string>
+    <string name="app_name">Agent Control Center</string>
+    <string name="title_activity_main">Agent Control Center</string>
     <string name="package_name">com.agenthub.app</string>
     <string name="custom_url_scheme">com.agenthub.app</string>
 
@@ -92,8 +92,8 @@
     <string name="copy_config">Copy Config</string>
 
     <!-- Widget -->
-    <string name="widget_description">AgentHub · Quick view Agent status</string>
-    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_description">Agent Control Center · Quick view Agent status</string>
+    <string name="widget_title">🤖 Agent Control Center</string>
     <string name="widget_status">Connected · Hermes Agent</string>
     <string name="widget_new_conversation">💬 New conversation</string>
 
@@ -130,14 +130,14 @@
 
     <!-- Notifications -->
     <string name="notif_channel_name">Agent Connection</string>
-    <string name="notif_channel_desc">AgentHub background connection status</string>
-    <string name="notif_connected_title">AgentHub connected</string>
+    <string name="notif_channel_desc">Agent Control Center background connection status</string>
+    <string name="notif_connected_title">Agent Control Center connected</string>
     <string name="notif_connected_text">%s is running in background</string>
-    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_title">Agent Control Center</string>
     <string name="notif_service_text">Running in background</string>
 
     <!-- Clipboard -->
-    <string name="clipboard_label">AgentHub Message</string>
+    <string name="clipboard_label">Agent Control Center Message</string>
 
     <!-- Import / Export -->
     <string name="import_configs">Import Configs</string>

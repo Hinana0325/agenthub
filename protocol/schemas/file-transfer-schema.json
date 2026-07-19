@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agenthub.dev/protocol/schemas/file-transfer-schema.json",
-  "title": "AgentHub File Transfer Schema",
+  "title": "Agent Control Center File Transfer Schema",
   "description": "文件传输协议永久统一契约。当前代码库没有服务端文件上传——附件仅以客户端 Base64 形式存在（存于 MessageEntity.attachmentData）。本契约 DEFINES（定义）未来统一文件传输协议，作为 Android (Kotlin) 与 iOS (Swift) 共享的永久契约。v1 为当前行为（内联 Base64，≤10MB），v2 为未来行为（分块上传至 uploadUrl，返回文件 URL）。",
   "type": "object",
   "definitions": {

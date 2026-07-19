@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startForegroundService() {
-        AgentConnectionService.start(this, "AgentHub")
+        AgentConnectionService.start(this, "Agent Control Center")
     }
 
     /**

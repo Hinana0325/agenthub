@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App -->
-    <string name="app_name">AgentHub</string>
-    <string name="title_activity_main">AgentHub</string>
+    <string name="app_name">Agent Control Center</string>
+    <string name="title_activity_main">Agent Control Center</string>
     <string name="package_name">com.agenthub.app</string>
     <string name="custom_url_scheme">com.agenthub.app</string>
 
@@ -87,8 +87,8 @@
     <string name="copy_config">复制配置</string>
 
     <!-- Widget -->
-    <string name="widget_description">AgentHub · 快速查看 Agent 状态</string>
-    <string name="widget_title">🤖 AgentHub</string>
+    <string name="widget_description">Agent Control Center · 快速查看 Agent 状态</string>
+    <string name="widget_title">🤖 Agent Control Center</string>
     <string name="widget_status">已连接 · Hermes Agent</string>
     <string name="widget_new_conversation">💬 新对话</string>
 
@@ -125,14 +125,14 @@
 
     <!-- Notifications -->
     <string name="notif_channel_name">Agent 连接</string>
-    <string name="notif_channel_desc">AgentHub 后台连接状态</string>
-    <string name="notif_connected_title">AgentHub 已连接</string>
+    <string name="notif_channel_desc">Agent Control Center 后台连接状态</string>
+    <string name="notif_connected_title">Agent Control Center 已连接</string>
     <string name="notif_connected_text">%s 正在后台运行</string>
-    <string name="notif_service_title">AgentHub</string>
+    <string name="notif_service_title">Agent Control Center</string>
     <string name="notif_service_text">正在后台运行</string>
 
     <!-- Clipboard -->
-    <string name="clipboard_label">AgentHub 消息</string>
+    <string name="clipboard_label">Agent Control Center 消息</string>
 
     <!-- Import / Export -->
     <string name="import_configs">导入配置</string>

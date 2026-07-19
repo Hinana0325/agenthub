@@ -1,6 +1,6 @@
-# AgentHub SSE 流式传输协议规范
+# Agent Control Center SSE 流式传输协议规范
 
-本文件定义 AgentHub 统一协议层中基于 Server-Sent Events（SSE）的流式响应协议，用于 HTTP Chat Completions 端点的增量响应传输。该协议遵循 W3C SSE 标准，并在此基础上约定 OpenAI 兼容的增量数据格式与客户端事件映射规则。本规范为 Android（Kotlin）与 iOS（Swift）双端共享的永久契约。
+本文件定义 Agent Control Center 统一协议层中基于 Server-Sent Events（SSE）的流式响应协议，用于 HTTP Chat Completions 端点的增量响应传输。该协议遵循 W3C SSE 标准，并在此基础上约定 OpenAI 兼容的增量数据格式与客户端事件映射规则。本规范为 Android（Kotlin）与 iOS（Swift）双端共享的永久契约。
 
 ## 1. 传输层
 
@@ -19,7 +19,7 @@
 - 一个完整事件以空行（两个连续换行符）结束。
 - 客户端应在收到空行时触发当前事件的派发。
 
-SSE 规范定义的字段包括 `data`、`event`、`id`、`retry`。AgentHub 仅使用 `data` 字段承载 JSON 载荷，其余字段如出现应忽略。
+SSE 规范定义的字段包括 `data`、`event`、`id`、`retry`。Agent Control Center 仅使用 `data` 字段承载 JSON 载荷，其余字段如出现应忽略。
 
 ## 3. data 字段与多行拼接
 

@@ -1,13 +1,13 @@
-# AgentHub HTTP API 传输协议规范
+# Agent Control Center HTTP API 传输协议规范
 
-本文件定义 AgentHub 统一协议层中基于 HTTP 的 RESTful 接口规范，采用 OpenAI 兼容的 Chat Completions 端点。该协议是 Android（Kotlin）与 iOS（Swift）双端共享的永久契约，任何字段语义、取值范围或行为变更均需双端同步并保持向后兼容。服务端为无状态设计，会话历史由客户端维护。
+本文件定义 Agent Control Center 统一协议层中基于 HTTP 的 RESTful 接口规范，采用 OpenAI 兼容的 Chat Completions 端点。该协议是 Android（Kotlin）与 iOS（Swift）双端共享的永久契约，任何字段语义、取值范围或行为变更均需双端同步并保持向后兼容。服务端为无状态设计，会话历史由客户端维护。
 
 ## 1. 端点
 
 - **请求方法**：`POST`
 - **完整路径**：`{serverUrl}/v1/chat/completions`
 - **协议**：HTTP/1.1 或 HTTP/2（由底层网络栈自动协商）
-- **路径说明**：`serverUrl` 为 AgentHub 服务端根地址，末尾不带斜杠；端点固定追加 `/v1/chat/completions`，遵循 OpenAI API 路径约定。
+- **路径说明**：`serverUrl` 为 Agent Control Center 服务端根地址，末尾不带斜杠；端点固定追加 `/v1/chat/completions`，遵循 OpenAI API 路径约定。
 
 ## 2. 请求头
 
