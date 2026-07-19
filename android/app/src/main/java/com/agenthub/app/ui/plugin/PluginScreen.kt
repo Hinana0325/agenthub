@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agenthub.app.R
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.plugin.Plugin
 import com.agenthub.app.data.plugin.PluginExecutor
+import com.agenthub.app.data.plugin.PluginManager
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
 import kotlinx.coroutines.launch
@@ -31,7 +31,15 @@ fun PluginScreen(
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val pluginManager = remember { AppModule.getPluginManager(context) }
+    // Obtain the Hilt-provided singleton PluginManager via an EntryPoint instead of the
+    // removed AppModule singleton. PluginManager is @Singleton-scoped and provided by Hilt
+    // (PluginDao is in DatabaseModule, PluginManager uses @Inject constructor).
+    val pluginManager = remember {
+        dagger.hilt.EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            PluginManagerEntryPoint::class.java
+        ).pluginManager()
+    }
     val executor = remember { PluginExecutor(context) }
     val scope = rememberCoroutineScope()
     val plugins by pluginManager.plugins.collectAsStateWithLifecycle()
@@ -409,4 +417,14 @@ private fun PluginDetailDialog(
             }
         }
     )
+}
+
+/**
+ * Hilt EntryPoint that exposes the singleton [PluginManager] to non-injected callers
+ * (i.e. this Composable). Replaces the former `AppModule.getPluginManager(context)` singleton.
+ */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface PluginManagerEntryPoint {
+    fun pluginManager(): PluginManager
 }

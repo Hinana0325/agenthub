@@ -1,7 +1,9 @@
 package com.agenthub.app.util
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -137,6 +139,11 @@ class VoiceChatManager(private val context: Context) {
      * 开始语音识别
      */
     fun startListening() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            _state.value = _state.value.copy(error = "RECORD_AUDIO permission not granted")
+            return
+        }
+
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             _state.value = _state.value.copy(error = "Speech recognition not available")
             return

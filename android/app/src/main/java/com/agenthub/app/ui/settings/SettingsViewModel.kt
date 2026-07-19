@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
+import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.data.model.ChatBackup
 import com.agenthub.app.data.repository.ChatRepository
 import com.agenthub.app.data.settings.SettingsDataStore
@@ -17,10 +18,11 @@ import com.agenthub.app.util.PerformanceMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.security.SecureRandom
@@ -44,6 +46,10 @@ class SettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+    // Agent configs exposed via Hilt-injected repository (replaces direct AppModule access from the UI).
+    val agentConfigs: StateFlow<List<AgentConfig>> = repository.getAllConfigs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         viewModelScope.launch {
             dataStore.themeMode.collect { mode ->
@@ -65,17 +71,12 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(e2eKey = key) }
             }
         }
-        // Periodically refresh performance metrics (memory, uptime) every 3 seconds
-        viewModelScope.launch {
-            while (isActive) {
-                try {
-                    PerformanceMonitor.refresh(getApplication())
-                } catch (_: Exception) {
-                    // ignore — non-critical background refresh
-                }
-                kotlinx.coroutines.delay(3000)
-            }
-        }
+        // NOTE: The previous implementation ran a permanent `while (isActive) { ... delay(3000) }`
+        // loop in init to refresh performance metrics. That kept a coroutine alive for the entire
+        // lifetime of the ViewModel (i.e. the whole app session) and refreshed metrics even when the
+        // Settings screen was not on screen. Refresh is now opt-in via [refreshPerformanceMetrics],
+        // which the SettingsScreen should call from a `LaunchedEffect`/`DisposableEffect` so it only
+        // runs while the screen is visible.
     }
 
     fun setThemeMode(mode: String) {
@@ -183,4 +184,22 @@ class SettingsViewModel @Inject constructor(
     // ── Performance ──
 
     fun getPerformanceMetrics() = PerformanceMonitor.metrics
+
+    /**
+     * Refresh performance metrics (memory, uptime, avg latency) on demand.
+     *
+     * The SettingsScreen should call this from a `LaunchedEffect` (or `DisposableEffect` with a
+     * polling loop) while it is visible, instead of relying on a permanent background loop that
+     * runs for the entire ViewModel lifetime. This avoids keeping a coroutine alive and doing
+     * unnecessary work when the user is not viewing the Settings screen.
+     */
+    fun refreshPerformanceMetrics() {
+        viewModelScope.launch {
+            try {
+                PerformanceMonitor.refresh(getApplication())
+            } catch (_: Exception) {
+                // ignore — non-critical refresh
+            }
+        }
+    }
 }

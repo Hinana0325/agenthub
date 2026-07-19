@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import com.agenthub.app.data.local.AppDatabase
+import com.agenthub.app.widget.WidgetInputActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,12 +36,25 @@ class AgentHubWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_container, pendingOpen)
 
-            // 设置快捷发送按钮
-            val sendIntent = Intent(context, WidgetSendReceiver::class.java).apply {
-                action = ACTION_WIDGET_SEND
+            // Sprint 8: 点击 Widget 输入区（TextView）拉起 WidgetInputActivity，
+            // 在弹窗内完成真正的文本输入（RemoteViews 不支持 EditText 的解决方案）
+            val inputIntent = Intent(context, WidgetInputActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
-            val sendPending = PendingIntent.getBroadcast(
-                context, 100, sendIntent,
+            val inputPending = PendingIntent.getActivity(
+                context, REQUEST_CODE_INPUT, inputIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_input, inputPending)
+
+            // Sprint 8: 发送按钮同样拉起 WidgetInputActivity。
+            // 此前指向 WidgetSendReceiver 的广播并未在 Manifest 注册（死代码），
+            // 改为统一打开输入弹窗，保证按钮始终可用。
+            val sendIntent = Intent(context, WidgetInputActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val sendPending = PendingIntent.getActivity(
+                context, REQUEST_CODE_SEND, sendIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setOnClickPendingIntent(R.id.widget_btn_send, sendPending)
@@ -118,6 +132,11 @@ class AgentHubWidget : AppWidgetProvider() {
     companion object {
         const val ACTION_WIDGET_SEND = "com.agenthub.app.WIDGET_SEND"
         const val ACTION_WIDGET_VOICE = "com.agenthub.app.WIDGET_VOICE"
+
+        // Sprint 8: Widget PendingIntent 请求码
+        // 容器复用 0（保持原有行为）；输入区与发送按钮各自独立以避免被覆盖。
+        private const val REQUEST_CODE_INPUT = 200
+        private const val REQUEST_CODE_SEND = 100
 
         /** 更新所有 Widget 实例 */
         fun updateAll(context: Context) {

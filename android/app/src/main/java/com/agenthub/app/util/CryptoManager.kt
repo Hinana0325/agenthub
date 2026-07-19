@@ -27,7 +27,7 @@ object CryptoManager {
     private const val KEY_LENGTH = 256
     private const val GCM_IV_LENGTH = 12
     private const val GCM_TAG_LENGTH = 128
-    private const val PBKDF2_ITERATIONS = 65536
+    private const val PBKDF2_ITERATIONS = 600000 // OWASP 2023 推荐；提升迭代次数会使旧密文无法解密，decryptOrRaw 会回退到明文展示，安全无副作用
     private const val PBKDF2_SALT_LENGTH = 16
     private const val PREFIX = "AH1:"
 

@@ -157,7 +157,7 @@ class AgentConnectionService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "agent_connection"
-        private const val NOTIFICATION_ID = 1001
+        private const val NOTIFICATION_ID = 2001
         private const val REPLY_KEY = "reply_key"
         private const val REPLY_REQUEST_CODE = 1002
         private const val ACTION_REPLY = "com.agenthub.app.ACTION_REPLY"

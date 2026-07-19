@@ -78,7 +78,13 @@
             android:clickable="true"
             android:focusable="true" />
 
-        <EditText
+        <!--
+            Sprint 8: Widget 输入区仍使用 TextView（RemoteViews 不支持 EditText），
+            但点击后会通过 PendingIntent 拉起轻量级 WidgetInputActivity，
+            在弹窗内完成真正的文本输入与发送（详见 AgentHubWidget.onUpdate）。
+            保留原 id 便于复用既有逻辑。
+        -->
+        <TextView
             android:id="@+id/widget_input"
             android:layout_width="0dp"
             android:layout_height="36dp"
@@ -91,10 +97,11 @@
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
             android:singleLine="true"
-            android:inputType="text"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
             android:layout_marginStart="6dp"
-            android:layout_marginEnd="6dp"
-            android:importantForAutofill="no" />
+            android:layout_marginEnd="6dp" />
 
         <Button
             android:id="@+id/widget_btn_send"

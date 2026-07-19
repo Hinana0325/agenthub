@@ -26,7 +26,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.agenthub.app.R
 import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
-import com.agenthub.app.data.AppModule
 import com.agenthub.app.data.update.UpdateManager
 import com.agenthub.app.ui.theme.GlassTopAppBar
 
@@ -45,11 +44,19 @@ fun SettingsScreen(
     val context = LocalContext.current
     val useDualPane = adaptive.windowSize == WindowSize.Expanded
 
-    // Real agent-config count for the "Manage Agents" subtitle (the previous code
-    // mistakenly passed a stale palette count there).
-    val agentConfigs by com.agenthub.app.data.AppModule.getRepository(context)
-        .getAllConfigs()
-        .collectAsState(initial = emptyList<com.agenthub.app.data.model.AgentConfig>())
+    // Agent-config count sourced from the Hilt-injected repository via the ViewModel
+    // (previously fetched directly via the now-removed AppModule singleton).
+    val agentConfigs by settingsViewModel.agentConfigs.collectAsState()
+
+    // Refresh performance metrics only while the Settings screen is visible.
+    // This replaces the permanent `while (isActive)` loop that previously ran in
+    // SettingsViewModel.init for the entire app lifetime.
+    LaunchedEffect(Unit) {
+        while (true) {
+            settingsViewModel.refreshPerformanceMetrics()
+            kotlinx.coroutines.delay(3000)
+        }
+    }
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showFontDialog by remember { mutableStateOf(false) }

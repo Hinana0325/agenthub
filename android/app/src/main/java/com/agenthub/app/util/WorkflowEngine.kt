@@ -32,9 +32,9 @@ data class WorkflowNode(
     val agentType: AgentType? = null,
     val prompt: String = "",
     val transformType: TransformType = TransformType.PASSTHROUGH,
-    var positionX: Float = 0f,
-    var positionY: Float = 0f,
-    var outputCache: String = ""
+    val positionX: Float = 0f,
+    val positionY: Float = 0f,
+    val outputCache: String = ""
 )
 
 enum class TransformType(val displayName: String) {
@@ -108,6 +108,12 @@ class WorkflowEngine {
             var stepLog = mutableListOf<String>()
             stepLog.add("Starting workflow: ${workflow.name}")
 
+            // Cycle detection: track how many times each node has been re-queued.
+            // If a node is re-queued more than MAX_REQUEUES times, its predecessors
+            // can never all complete (likely a cycle), so we abort.
+            val requeueCount = mutableMapOf<String, Int>()
+            val MAX_REQUEUES = 100
+
             while (queue.isNotEmpty()) {
                 val nodeId = queue.removeFirst()
                 if (nodeId in visited) continue
@@ -116,6 +122,11 @@ class WorkflowEngine {
                 // Check all predecessors are done
                 val predecessors = workflow.edges.filter { it.toNodeId == nodeId }.map { it.fromNodeId }
                 if (predecessors.any { it !in visited && it != nodeId }) {
+                    val count = (requeueCount[nodeId] ?: 0) + 1
+                    if (count > MAX_REQUEUES) {
+                        throw IllegalStateException("Possible cycle detected in workflow at node '${node.label.ifEmpty { nodeId }}'")
+                    }
+                    requeueCount[nodeId] = count
                     queue.add(nodeId) // Re-queue
                     continue
                 }
@@ -135,7 +146,6 @@ class WorkflowEngine {
 
                 val nodeOutput = executeNode(node, nodeInput, agentExecutor)
                 results[nodeId] = nodeOutput
-                node.outputCache = nodeOutput
                 visited.add(nodeId)
 
                 stepLog.add("[${node.type.displayName}] ${node.label.ifEmpty { node.id }}: ${nodeOutput.take(100)}")

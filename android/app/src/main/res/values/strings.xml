@@ -151,8 +151,16 @@
     <string name="widget_status_disconnected">Disconnected</string>
     <string name="widget_last_message_empty">No messages</string>
     <string name="widget_quick_chat">💬 New conversation</string>
-    <string name="widget_input_hint">Quick message…</string>
+    <!-- Sprint 8: Widget 输入区 TextView 的提示语，点击后弹出 WidgetInputActivity -->
+    <string name="widget_input_hint">Tap to send a message…</string>
     <string name="widget_send">Send</string>
+
+    <!-- Widget Quick-Input Activity (Sprint 8) -->
+    <string name="widget_input_dialog_title">Send to Agent</string>
+    <string name="widget_input_edit_hint">Type a message…</string>
+    <string name="widget_input_send">Send</string>
+    <string name="widget_input_cancel">Cancel</string>
+    <string name="widget_message_sent">Sent</string>
 
     <!-- E2E Encryption -->
     <string name="e2e_security">Security</string>

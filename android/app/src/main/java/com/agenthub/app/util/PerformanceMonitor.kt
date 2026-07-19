@@ -1,6 +1,5 @@
 package com.agenthub.app.util
 
-import android.app.ActivityManager
 import android.content.Context
 import android.os.Debug
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,10 +55,6 @@ object PerformanceMonitor {
     }
 
     fun updateMemoryUsage(context: Context) {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val memInfo = ActivityManager.MemoryInfo()
-        activityManager.getMemoryInfo(memInfo)
-
         val runtime = Runtime.getRuntime()
         val usedMemoryMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
 

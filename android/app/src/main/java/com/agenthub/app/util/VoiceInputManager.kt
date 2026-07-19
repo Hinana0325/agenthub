@@ -1,7 +1,9 @@
 package com.agenthub.app.util
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -22,10 +24,18 @@ class VoiceInputManager(private val context: Context) {
     val error: StateFlow<String?> = _error
 
     fun startListening() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            _error.value = "RECORD_AUDIO permission not granted"
+            return
+        }
+
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             _error.value = "Speech recognition not available"
             return
         }
+
+        // Destroy any previous recognizer before creating a new one to avoid leaking it
+        speechRecognizer?.destroy()
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
             setRecognitionListener(object : RecognitionListener {

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /** Shared Gson instance for Plugin <-> PluginEntity (de)serialization. */
 private val gson = Gson()
@@ -25,7 +27,8 @@ private val gson = Gson()
  * 注：传入的 [pluginDao] 不可为空；如需无 DB 的纯内存实例（测试/降级），
  * 可使用伴生对象 [PluginManager.inMemory] 构造一个内置只读实例。
  */
-class PluginManager(private val pluginDao: PluginDao) {
+@Singleton
+class PluginManager @Inject constructor(private val pluginDao: PluginDao) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _plugins = MutableStateFlow<List<Plugin>>(emptyList())

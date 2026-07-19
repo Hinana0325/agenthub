@@ -5,6 +5,7 @@ import com.agenthub.app.data.local.AppDatabase
 import com.agenthub.app.data.local.dao.ActivityDao
 import com.agenthub.app.data.local.dao.AgentConfigDao
 import com.agenthub.app.data.local.dao.MessageDao
+import com.agenthub.app.data.local.dao.PluginDao
 import com.agenthub.app.data.local.dao.SessionDao
 import dagger.Module
 import dagger.Provides
@@ -23,4 +24,5 @@ object DatabaseModule {
     @Provides fun provideMessageDao(db: AppDatabase): MessageDao = db.messageDao()
     @Provides fun provideAgentConfigDao(db: AppDatabase): AgentConfigDao = db.agentConfigDao()
     @Provides fun provideActivityDao(db: AppDatabase): ActivityDao = db.activityDao()
+    @Provides fun providePluginDao(db: AppDatabase): PluginDao = db.pluginDao()
 }

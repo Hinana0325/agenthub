@@ -23,6 +23,7 @@ import javax.crypto.spec.GCMParameterSpec
  * 适用场景：加密存储 apiKey、e2eKey、token 等敏感凭据。
  */
 object KeystoreManager {
+    private const val TAG = "KeystoreManager"
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "agenthub_master_key"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
@@ -111,10 +112,21 @@ object KeystoreManager {
     /**
      * 智能解密：若为 AKS 加密内容则解密，否则视为旧版明文直接返回。
      * 适用于从旧版 DataStore 明文存储平滑迁移到 Keystore 加密的场景。
+     *
+     * 区分两种情况：
+     *  - 无 `AKS:` 前缀：旧版明文数据，直接返回以保持向后兼容；
+     *  - 有 `AKS:` 前缀但解密失败：密文已损坏或被篡改，记录警告并返回空串，
+     *    避免把损坏的密文当作明文展示给用户。
      */
     fun decryptOrRaw(value: String): String {
         if (value.isBlank()) return value
-        return decrypt(value) ?: value
+        // Old plaintext data without prefix - return as-is for backward compat
+        if (!value.startsWith(PREFIX)) return value
+        // Has prefix but decryption failed - corrupted or tampered data
+        return decrypt(value) ?: run {
+            android.util.Log.w(TAG, "Failed to decrypt value with prefix, data may be corrupted")
+            ""
+        }
     }
 
     /** 判断内容是否已通过 KeystoreManager 加密 */

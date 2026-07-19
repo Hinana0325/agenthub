@@ -5,8 +5,11 @@
 -renamesourcefileattribute SourceFile
 
 # === AndroidX ===
--keep class androidx.appcompat.** { *; }
--keep class com.google.android.material.** { *; }
+# 注：以下两条过于宽泛的 keep 规则已移除。
+# androidx.appcompat 与 com.google.android.material 自带 consumer-rules，
+# 无需在此整体保留；保留反而会显著增加 APK 体积并削弱混淆效果。
+# -keep class androidx.appcompat.** { *; }
+# -keep class com.google.android.material.** { *; }
 
 # === Suppress warnings ===
 -dontwarn android.webkit.**
@@ -43,3 +46,10 @@
 
 # === Keep entity classes for Room reflection ===
 -keep class com.agenthub.app.data.local.entity.** { *; }
+
+# OkHttp (used by Ktor okhttp engine)
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-keep class okio.** { *; }

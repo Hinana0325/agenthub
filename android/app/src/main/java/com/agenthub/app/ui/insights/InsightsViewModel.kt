@@ -1,13 +1,13 @@
 package com.agenthub.app.ui.insights
 
-import android.app.Application
 import android.content.Context
 import android.widget.Toast
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
-import com.agenthub.app.data.local.AppDatabase
+import com.agenthub.app.data.local.dao.MessageDao
+import com.agenthub.app.data.local.dao.SessionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +17,12 @@ import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
-class InsightsViewModel @Inject constructor(application: Application) : AndroidViewModel(application) {
+class InsightsViewModel @Inject constructor(
+    messageDao: MessageDao,
+    sessionDao: SessionDao
+) : ViewModel() {
 
-    private val db = AppDatabase.getInstance(application)
-    private val insightsManager = DataInsightsManager(db.messageDao(), db.sessionDao())
+    private val insightsManager = DataInsightsManager(messageDao, sessionDao)
 
     private val _insights = MutableStateFlow(DataInsightsManager.Insights())
     val insights: StateFlow<DataInsightsManager.Insights> = _insights.asStateFlow()

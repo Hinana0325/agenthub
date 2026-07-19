@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-07-19
+
+### Fixed (Code Review Hotfix)
+
+#### P0 - Crash-level
+- **OpenAIHttpTransport**: SSE streaming was broken — `bodyAsText()` buffered the entire response, defeating streaming and delaying first-token latency. Replaced with `bodyAsChannel()` + line-by-line `readUTF8Line()` reading.
+- **Widget**: `EditText` in `agent_hub_widget.xml` is not supported by RemoteViews, making the quick-input feature non-functional. Replaced with `TextView` pending a proper Widget input Activity in v2.2.0.
+- **AndroidManifest**: Removed declarations of non-existent `WidgetSendReceiver` / `WidgetVoiceReceiver` receivers that caused `ClassNotFoundException` on broadcast dispatch.
+- **WebSocketTransport**: `disconnect()` closed the `HttpClient`, making the transport permanently unusable on subsequent `connect()` calls. The `client` is now long-lived; only the session is closed.
+- **WebSocketTransport**: Auth frame built via string concatenation (`"{\"type\":\"auth\",\"key\":\"$apiKey\"}"`) — a malformed API key containing `"` or `\` could break the JSON frame or smuggle extra keys. Now built via `JsonObject` + Gson.
+
+#### P1 - Severe
+- **DI Cleanup**: Deleted dead-code `AppModule.kt` (manual singleton factory bypassing Hilt). `PluginManager`, `PluginScreen`, `SettingsScreen` migrated to proper Hilt injection; `DatabaseModule` now provides `PluginDao`.
+- **InsightsViewModel**: Was bypassing Hilt via `AppDatabase.getInstance(application)`. Now uses `@Inject constructor(messageDao, sessionDao)` and extends `ViewModel` instead of `AndroidViewModel`.
+- **AppDatabase**: Removed `fallbackToDestructiveMigration()` — silent data loss on missing migrations is now an explicit `IllegalStateException` instead.
+- **AndroidManifest**: `allowBackup` changed from `true` to `false` to prevent API keys / E2E keys from being backed up to cloud.
+- **Network Security Config**: `10.0.0.0` / `192.168.0.0` entries did not match any actual LAN IP (Android NSC matches hostnames, not CIDR). Replaced with explicit entries for common LAN IPs (`10.0.0.1-10`, `192.168.0.1-10`, `192.168.1.1-10`); added IPv6 `ip6-localhost`.
+- **OpenAIHttpTransport**: SSE `trim()` stripped significant leading whitespace from `data:` payloads (code indentation lost). Now only `\r` is stripped; exactly one leading space is removed after `data:` per SSE spec.
+- **VoiceInputManager / VoiceChatManager**: Missing `RECORD_AUDIO` runtime permission check caused silent failure on Android 6+.
+
+#### P2 - Medium
+- **WebSocketTransport**: `session` field race condition across `connect()` / `sendMessage()` / `disconnect()` — now guarded by a `Mutex`. `sendMessage` no longer silently swallows send errors (emits `AgentEvent.Error`).
+- **OpenAIHttpTransport**: `probeEndpoint` treated 5xx as reachable; now only 2xx / 401 / 403 / 404 count as "service exists". `emitDelta` / `emitFull` now log JSON parse errors via `Log.w` instead of swallowing them.
+- **Navigation**: `NavHost` was duplicated for tablet/phone branches (82 lines copy-pasted). Extracted into shared `AppNavHost(...)` composable. Hardcoded route strings `"device_sync"` / `"plugins"` replaced with `Screen.DeviceSync.route` / `Screen.Plugins.route` (added to `Screen.kt`).
+- **Notification IDs**: `AgentConnectionService` (1001) and `SuperIslandManager` (1001) collided. Changed to 2001 and 3001 respectively.
+- **CryptoManager**: PBKDF2 iterations raised from 65536 to 600000 per OWASP 2023. `decryptOrRaw` falls back to plaintext for old data.
+- **KeystoreManager**: `decryptOrRaw` now distinguishes "old plaintext" (no `AKS:` prefix, returned as-is) from "corrupted ciphertext" (has prefix, decryption failed — logs warning and returns empty string).
+- **WorkflowEngine**: Added cycle detection (requeue counter, max 100) — throws `IllegalStateException` on suspected cycles instead of looping forever. Converted `WorkflowNode` mutable `var` fields to `val`.
+- **SettingsViewModel**: Removed permanent `while (isActive) { refresh(); delay(3000) }` loop from `init`. Exposed `refreshPerformanceMetrics()` for `SettingsScreen` to call via `LaunchedEffect` while visible.
+- **ProGuard**: Added missing OkHttp / okio keep rules. Commented out overly broad `androidx.appcompat.**` / `com.google.android.material.**` keep rules (these libraries ship their own consumer rules).
+
+#### P3 - Code Quality
+- **WebSocketTransport**: Reconnect now uses exponential backoff (1s → 2s → 4s → … → 30s cap) instead of a fixed 5s interval.
+- **OpenAIHttpTransport**: SSE parser now supports multi-line `data:` fields per spec (consecutive `data:` lines joined with `\n`, dispatched on blank line).
+- **ChatViewModel**: Removed dead commented-out code; `localModelManager` is now `private`.
+- **PerformanceMonitor**: Removed unused `ActivityManager.MemoryInfo` allocation in `updateMemoryUsage()`.
+- **AppDatabase**: `exportSchema` flipped to `true`; `ksp { arg("room.schemaLocation", ...) }` added to `build.gradle` for migration testing.
+- **Build**: Enabled parallel Gradle builds (`org.gradle.parallel=true`).
+
+### Changed
+- **AppModule.kt**: Deleted (dead code).
+- **Screen.kt**: Added `DeviceSync` and `Plugins` data objects.
+
+---
+
 ## [2.1.0] - 2025-07-19
 
 ### Added

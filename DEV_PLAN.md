@@ -1,6 +1,8 @@
 # AgentHub 下一步开发计划
 
-> v2.0.2 → v2.1.0 迭代规划
+> v2.1.1 → v2.3.0 迭代规划
+>
+> 上一轮 (v2.0.2 → v2.1.0) 已完成：Hilt 迁移、模型对比、消息回复、测试扩展、无障碍优化、CI 流水线。
 
 ---
 
@@ -8,103 +10,129 @@
 
 | 维度 | 数据 |
 |:-----|:-----|
-| 版本 | v2.0.2 (versionCode 14) |
+| 版本 | v2.1.0 (versionCode 15) |
 | 源文件 | 83 个 Kotlin 文件 |
-| 测试文件 | 10 个（覆盖率 ~12%） |
-| 已完成功能 | 聊天、会话管理、Agent 管理、市场、对比、插件、工作流、同步、洞察、设置 |
-| 技术债 | Hilt 迁移失败、测试覆盖不足、部分硬编码字符串 |
+| 测试文件 | 14 个 (75+ 用例) |
+| 审查修复 | 26 个文件，460 行新增，230 行删除 |
+| 已知 P0 问题 | 0 |
 
 ---
 
-## Sprint 5：Hilt 重试 + 测试扩展（第 1 周）
+## v2.1.1 Hotfix — 立即发布（第 1 周）
 
-### Day 1-3：Hilt 迁移（换方案）
+审查修复已在代码中完成，仅需发布流程。
 
-上次失败原因：KSP 无法解析 ChatRepository 类型。新方案：**不使用 @Provides，改为 @Inject constructor**。
-
-| # | 任务 | 文件 | 说明 |
-|:-:|:-----|:-----|:-----|
-| 5.1 | 添加 Hilt 依赖 | `build.gradle` (root + app) | hilt-android 2.56.2 + KSP |
-| 5.2 | 创建 Application | `AgentHubApplication.kt` | @HiltAndroidApp |
-| 5.3 | ChatRepository @Inject | `ChatRepository.kt` | 给构造函数加 @Inject |
-| 5.4 | AppModule @Inject | `AppModule.kt` | 给构造函数加 @Inject |
-| 5.5 | SettingsDataStore @Inject | `SettingsDataStore.kt` | 给构造函数加 @Inject |
-| 5.6 | DatabaseModule | `di/DatabaseModule.kt` | @Provides 数据库和 DAO |
-| 5.7 | 迁移 6 个 ViewModel | 各 ViewModel.kt | @HiltViewModel + @Inject |
-| 5.8 | MainActivity @AndroidEntryPoint | `MainActivity.kt` | 启用 Hilt 注入 |
-| 5.9 | AppNavigation hiltViewModel | `AppNavigation.kt` | 使用 hiltViewModel() |
-| 5.10 | 删除 AppModule 单例 | `AppModule.kt` | 移除 getRepository/getPluginManager |
-
-**关键改动**：上次用 `@Provides` 提供 ChatRepository，KSP 无法解析。这次改为给 ChatRepository 构造函数加 `@Inject`，让 Hilt 自动创建。
-
-### Day 4-5：测试扩展（10 → 15 文件）
-
-| # | 任务 | 新建文件 | 测试点 |
-|:-:|:-----|:---------|:-------|
-| 5.11 | CompareViewModel 测试 | `ui/compare/CompareViewModelTest.kt` | startCompare、cancelCompare、超时、竞态 |
-| 5.12 | CryptoManager 扩展 | 已有 | 边界：空字符串、超长文本、特殊字符 |
-| 5.13 | KeystoreManager 测试 | `util/KeystoreManagerTest.kt` | encrypt/decrypt、旧版迁移、已加密跳过 |
-| 5.14 | MarkdownParser 扩展 | 已有 | 嵌套列表、空代码块、表格边界 |
-| 5.15 | WorkflowEngine 扩展 | 已有 | 执行状态、节点输出缓存 |
+| # | 任务 | 说明 |
+|:-:|:-----|:-----|
+| 8.1 | 更新 CHANGELOG | 记录 v2.1.1 全部修复 |
+| 8.2 | 版本号升级 | `versionName "2.1.1"` · `versionCode 16` |
+| 8.3 | 本地构建验证 | `./gradlew assembleDebug testDebugUnitTest` |
+| 8.4 | CI 触发 | tag `v2.1.1` → GitHub Actions |
+| 8.5 | GitHub Release | APK + Release Notes |
 
 ---
 
-## Sprint 6：性能 + 无障碍（第 2 周）
+## Sprint 8：多轮对话 + Widget 重构（第 1–2 周）
 
-### Day 6-8：性能优化
-
-| # | 任务 | 文件 | 说明 |
-|:-:|:-----|:-----|:-----|
-| 6.1 | LazyColumn 记忆化 | `ChatScreen.kt` | `derivedStateOf` 减少 MessageBubble 重组 |
-| 6.2 | 首屏预加载 | `ChatViewModel.kt` | Splash 阶段预加载最近 session |
-| 6.3 | 图片缓存 | `ChatViewModel.kt` | Base64 附件 LRU 缓存，避免重复编码 |
-
-### Day 9-10：无障碍
-
-| # | 任务 | 文件 | 说明 |
-|:-:|:-----|:-----|:-----|
-| 6.4 | ChatScreen a11y | `ChatScreen.kt` | 消息气泡、输入栏、操作按钮 contentDescription |
-| 6.5 | SessionsScreen a11y | `SessionsScreen.kt` | 会话卡片、搜索框 contentDescription |
-| 6.6 | AgentsScreen a11y | `AgentsScreen.kt` | Agent 卡片 contentDescription |
-| 6.7 | CompareScreen a11y | `CompareScreen.kt` | 对比面板 contentDescription |
+| # | 优先级 | 任务 | 文件 |
+|:-:|:------|:-----|:-----|
+| 8.1 | P0 | 多轮对话：OpenAIHttpTransport 维护会话消息历史 | `OpenAIHttpTransport.kt` |
+| 8.2 | P0 | Widget 输入重构：EditText → 快捷输入 Activity | `AgentHubWidget.kt` |
+| 8.3 | P0 | Widget 快捷发送 Activity | `WidgetInputActivity.kt` (新建) |
+| 8.4 | P1 | WebSocket 多轮对话 | `WebSocketTransport.kt` |
+| 8.5 | P2 | SuperIsland 真实实现或降级 | `SuperIslandManager.kt` |
 
 ---
 
-## Sprint 7：文档 + 发布（第 3 周）
+## Sprint 9：Plugin 执行引擎 + 测试扩展（第 3–4 周）
 
-### Day 11-13：文档
+### Plugin 执行引擎
 
-| # | 任务 | 文件 | 说明 |
-|:-:|:-----|:-----|:-----|
-| 7.1 | 架构图 | `docs/architecture.md` | MVVM + Transport + Keystore + Hilt |
-| 7.2 | Transport API 文档 | `docs/transport-api.md` | 协议规范、扩展指南 |
-| 7.3 | 插件开发指南 | `docs/plugin-guide.md` | Plugin 接口、示例 |
-| 7.4 | README 更新 | `README.md` | v2.1.0 变更说明 |
+| # | 优先级 | 任务 | 文件 |
+|:-:|:------|:-----|:-----|
+| 9.1 | P0 | Plugin 接口定义 | `AgentPlugin.kt` (新建) |
+| 9.2 | P0 | PluginExecutor 实现 | `PluginExecutor.kt` (新建) |
+| 9.3 | P1 | 内置插件：Web Search, Calculator, File Reader | `plugins/` (新建目录) |
+| 9.4 | P1 | PluginScreen 重构为完整管理界面 | `PluginScreen.kt` |
 
-### Day 14-15：发布
+### 测试扩展（14 → 20 文件）
 
-| # | 任务 | 文件 | 说明 |
-|:-:|:-----|:-----|:-----|
-| 7.5 | CHANGELOG | `CHANGELOG.md` | v2.1.0 所有变更 |
-| 7.6 | 版本号 | `build.gradle` | versionName "2.1.0", versionCode 15 |
-| 7.7 | Release APK | CI 自动构建 | tag v2.1.0 触发 |
-| 7.8 | GitHub Release | tag + notes | 发布到 GitHub |
+| # | 优先级 | 任务 | 文件 |
+|:-:|:------|:-----|:-----|
+| 9.5 | P1 | VoiceInputManager 测试 | `VoiceInputManagerTest.kt` (新建) |
+| 9.6 | P1 | KeystoreManager 测试 | `KeystoreManagerTest.kt` (新建) |
+| 9.7 | P1 | WorkflowEngine 执行测试 | 扩展现有 |
+| 9.8 | P2 | PerformanceMonitor 测试 | `PerformanceMonitorTest.kt` (新建) |
+| 9.9 | P2 | LocalModelManager 测试 | `LocalModelManagerTest.kt` (新建) |
+| 9.10 | P2 | CompareViewModel 执行测试 | 扩展现有 |
+
+---
+
+## Sprint 10：Collaboration + 构建优化（第 5–6 周）
+
+| # | 优先级 | 任务 | 文件 |
+|:-:|:------|:-----|:-----|
+| 10.1 | P1 | CollaborationManager 实现 | `CollaborationManager.kt` |
+| 10.2 | P1 | DeviceSync 增强 | `DeviceSyncManager.kt` |
+| 10.3 | P2 | Gradle 版本目录迁移 | `libs.versions.toml` (新建) |
+| 10.4 | P2 | ProGuard 规则精简 | `proguard-rules.pro` |
+| 10.5 | P3 | 启用 Release Lint | `build.gradle` |
+| 10.6 | P3 | 启用并行构建 | `gradle.properties` |
+
+---
+
+## Sprint 11：文档 + 发布 v2.2.0（第 7 周）
+
+| # | 任务 | 文件 |
+|:-:|:-----|:-----|
+| 11.1 | Plugin 开发指南 | `docs/plugin-guide.md` |
+| 11.2 | Transport API 文档 | `docs/transport-api.md` |
+| 11.3 | 架构文档更新 | `docs/architecture.md` |
+| 11.4 | README 更新 | `README.md` |
+| 11.5 | CHANGELOG + 版本号 | `CHANGELOG.md` |
+| 11.6 | Release v2.2.0 | tag + CI + GitHub Release |
+
+---
+
+## v2.3.0 — 未来版本（2026-Q3/Q4）
+
+| 优先级 | 任务 | 说明 |
+|:------|:-----|:-----|
+| P1 | 真正的 Backdrop Blur | View 快照 + RenderEffect 毛玻璃穿透，替代当前半透明模拟 |
+| P1 | 本地模型推理 | llama.cpp / MediaPipe 集成，需评估 APK 体积 |
+| P2 | Workflow 可视化编辑器 | 拖拽式节点编辑 + 连线 + 实时预览 |
+| P2 | Agent Marketplace 集成 | 社区 Agent 配置发现和下载 |
+| P2 | 智能通知管理 | 分组、优先级、免打扰 |
+| P3 | E2E 加密传输 | 加密从存储扩展到传输层 |
+| P3 | Android Auto / Wear OS | 车载和手表平台 |
 
 ---
 
 ## 依赖关系
 
 ```
-Sprint 5 (Hilt + 测试)
-  ├── 5.1-5.10 Hilt 迁移 → 可独立进行
-  └── 5.11-5.15 测试 → 依赖 Hilt 完成后验证
+v2.1.1 Hotfix (已就绪，可直接发布)
+  │
+  ▼
+Sprint 8 (多轮对话 + Widget)
+  ├──► 依赖 v2.1.1 修复
+  └──► 可与 Sprint 9 部分并行
+  │
+  ▼
+Sprint 9 (Plugin 引擎 + 测试)
+  ├──► Plugin 引擎依赖 Sprint 8 的多轮对话
+  └──► 测试文件可提前开始
+  │
+  ▼
+Sprint 10 (Collaboration + 构建)
+  ├──► Collaboration 依赖 Sprint 8 的 WebSocket 增强
+  └──► 构建优化可独立进行
+  │
+  ▼
+Sprint 11 (文档 + 发布)
+  └──► 依赖 Sprint 8-10 全部完成
 
-Sprint 6 (性能 + 无障碍)
-  ├── 6.1-6.3 性能 → 可与 Sprint 5 并行
-  └── 6.4-6.7 无障碍 → 可与 Sprint 5 并行
-
-Sprint 7 (文档 + 发布)
-  └── 全部依赖 Sprint 5-6 完成
+v2.3.0 (独立于 v2.2.0，可并行调研)
 ```
 
 ---
@@ -113,6 +141,9 @@ Sprint 7 (文档 + 发布)
 
 | 风险 | 概率 | 缓解 |
 |:-----|:-----|:-----|
-| Hilt 再次失败 | 中 | 改用 @Inject constructor 方案，避免 @Provides |
-| 测试需要 mock 网络 | 中 | 使用 FakeTransport 实现 |
-| Room 迁移问题 | 低 | 已有 fallbackToDestructiveMigration |
+| 多轮对话消息膨胀 | 中 | 滑动窗口 + 可配置最大轮数 |
+| Plugin 沙箱安全 | 高 | 首批仅内置 Plugin；外部需签名校验 + 权限声明 |
+| SuperIsland API 不可用 | 高 | 降级为通用通知 + 重命名 |
+| Backdrop Blur 性能 | 中 | API 31+ 启用，低端设备降级 |
+| 本地推理 APK 体积 | 中 | 模型动态下载，APK 仅含推理引擎 |
+| 测试覆盖回归 | 低 | CI 每次提交自动验证 |

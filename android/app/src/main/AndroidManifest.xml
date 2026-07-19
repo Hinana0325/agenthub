@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -48,6 +48,18 @@
 
         </activity>
 
+        <!--
+            Sprint 8: Widget 快捷输入弹窗
+            由 AgentHubWidget.onUpdate 中 widget_input 的 PendingIntent 拉起。
+            采用对话框主题、不入最近任务栈、不保留历史，营造快速弹窗体验。
+        -->
+        <activity
+            android:name=".widget.WidgetInputActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+
         <!-- Foreground Service: 保持 Agent 后台连接 -->
         <service
             android:name=".AgentConnectionService"
@@ -66,23 +78,12 @@
                 android:resource="@xml/agent_hub_widget_info" />
         </receiver>
 
-        <!-- Widget Send Receiver -->
-        <receiver
-            android:name=".WidgetSendReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.agenthub.app.WIDGET_SEND" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Widget Voice Receiver -->
-        <receiver
-            android:name=".WidgetVoiceReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.agenthub.app.WIDGET_VOICE" />
-            </intent-filter>
-        </receiver>
+        <!--
+            注：原 WidgetSendReceiver / WidgetVoiceReceiver 声明已移除。
+            这两个 BroadcastReceiver 类从未实现，导致清单引用了不存在的类。
+            Widget 将改用 TextView + PendingIntent 的方式重新设计，
+            避免依赖不存在的接收器组件。
+        -->
 
         <provider
             android:name="androidx.core.content.FileProvider"

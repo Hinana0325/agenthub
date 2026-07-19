@@ -27,7 +27,11 @@ import com.agenthub.app.data.local.entity.SessionEntity
         PluginEntity::class
     ],
     version = 6,
-    exportSchema = false
+    // 启用 schema 导出以便迁移测试。
+    // TODO: 需在 app/build.gradle 的 ksp / kapt 配置中添加
+    //   ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+    //   并将 schemas 目录纳入版本控制，否则编译期会发出警告。
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -59,7 +63,13 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "agenthub.db"
-                ).addMigrations(MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                )
+                    // 不使用 fallbackToDestructiveMigration()：缺少迁移时会抛
+                    // IllegalStateException，优先于静默丢失用户数据。
+                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6；后续新增版本时
+                    // 必须显式补齐对应的 Migration。
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+                    .build().also { INSTANCE = it }
             }
         }
     }

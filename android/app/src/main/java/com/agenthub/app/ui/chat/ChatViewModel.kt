@@ -26,12 +26,18 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
 import android.util.Base64
+import com.agenthub.app.AgentHubWidget
 import com.agenthub.app.util.PerformanceMonitor
 import com.agenthub.app.util.VoiceInputManager
+import com.agenthub.app.widget.WidgetInputActivity
 import javax.inject.Inject
 import com.agenthub.app.util.VoiceChatManager
 import com.agenthub.app.util.LocalModelManager
@@ -88,12 +94,10 @@ class ChatViewModel @Inject constructor(
     private val repository: com.agenthub.app.data.repository.ChatRepository,
     private val settingsDataStore: SettingsDataStore
 ) : AndroidViewModel(application) {
-    // private val repository = AppModule.getRepository(application)
-    // private val settingsDataStore = SettingsDataStore(getApplication())
     private val _transport = MutableStateFlow<AgentTransport?>(null)
     private var voiceInputManager: VoiceInputManager? = null
     private var voiceChatManager: VoiceChatManager? = null
-    val localModelManager = LocalModelManager()
+    private val localModelManager = LocalModelManager()
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -153,10 +157,43 @@ class ChatViewModel @Inject constructor(
                 _uiState.update { it.copy(messages = messages) }
             }
         }
+
+        // Sprint 8: 注册 Widget 快捷输入广播，接收 WidgetInputActivity 发来的消息
+        registerWidgetMessageReceiver()
     }
 
     // Track when user message was sent for latency measurement
     private var lastUserMessageTime: Long = 0L
+
+    /**
+     * Sprint 8: 接收来自 [WidgetInputActivity] 的快捷输入消息。
+     *
+     * 生命周期：在 [init] 中通过 [registerWidgetMessageReceiver] 注册，
+     * 在 [onCleared] 中注销。
+     *
+     * 架构约束：该接收器仅在 ChatViewModel 存活时生效（即 App 处于前台
+     * 或进程未被回收）。若 App 已被系统冷启动回收，广播将丢失。后续可在
+     * ChatViewModel 初始化时通过 WidgetDataProvider.consumePendingInput
+     * 消费遗留消息作为补偿通道。
+     */
+    private val widgetMessageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val text = intent?.getStringExtra(WidgetInputActivity.EXTRA_MESSAGE)
+            if (!text.isNullOrBlank()) {
+                handleWidgetMessage(text)
+            }
+        }
+    }
+
+    private fun registerWidgetMessageReceiver() {
+        val filter = IntentFilter(WidgetInputActivity.ACTION_WIDGET_SEND_MESSAGE)
+        // Android 13+ 要求显式声明 RECEIVER_NOT_EXPORTED 以接收同应用广播
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            application.registerReceiver(widgetMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            application.registerReceiver(widgetMessageReceiver, filter)
+        }
+    }
 
     private suspend fun handleAgentEvent(event: AgentEvent) {
         when (event) {
@@ -391,6 +428,9 @@ class ChatViewModel @Inject constructor(
     fun clearMessages() {
         viewModelScope.launch {
             _uiState.value.currentSessionId?.let { id ->
+                // 清空传输层中当前 session 的对话历史，确保下次发送的消息
+                // 不会携带清除前的上下文（/clear 命令的语义是「重新开始」）。
+                _transport.value?.clearHistory(id)
                 repository.deleteMessagesBySession(id)
             }
         }
@@ -452,6 +492,11 @@ class ChatViewModel @Inject constructor(
 
     fun deleteSession(sessionId: String) {
         viewModelScope.launch {
+            // 清空传输层中该 session 的对话历史，避免历史残留导致下次
+            // 同 sessionId（若被复用）的请求携带已删除会话的上下文。
+            // transport 可能为 null（尚未连接），安全调用会跳过；
+            // OpenAIHttpTransport 清空客户端历史，WebSocketTransport 清空本地缓存。
+            _transport.value?.clearHistory(sessionId)
             repository.deleteSession(sessionId)
             if (_uiState.value.currentSessionId == sessionId) {
                 val sessions = _uiState.value.sessions
@@ -685,6 +730,45 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Sprint 8: 处理来自 [WidgetInputActivity] 的快捷输入消息。
+     *
+     * 行为与 [handleSharedText] 一致：创建/复用 session、持久化 user 消息、
+     * 通过 transport 发送或离线模拟回复。完成后刷新 Widget 以显示最新消息
+     * （对应需求"Widget 更新为 sent 状态"）。
+     */
+    fun handleWidgetMessage(text: String) {
+        viewModelScope.launch {
+            val sessionId = _uiState.value.currentSessionId
+                ?: repository.createSession("Widget Message").let { session ->
+                    _currentSessionId.value = session.id
+                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    session.id
+                }
+            val userMsg = repository.sendMessage(sessionId, text, MessageRole.User)
+            repository.logActivity("widget", "Message sent from Widget", text.take(80))
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages + Message(
+                        id = userMsg.id,
+                        sessionId = userMsg.sessionId,
+                        role = MessageRole.User,
+                        content = text,
+                        status = MessageStatus.Sent
+                    ),
+                    isStreaming = true
+                )
+            }
+            if (_uiState.value.connectionState.isConnected) {
+                _transport.value?.sendMessage(sessionId, text)
+            } else {
+                simulateResponse()
+            }
+            // 刷新所有 Widget 实例，使其显示最新发送的消息
+            AgentHubWidget.updateAll(application)
+        }
+    }
+
     // ── Voice Input ──
 
     fun initVoiceInput(context: Context) {
@@ -881,6 +965,12 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        // Sprint 8: 注销 Widget 快捷输入广播接收器，避免内存泄漏
+        try {
+            application.unregisterReceiver(widgetMessageReceiver)
+        } catch (_: Exception) {
+            // 接收器可能因异常路径未注册成功，忽略注销失败
+        }
         _transport.value?.disconnect()
         voiceInputManager?.destroy()
         voiceChatManager?.destroy()
