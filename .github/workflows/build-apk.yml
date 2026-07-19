@@ -11,6 +11,8 @@ jobs:
   build:
     name: Assemble & Unit Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,25 +52,27 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
 
-      - name: Build release APK
+      - name: Build release APK & upload to Release
         if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
-
-      - name: Upload release APK
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v4
-        with:
-          name: agenthub-release-apk
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: android/app/build/outputs/apk/release/app-release-unsigned.apk
-          name: AgentHub ${{ github.ref_name }}
-          body_path: CHANGELOG.md
-          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          VERSION="${GITHUB_REF_NAME}"
+          echo "Creating release ${VERSION}..."
+          APK=$(find app/build/outputs/apk/release -name "*.apk" 2>/dev/null | head -1)
+          if [ -z "$APK" ]; then
+            # Try debug APK as fallback
+            APK=$(find app/build/outputs/apk/debug -name "*.apk" 2>/dev/null | head -1)
+          fi
+          if [ -z "$APK" ]; then
+            echo "No APK found!"
+            find app/build/outputs -type f -name "*.apk" 2>/dev/null
+            exit 1
+          fi
+          echo "Found APK: $APK"
+          gh release create "${VERSION}" \
+            --title "AgentHub ${VERSION}" \
+            --notes "For release notes see [CHANGELOG](https://github.com/Hinana0325/agenthub/blob/main/CHANGELOG.md)" \
+            "${APK}"
