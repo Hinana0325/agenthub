@@ -16,11 +16,10 @@ class ScreenTest {
 
     @Test
     fun `tabs contain exactly 4 screens`() {
-        assertEquals(4, Screen.tabs.size)
-        assertTrue(Screen.tabs.contains(Screen.Chat))
-        assertTrue(Screen.tabs.contains(Screen.Sessions))
-        assertTrue(Screen.tabs.contains(Screen.Activity))
-        assertTrue(Screen.tabs.contains(Screen.Settings))
+        val expectedRoutes = setOf("chat", "sessions", "activity", "settings")
+        val actualRoutes = Screen.tabs.map { it.route }.toSet()
+        assertEquals(4, actualRoutes.size, "tabs should have 4 routes")
+        assertEquals(expectedRoutes, actualRoutes, "tabs routes should match expected")
     }
 
     @Test
