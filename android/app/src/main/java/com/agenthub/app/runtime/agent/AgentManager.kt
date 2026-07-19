@@ -61,19 +61,20 @@ class AgentManager @Inject constructor(
     }
 
     fun updateAgentStatus(agentId: String, status: AgentStatus) {
-        val updated: Agent? = _agents.updateAndGet { current ->
+        var updatedAgent: Agent? = null
+        _agents.update { current ->
             val index = current.indexOfFirst { it.id == agentId }
             if (index >= 0) {
-                current.toMutableList().also { it[index] = it[index].copy(status = status) }
+                val updated = current[index].copy(status = status)
+                updatedAgent = updated
+                current.toMutableList().also { it[index] = updated }
             } else {
                 current
             }
-        }.find { it.id == agentId && it.status == status }
+        }
 
         // Phase 4.3: 同步状态变更到 Registry
-        if (updated != null) {
-            registry.register(updated)
-        }
+        updatedAgent?.let { registry.register(it) }
     }
 
     fun getAgent(agentId: String): Agent? = _agents.value.find { it.id == agentId }
