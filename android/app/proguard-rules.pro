@@ -1,12 +1,5 @@
 # AgentHub ProGuard Rules
 
-# === AgentHub app classes ===
--keep class com.agenthub.app.** { *; }
--keepclassmembers class com.agenthub.app.** {
-    public *;
-    <init>();
-}
-
 # === Keep line numbers for debugging ===
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
@@ -20,9 +13,8 @@
 
 # === Room (SQLite / DAO) ===
 -keep class * extends androidx.room.RoomDatabase { *; }
--keep class com.agenthub.app.data.local.entity.** { *; }
--keep class com.agenthub.app.data.local.dao.** { *; }
 -keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao class * { *; }
 -dontwarn androidx.room.paging.**
 
 # === DataStore ===
@@ -36,13 +28,18 @@
 
 # === Gson (prevent reflection issues) ===
 -keep class com.google.gson.** { *; }
--keepclassmembers class com.agenthub.app.data.model.** { *; }
 -keep class com.agenthub.app.data.model.** { *; }
+-keepclassmembers class com.agenthub.app.data.model.** { *; }
 
 # === Kotlin coroutines ===
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # === AndroidViewModel (prevent Application removal) ===
--keep class androidx.lifecycle.AndroidViewModel { *; }
 -keep class * extends androidx.lifecycle.AndroidViewModel { *; }
+
+# === Keep ViewModels for Hilt (future) ===
+-keep class * extends androidx.lifecycle.ViewModel { *; }
+
+# === Keep entity classes for Room reflection ===
+-keep class com.agenthub.app.data.local.entity.** { *; }

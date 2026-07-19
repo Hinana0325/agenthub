@@ -270,40 +270,40 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     session.id
                 }
 
-        val userMsg = repository.sendMessage(
-            sessionId = sessionId,
-            content = text,
-            role = MessageRole.User,
-            attachmentType = state.pendingAttachmentType,
-            attachmentData = state.pendingAttachmentData,
-            attachmentName = state.pendingAttachmentName,
-            replyToId = state.replyingToMessageId
-        )
-        repository.logActivity("message", "Message sent", text.take(80))
-
-        _uiState.update { s ->
-            val stateMsg = Message(
-                id = userMsg.id,
-                sessionId = userMsg.sessionId,
-                role = MessageRole.User,
+            val userMsg = repository.sendMessage(
+                sessionId = sessionId,
                 content = text,
-                status = MessageStatus.Sent,
+                role = MessageRole.User,
                 attachmentType = state.pendingAttachmentType,
                 attachmentData = state.pendingAttachmentData,
                 attachmentName = state.pendingAttachmentName,
                 replyToId = state.replyingToMessageId
             )
-            s.copy(
-                messages = s.messages + stateMsg,
-                inputText = "",
-                isStreaming = true,
-                pendingAttachmentType = null,
-                pendingAttachmentData = null,
-                pendingAttachmentName = null,
-                replyingToMessageId = null,
-                replyingToMessageContent = null
-            )
-        }
+            repository.logActivity("message", "Message sent", text.take(80))
+
+            _uiState.update { s ->
+                val stateMsg = Message(
+                    id = userMsg.id,
+                    sessionId = userMsg.sessionId,
+                    role = MessageRole.User,
+                    content = text,
+                    status = MessageStatus.Sent,
+                    attachmentType = state.pendingAttachmentType,
+                    attachmentData = state.pendingAttachmentData,
+                    attachmentName = state.pendingAttachmentName,
+                    replyToId = state.replyingToMessageId
+                )
+                s.copy(
+                    messages = s.messages + stateMsg,
+                    inputText = "",
+                    isStreaming = true,
+                    pendingAttachmentType = null,
+                    pendingAttachmentData = null,
+                    pendingAttachmentName = null,
+                    replyingToMessageId = null,
+                    replyingToMessageContent = null
+                )
+            }
 
             if (_uiState.value.connectionState.isConnected) {
                 _transport.value?.sendMessage(sessionId, text)
