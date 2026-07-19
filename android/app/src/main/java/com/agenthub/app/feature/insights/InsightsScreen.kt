@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
 import com.agenthub.app.ui.theme.GlassCard
@@ -33,7 +33,7 @@ import com.agenthub.app.ui.theme.GlassTopAppBar
 @Composable
 fun InsightsScreen(
     onBack: () -> Unit = {},
-    viewModel: InsightsViewModel = viewModel()
+    viewModel: InsightsViewModel = hiltViewModel()
 ) {
     val insights by viewModel.insights.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()

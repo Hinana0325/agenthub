@@ -22,7 +22,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
@@ -32,7 +32,7 @@ import com.agenthub.app.ui.theme.GlassTopAppBar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsViewModel: SettingsViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     onNavigateToAgents: () -> Unit = {},
     onNavigateToMarketplace: () -> Unit = {},
     onNavigateToDeviceSync: () -> Unit = {},

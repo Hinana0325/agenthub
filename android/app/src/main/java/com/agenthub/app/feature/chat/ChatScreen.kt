@@ -52,7 +52,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.data.model.Message
 import com.agenthub.app.data.model.MessageRole
@@ -78,7 +78,7 @@ import com.agenthub.app.core.ui.HapticFeedback
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    viewModel: ChatViewModel = viewModel(),
+    viewModel: ChatViewModel = hiltViewModel(),
     navController: NavHostController? = null,
     onNavigateToSettings: () -> Unit = {}
 ) {

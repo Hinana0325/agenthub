@@ -32,7 +32,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.agent.model.AgentType
@@ -46,7 +46,7 @@ import com.agenthub.app.ui.theme.GlassDropdownMenuItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentsScreen(
-    agentsViewModel: AgentsViewModel = viewModel()
+    agentsViewModel: AgentsViewModel = hiltViewModel()
 ) {
     val uiState by agentsViewModel.uiState.collectAsState()
     val adaptive = currentAdaptiveConfig()
