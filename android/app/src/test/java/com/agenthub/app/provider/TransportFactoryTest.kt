@@ -12,54 +12,56 @@ import org.junit.Test
  */
 class TransportFactoryTest {
 
+    private val factory = TransportFactory()
+
     @Test
     fun `Hermes creates WebSocketTransport`() {
-        val transport = TransportFactory.create(AgentType.Hermes)
+        val transport = factory.create(AgentType.Hermes)
         assertTrue(transport is WebSocketTransport)
     }
 
     @Test
     fun `OpenClaw creates WebSocketTransport`() {
-        val transport = TransportFactory.create(AgentType.OpenClaw)
+        val transport = factory.create(AgentType.OpenClaw)
         assertTrue(transport is WebSocketTransport)
     }
 
     @Test
     fun `OpenCode creates WebSocketTransport`() {
-        val transport = TransportFactory.create(AgentType.OpenCode)
+        val transport = factory.create(AgentType.OpenCode)
         assertTrue(transport is WebSocketTransport)
     }
 
     @Test
     fun `OpenAI creates OpenAIHttpTransport`() {
-        val transport = TransportFactory.create(AgentType.OpenAI)
+        val transport = factory.create(AgentType.OpenAI)
         assertTrue(transport is OpenAIHttpTransport)
     }
 
     @Test
     fun `XiaomiMiMo creates OpenAIHttpTransport`() {
-        val transport = TransportFactory.create(AgentType.XiaomiMiMo)
+        val transport = factory.create(AgentType.XiaomiMiMo)
         assertTrue(transport is OpenAIHttpTransport)
     }
 
     @Test
     fun `LocalModel creates OpenAIHttpTransport`() {
-        val transport = TransportFactory.create(AgentType.LocalModel)
+        val transport = factory.create(AgentType.LocalModel)
         assertTrue(transport is OpenAIHttpTransport)
     }
 
     @Test
     fun `all AgentTypes produce non-null transport`() {
         AgentType.entries.forEach { type ->
-            val transport = TransportFactory.create(type)
+            val transport = factory.create(type)
             assertNotNull("Transport for $type should not be null", transport)
         }
     }
 
     @Test
     fun `each call creates new instance`() {
-        val t1 = TransportFactory.create(AgentType.Hermes)
-        val t2 = TransportFactory.create(AgentType.Hermes)
+        val t1 = factory.create(AgentType.Hermes)
+        val t2 = factory.create(AgentType.Hermes)
         assertNotSame("Each create() should return a new instance", t1, t2)
     }
 
@@ -69,10 +71,10 @@ class TransportFactoryTest {
         val httpTypes = listOf(AgentType.OpenAI, AgentType.XiaomiMiMo, AgentType.LocalModel)
 
         wsTypes.forEach { type ->
-            assertTrue("$type should be WebSocketTransport", TransportFactory.create(type) is WebSocketTransport)
+            assertTrue("$type should be WebSocketTransport", factory.create(type) is WebSocketTransport)
         }
         httpTypes.forEach { type ->
-            assertTrue("$type should be OpenAIHttpTransport", TransportFactory.create(type) is OpenAIHttpTransport)
+            assertTrue("$type should be OpenAIHttpTransport", factory.create(type) is OpenAIHttpTransport)
         }
     }
 }
