@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/event-schema.json",
+  "title": "AgentHub Event Schema",
+  "description": "事件模型永久统一契约。对应 Android (Kotlin) 的 AgentEvent sealed class 与 AgentConnectionState 数据类。Android (Kotlin) 与 iOS (Swift) 共享此定义。AgentEvent 是以 type 字段为判别符的标签联合 (discriminated union)，描述传输层与 Agent 交互过程中产生的所有事件。",
+  "type": "object",
+  "definitions": {
+    "AgentEventType": {
+      "title": "AgentEventType",
+      "description": "AgentEvent 的判别符 (discriminator) 取值枚举",
+      "type": "string",
+      "enum": ["Connected", "Disconnected", "MessageReceived", "Error", "Reconnecting", "StreamComplete"]
+    },
+    "ConnectedEvent": {
+      "title": "ConnectedEvent",
+      "description": "已连接事件。Transport 成功建立连接后触发",
+      "type": "object",
+      "required": ["type", "serverUrl", "agentType"],
+      "properties": {
+        "type": { "type": "string", "const": "Connected" },
+        "serverUrl": {
+          "type": "string",
+          "description": "已连接的服务端 URL"
+        },
+        "agentType": {
+          "description": "已连接的 Agent 类型，引用 agent-schema.json 中的 AgentType 定义",
+          "$ref": "agent-schema.json#/definitions/AgentType"
+        }
+      }
+    },
+    "DisconnectedEvent": {
+      "title": "DisconnectedEvent",
+      "description": "已断开连接事件。连接被关闭（主动或异常）时触发",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "Disconnected" },
+        "reason": {
+          "type": "string",
+          "description": "断开原因描述",
+          "default": ""
+        }
+      }
+    },
+    "MessageReceivedEvent": {
+      "title": "MessageReceivedEvent",
+      "description": "收到消息事件。isDelta=true 表示流式增量片段，isDelta=false 表示完整消息",
+      "type": "object",
+      "required": ["type", "content"],
+      "properties": {
+        "type": { "type": "string", "const": "MessageReceived" },
+        "content": {
+          "type": "string",
+          "description": "消息内容。isDelta=true 时为增量片段，需拼接；isDelta=false 时为完整内容"
+        },
+        "isDelta": {
+          "type": "boolean",
+          "description": "是否为流式增量。true=增量片段，false=完整消息",
+          "default": false
+        }
+      }
+    },
+    "ErrorEvent": {
+      "title": "ErrorEvent",
+      "description": "错误事件。传输层或 Agent 调用过程中发生错误时触发",
+      "type": "object",
+      "required": ["type", "message"],
+      "properties": {
+        "type": { "type": "string", "const": "Error" },
+        "message": {
+          "type": "string",
+          "description": "错误信息描述"
+        }
+      }
+    },
+    "ReconnectingEvent": {
+      "title": "ReconnectingEvent",
+      "description": "正在重连事件。连接异常断开后开始自动重连时触发",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "Reconnecting" }
+      }
+    },
+    "StreamCompleteEvent": {
+      "title": "StreamCompleteEvent",
+      "description": "流式响应结束事件。标记一次流式响应的所有增量片段已发送完毕",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "StreamComplete" }
+      }
+    },
+    "AgentEvent": {
+      "title": "AgentEvent",
+      "description": "Agent 事件标签联合 (discriminated union)。通过 type 字段判别具体子类型。对应 Android (Kotlin) 的 AgentEvent sealed class。两端实现须严格按 type 字段做模式匹配 (pattern matching)。",
+      "oneOf": [
+        { "$ref": "#/definitions/ConnectedEvent" },
+        { "$ref": "#/definitions/DisconnectedEvent" },
+        { "$ref": "#/definitions/MessageReceivedEvent" },
+        { "$ref": "#/definitions/ErrorEvent" },
+        { "$ref": "#/definitions/ReconnectingEvent" },
+        { "$ref": "#/definitions/StreamCompleteEvent" }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "AgentConnectionState": {
+      "title": "AgentConnectionState",
+      "description": "Agent 连接状态数据类。UI 层用于渲染连接状态与延迟。对应 Android (Kotlin) 的 AgentConnectionState data class。",
+      "type": "object",
+      "properties": {
+        "isConnected": {
+          "type": "boolean",
+          "description": "当前是否已连接",
+          "default": false
+        },
+        "serverUrl": {
+          "type": "string",
+          "description": "当前连接的服务端 URL。未连接时为空字符串",
+          "default": ""
+        },
+        "agentType": {
+          "description": "当前连接的 Agent 类型，引用 agent-schema.json 中的 AgentType 定义",
+          "$ref": "agent-schema.json#/definitions/AgentType",
+          "default": "Hermes"
+        },
+        "latency": {
+          "type": "integer",
+          "description": "当前连接延迟，单位毫秒 (ms)。0 表示未测量或未连接",
+          "default": 0
+        }
+      }
+    }
+  },
+  "notes": {
+    "sealed_class_mapping": "Android (Kotlin) 中 AgentEvent 为 sealed class，各子类对应本契约中的 *Event 定义；iOS (Swift) 中应使用 enum with associated values 实现等价语义。",
+    "streaming_lifecycle": "流式响应典型生命周期：Connected → MessageReceived(isDelta=true) × N → StreamComplete。中途异常时插入 Error 事件。",
+    "state_vs_event": "AgentConnectionState 是状态快照（可随时读取当前值），AgentEvent 是事件流（按时间顺序消费）。Connected/Disconnected 事件应驱动 AgentConnectionState.isConnected 的更新。",
+    "default_agent_type": "AgentConnectionState.agentType 默认为 'Hermes'，与 Android 默认 Agent 保持一致。"
+  }
+}

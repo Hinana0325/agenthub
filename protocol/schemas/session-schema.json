@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/session-schema.json",
+  "title": "AgentHub Session Schema",
+  "description": "会话模型契约。一个 Session 代表一次连续对话，包含多条 Message。",
+  "type": "object",
+  "definitions": {
+    "Session": {
+      "title": "Session",
+      "type": "object",
+      "required": ["id", "title", "createdAt", "updatedAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "会话唯一标识。WebSocket 传输中作为 sessionId 传给服务端"
+        },
+        "title": {
+          "type": "string",
+          "description": "会话标题，用于 UI 展示"
+        },
+        "createdAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "创建时间戳（Unix 毫秒）"
+        },
+        "updatedAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "最后更新时间戳（Unix 毫秒），每次发消息时更新"
+        },
+        "isPinned": {
+          "type": "boolean",
+          "description": "是否置顶",
+          "default": false
+        },
+        "messageCount": {
+          "type": "integer",
+          "description": "消息总数（冗余字段，用于列表页快速展示）",
+          "default": 0
+        },
+        "summary": {
+          "type": "string",
+          "description": "会话摘要（预留字段，未来用于多端同步时的预览）",
+          "default": ""
+        }
+      }
+    }
+  }
+}

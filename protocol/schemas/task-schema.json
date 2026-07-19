@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/task-schema.json",
+  "title": "AgentHub Task Schema",
+  "description": "任务模型契约。Task 是异步的、可追踪的、可调度的执行单元，区别于同步的 Chat。",
+  "type": "object",
+  "definitions": {
+    "TaskType": {
+      "title": "TaskType",
+      "type": "string",
+      "enum": ["CHAT", "CODE", "WORKFLOW", "TOOL_CALL", "FILE_OPERATION"],
+      "description": "任务类型"
+    },
+    "TaskStatus": {
+      "title": "TaskStatus",
+      "type": "string",
+      "enum": ["Pending", "Running", "Completed", "Failed", "Cancelled"],
+      "description": "任务状态"
+    },
+    "AgentTask": {
+      "title": "AgentTask",
+      "type": "object",
+      "required": ["id", "agentId", "type", "input", "status", "createdAt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "任务唯一标识。格式：task_<uuid>"
+        },
+        "agentId": {
+          "type": "string",
+          "description": "执行任务的 Agent ID"
+        },
+        "sessionId": {
+          "type": ["string", "null"],
+          "description": "关联会话 ID（可选，用于将任务结果回填到聊天）",
+          "default": null
+        },
+        "type": { "$ref": "#/definitions/TaskType" },
+        "input": { "type": "string", "description": "任务输入内容" },
+        "status": {
+          "$ref": "#/definitions/TaskStatus",
+          "default": "Pending"
+        },
+        "result": {
+          "type": ["string", "null"],
+          "description": "任务执行结果",
+          "default": null
+        },
+        "createdAt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "创建时间戳（Unix 毫秒）"
+        },
+        "completedAt": {
+          "type": ["integer", "null"],
+          "format": "int64",
+          "description": "完成时间戳。Completed/Failed/Cancelled 时设置，Running/Pending 时为 null",
+          "default": null
+        },
+        "error": {
+          "type": ["string", "null"],
+          "description": "错误描述（status=Failed 时设置）",
+          "default": null
+        }
+      }
+    }
+  }
+}

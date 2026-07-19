@@ -1,0 +1,547 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/error-codes.json",
+  "title": "AgentHub Error Code Registry",
+  "description": "错误码永久注册表契约。当前代码库没有统一错误码系统，错误以散落字符串形式存在。本契约 DEFINES（定义）统一错误码注册表，作为 Android (Kotlin) 与 iOS (Swift) 共享的永久错误码来源。错误码按类别分区间：Transport(1xxx)、Protocol(2xxx)、Agent(3xxx)、Session(4xxx)、Task(5xxx)、Workflow(6xxx)、Plugin(7xxx)、MCP(8xxx)、File(9xxx)、Crypto(10xxx)。新增错误码必须在此注册表登记，禁止两端硬编码字符串错误。",
+  "type": "object",
+  "definitions": {
+    "ErrorCategory": {
+      "title": "ErrorCategory",
+      "description": "错误类别枚举",
+      "type": "string",
+      "enum": ["Transport", "Protocol", "Agent", "Session", "Task", "Workflow", "Plugin", "MCP", "File", "Crypto"]
+    },
+    "ErrorCode": {
+      "title": "ErrorCode",
+      "description": "单个错误码定义条目。code 为整数（按类别分段），name 为 UPPER_SNAKE_CASE 常量名，message 为中文描述，category 为所属类别",
+      "type": "object",
+      "required": ["code", "name", "message", "category"],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "description": "错误码整数（按类别分段）"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "错误常量名，UPPER_SNAKE_CASE"
+        },
+        "message": {
+          "type": "string",
+          "description": "中文错误描述"
+        },
+        "category": { "$ref": "#/definitions/ErrorCategory" }
+      }
+    }
+  },
+  "categories": {
+    "Transport": {
+      "range": "1xxx",
+      "description": "传输层错误。覆盖 WebSocket、HttpSSE 等传输实现的连接、认证、超时、断开、重连。",
+      "codes": [1001, 1002, 1003, 1004, 1005]
+    },
+    "Protocol": {
+      "range": "2xxx",
+      "description": "协议层错误。覆盖消息格式校验、未知类型、解析失败、版本不匹配。",
+      "codes": [2001, 2002, 2003, 2004]
+    },
+    "Agent": {
+      "range": "3xxx",
+      "description": "Agent 相关错误。覆盖 Agent 查找、在线状态、能力校验、配置缺失、响应为空。",
+      "codes": [3001, 3002, 3003, 3004, 3005]
+    },
+    "Session": {
+      "range": "4xxx",
+      "description": "会话相关错误。覆盖会话查找与创建。",
+      "codes": [4001, 4002]
+    },
+    "Task": {
+      "range": "5xxx",
+      "description": "任务相关错误。覆盖任务查找、重复运行、取消、超时。",
+      "codes": [5001, 5002, 5003, 5004]
+    },
+    "Workflow": {
+      "range": "6xxx",
+      "description": "工作流相关错误。覆盖 DAG 校验、节点执行、环检测、超时。",
+      "codes": [6001, 6002, 6003, 6004]
+    },
+    "Plugin": {
+      "range": "7xxx",
+      "description": "插件相关错误。覆盖插件查找、启用状态、执行失败。",
+      "codes": [7001, 7002, 7003]
+    },
+    "MCP": {
+      "range": "8xxx",
+      "description": "MCP (Model Context Protocol) 桥接相关错误。覆盖服务端可达性、工具查找、工具执行、初始化。",
+      "codes": [8001, 8002, 8003, 8004]
+    },
+    "File": {
+      "range": "9xxx",
+      "description": "文件传输相关错误。覆盖文件大小、查找、传输失败。",
+      "codes": [9001, 9002, 9003]
+    },
+    "Crypto": {
+      "range": "10xxx",
+      "description": "加密相关错误。覆盖解密失败、密钥库不可用、端到端密钥不匹配。",
+      "codes": [10001, 10002, 10003]
+    }
+  },
+  "errors": {
+    "TRANSPORT_CONNECT_FAILED": {
+      "code": 1001,
+      "name": "TRANSPORT_CONNECT_FAILED",
+      "message": "传输连接失败：无法建立到服务端的连接",
+      "category": "Transport"
+    },
+    "TRANSPORT_AUTH_FAILED": {
+      "code": 1002,
+      "name": "TRANSPORT_AUTH_FAILED",
+      "message": "传输认证失败：API Key 无效或未授权",
+      "category": "Transport"
+    },
+    "TRANSPORT_TIMEOUT": {
+      "code": 1003,
+      "name": "TRANSPORT_TIMEOUT",
+      "message": "传输超时：请求在规定时间内未收到响应",
+      "category": "Transport"
+    },
+    "TRANSPORT_DISCONNECTED": {
+      "code": 1004,
+      "name": "TRANSPORT_DISCONNECTED",
+      "message": "传输连接断开：连接被异常关闭",
+      "category": "Transport"
+    },
+    "TRANSPORT_RECONNECT_FAILED": {
+      "code": 1005,
+      "name": "TRANSPORT_RECONNECT_FAILED",
+      "message": "传输重连失败：自动重连尝试未成功",
+      "category": "Transport"
+    },
+    "PROTOCOL_INVALID_MESSAGE": {
+      "code": 2001,
+      "name": "PROTOCOL_INVALID_MESSAGE",
+      "message": "协议消息无效：消息不符合协议规范",
+      "category": "Protocol"
+    },
+    "PROTOCOL_UNKNOWN_TYPE": {
+      "code": 2002,
+      "name": "PROTOCOL_UNKNOWN_TYPE",
+      "message": "协议未知类型：收到无法识别的消息类型",
+      "category": "Protocol"
+    },
+    "PROTOCOL_PARSE_ERROR": {
+      "code": 2003,
+      "name": "PROTOCOL_PARSE_ERROR",
+      "message": "协议解析错误：JSON 解析或字段提取失败",
+      "category": "Protocol"
+    },
+    "PROTOCOL_VERSION_MISMATCH": {
+      "code": 2004,
+      "name": "PROTOCOL_VERSION_MISMATCH",
+      "message": "协议版本不匹配：客户端与服务端协议版本不兼容",
+      "category": "Protocol"
+    },
+    "AGENT_NOT_FOUND": {
+      "code": 3001,
+      "name": "AGENT_NOT_FOUND",
+      "message": "Agent 未找到：指定的 Agent 不存在",
+      "category": "Agent"
+    },
+    "AGENT_OFFLINE": {
+      "code": 3002,
+      "name": "AGENT_OFFLINE",
+      "message": "Agent 离线：目标 Agent 当前不在线",
+      "category": "Agent"
+    },
+    "AGENT_NO_CAPABILITY": {
+      "code": 3003,
+      "name": "AGENT_NO_CAPABILITY",
+      "message": "Agent 无此能力：Agent 不支持所需能力（如 WORKFLOW、MCP）",
+      "category": "Agent"
+    },
+    "AGENT_CONFIG_MISSING": {
+      "code": 3004,
+      "name": "AGENT_CONFIG_MISSING",
+      "message": "Agent 配置缺失：缺少必要的服务端地址或 API Key",
+      "category": "Agent"
+    },
+    "AGENT_RESPONSE_EMPTY": {
+      "code": 3005,
+      "name": "AGENT_RESPONSE_EMPTY",
+      "message": "Agent 响应为空：Agent 返回了空内容",
+      "category": "Agent"
+    },
+    "SESSION_NOT_FOUND": {
+      "code": 4001,
+      "name": "SESSION_NOT_FOUND",
+      "message": "会话未找到：指定的 Session 不存在",
+      "category": "Session"
+    },
+    "SESSION_CREATE_FAILED": {
+      "code": 4002,
+      "name": "SESSION_CREATE_FAILED",
+      "message": "会话创建失败：无法创建新会话",
+      "category": "Session"
+    },
+    "TASK_NOT_FOUND": {
+      "code": 5001,
+      "name": "TASK_NOT_FOUND",
+      "message": "任务未找到：指定的 Task 不存在",
+      "category": "Task"
+    },
+    "TASK_ALREADY_RUNNING": {
+      "code": 5002,
+      "name": "TASK_ALREADY_RUNNING",
+      "message": "任务已在运行：不能重复启动正在运行的任务",
+      "category": "Task"
+    },
+    "TASK_CANCELLED": {
+      "code": 5003,
+      "name": "TASK_CANCELLED",
+      "message": "任务已取消：任务被用户或系统取消",
+      "category": "Task"
+    },
+    "TASK_TIMEOUT": {
+      "code": 5004,
+      "name": "TASK_TIMEOUT",
+      "message": "任务超时：任务执行超过最大允许时间",
+      "category": "Task"
+    },
+    "WORKFLOW_INVALID_DAG": {
+      "code": 6001,
+      "name": "WORKFLOW_INVALID_DAG",
+      "message": "工作流无效 DAG：节点与边构成非法的有向图（如存在孤立必经节点）",
+      "category": "Workflow"
+    },
+    "WORKFLOW_NODE_FAILED": {
+      "code": 6002,
+      "name": "WORKFLOW_NODE_FAILED",
+      "message": "工作流节点失败：单个节点执行出错（含 60 秒超时）",
+      "category": "Workflow"
+    },
+    "WORKFLOW_CYCLE_DETECTED": {
+      "code": 6003,
+      "name": "WORKFLOW_CYCLE_DETECTED",
+      "message": "工作流检测到环：图中存在循环依赖，无法拓扑排序",
+      "category": "Workflow"
+    },
+    "WORKFLOW_TIMEOUT": {
+      "code": 6004,
+      "name": "WORKFLOW_TIMEOUT",
+      "message": "工作流超时：整个工作流执行超过最大允许时间",
+      "category": "Workflow"
+    },
+    "PLUGIN_NOT_FOUND": {
+      "code": 7001,
+      "name": "PLUGIN_NOT_FOUND",
+      "message": "插件未找到：指定的 Plugin 不存在",
+      "category": "Plugin"
+    },
+    "PLUGIN_DISABLED": {
+      "code": 7002,
+      "name": "PLUGIN_DISABLED",
+      "message": "插件已禁用：Plugin.isEnabled 为 false，无法执行",
+      "category": "Plugin"
+    },
+    "PLUGIN_EXECUTION_FAILED": {
+      "code": 7003,
+      "name": "PLUGIN_EXECUTION_FAILED",
+      "message": "插件执行失败：PluginAction 执行出错（HTTP 调用失败、Intent 发送失败等）",
+      "category": "Plugin"
+    },
+    "MCP_SERVER_UNREACHABLE": {
+      "code": 8001,
+      "name": "MCP_SERVER_UNREACHABLE",
+      "message": "MCP 服务端不可达：无法连接到 MCP Server 的 transportUrl",
+      "category": "MCP"
+    },
+    "MCP_TOOL_NOT_FOUND": {
+      "code": 8002,
+      "name": "MCP_TOOL_NOT_FOUND",
+      "message": "MCP 工具未找到：指定的工具在 MCP Server 上不存在",
+      "category": "MCP"
+    },
+    "MCP_TOOL_EXECUTION_ERROR": {
+      "code": 8003,
+      "name": "MCP_TOOL_EXECUTION_ERROR",
+      "message": "MCP 工具执行错误：tools/call 返回 isError=true 或调用异常",
+      "category": "MCP"
+    },
+    "MCP_INITIALIZATION_FAILED": {
+      "code": 8004,
+      "name": "MCP_INITIALIZATION_FAILED",
+      "message": "MCP 初始化失败：initialize 握手失败或能力协商出错",
+      "category": "MCP"
+    },
+    "FILE_TOO_LARGE": {
+      "code": 9001,
+      "name": "FILE_TOO_LARGE",
+      "message": "文件过大：文件大小超过 10MB 上限（压缩前）",
+      "category": "File"
+    },
+    "FILE_NOT_FOUND": {
+      "code": 9002,
+      "name": "FILE_NOT_FOUND",
+      "message": "文件未找到：指定的本地文件不存在",
+      "category": "File"
+    },
+    "FILE_TRANSFER_FAILED": {
+      "code": 9003,
+      "name": "FILE_TRANSFER_FAILED",
+      "message": "文件传输失败：上传或下载过程中出错",
+      "category": "File"
+    },
+    "CRYPTO_DECRYPT_FAILED": {
+      "code": 10001,
+      "name": "CRYPTO_DECRYPT_FAILED",
+      "message": "解密失败：AES-256-GCM 解密失败（密文损坏或 IV 不匹配）",
+      "category": "Crypto"
+    },
+    "CRYPTO_KEYSTORE_UNAVAILABLE": {
+      "code": 10002,
+      "name": "CRYPTO_KEYSTORE_UNAVAILABLE",
+      "message": "密钥库不可用：Android Keystore / iOS Keychain 不可用或未授权",
+      "category": "Crypto"
+    },
+    "CRYPTO_E2E_KEY_MISMATCH": {
+      "code": 10003,
+      "name": "CRYPTO_E2E_KEY_MISMATCH",
+      "message": "端到端密钥不匹配：E2E 加密的密钥协商结果不一致",
+      "category": "Crypto"
+    }
+  },
+  "mapping": {
+    "description": "当前代码库散落字符串错误到统一错误码的映射说明。迁移期间两端可保留字符串错误信息用于 UI 展示，但内部错误处理与日志须使用本注册表中的 code/name。下表列出已知的散落错误来源及其映射目标。",
+    "entries": [
+      {
+        "code": 1001,
+        "name": "TRANSPORT_CONNECT_FAILED",
+        "currentBehavior": "WebSocketTransport.connect() / HttpSSETransport 连接异常时抛出 IOException，错误信息为散落字符串如 'Connection failed'、'WebSocket connect error: <url>'，无统一码。",
+        "affectedModules": ["WebSocketTransport", "HttpSSETransport", "TransportFactory"]
+      },
+      {
+        "code": 1002,
+        "name": "TRANSPORT_AUTH_FAILED",
+        "currentBehavior": "服务端返回 401/403 时，HTTP 传输抛出 HttpException，错误信息为 'Unauthorized' 或 'Auth failed' 字符串。",
+        "affectedModules": ["HttpSSETransport", "OpenAICompatTransport"]
+      },
+      {
+        "code": 1003,
+        "name": "TRANSPORT_TIMEOUT",
+        "currentBehavior": "OkHttp 调用超时抛出 SocketTimeoutException，被包装为字符串 'Request timeout'。AGENT 节点 60 秒超时亦归入此类或 6002。",
+        "affectedModules": ["WebSocketTransport", "HttpSSETransport", "WorkflowExecutor"]
+      },
+      {
+        "code": 1004,
+        "name": "TRANSPORT_DISCONNECTED",
+        "currentBehavior": "WebSocket onClosed 回调中产出 Disconnected 事件，reason 为散落字符串。无统一码区分主动断开与异常断开。",
+        "affectedModules": ["WebSocketTransport", "AgentEvent"]
+      },
+      {
+        "code": 1005,
+        "name": "TRANSPORT_RECONNECT_FAILED",
+        "currentBehavior": "自动重连耗尽重试次数后日志输出 'Reconnect failed' 字符串，未抛结构化错误。",
+        "affectedModules": ["WebSocketTransport", "ReconnectStrategy"]
+      },
+      {
+        "code": 2001,
+        "name": "PROTOCOL_INVALID_MESSAGE",
+        "currentBehavior": "解析 WebSocket 文本帧时若缺少必要字段，抛出 IllegalStateException 含散落字符串 'Invalid message format'。",
+        "affectedModules": ["MessageDispatcher", "WebSocketTransport"]
+      },
+      {
+        "code": 2002,
+        "name": "PROTOCOL_UNKNOWN_TYPE",
+        "currentBehavior": "AgentEvent type 字段无法匹配任何 sealed 子类时，日志输出 'Unknown event type: <type>' 字符串并被丢弃。",
+        "affectedModules": ["AgentEvent", "MessageDispatcher"]
+      },
+      {
+        "code": 2003,
+        "name": "PROTOCOL_PARSE_ERROR",
+        "currentBehavior": "Json.decodeFromString 抛出 SerializationException，被 catch 后包装为 ErrorEvent(message='Parse error')。",
+        "affectedModules": ["MessageDispatcher", "JsonCodec"]
+      },
+      {
+        "code": 2004,
+        "name": "PROTOCOL_VERSION_MISMATCH",
+        "currentBehavior": "当前代码库尚未实现协议版本协商；预留码用于未来 initialize 握手阶段版本校验。",
+        "affectedModules": ["TransportFactory", "ProtocolNegotiator (future)"]
+      },
+      {
+        "code": 3001,
+        "name": "AGENT_NOT_FOUND",
+        "currentBehavior": "AgentRegistry 按 id 查找返回 null 时，调用方抛出 NoSuchElementException 含字符串 'Agent not found'。",
+        "affectedModules": ["AgentRegistry", "AgentManager"]
+      },
+      {
+        "code": 3002,
+        "name": "AGENT_OFFLINE",
+        "currentBehavior": "Agent.status != Online 时调用 send，返回 ErrorEvent(message='Agent offline')。",
+        "affectedModules": ["AgentManager", "Agent"]
+      },
+      {
+        "code": 3003,
+        "name": "AGENT_NO_CAPABILITY",
+        "currentBehavior": "WorkflowExecutor 调用不具备 WORKFLOW 能力的 Agent 时，抛出 IllegalStateException 'Agent lacks capability'。",
+        "affectedModules": ["WorkflowExecutor", "AgentCapability"]
+      },
+      {
+        "code": 3004,
+        "name": "AGENT_CONFIG_MISSING",
+        "currentBehavior": "AgentConfig.serverUrl 或 apiKey 为空时连接，抛出 IllegalStateException 'Config missing' 字符串。",
+        "affectedModules": ["AgentConfig", "TransportFactory"]
+      },
+      {
+        "code": 3005,
+        "name": "AGENT_RESPONSE_EMPTY",
+        "currentBehavior": "流式响应仅收到 StreamComplete 而无任何 MessageReceived，UI 显示空回复；无结构化错误码。",
+        "affectedModules": ["MessageDispatcher", "ChatViewModel"]
+      },
+      {
+        "code": 4001,
+        "name": "SESSION_NOT_FOUND",
+        "currentBehavior": "SessionDao 按 id 查询返回 null，上层抛出字符串 'Session not found'。",
+        "affectedModules": ["SessionDao", "SessionRepository"]
+      },
+      {
+        "code": 4002,
+        "name": "SESSION_CREATE_FAILED",
+        "currentBehavior": "SessionDao.insert 抛出 SQLiteException，被包装为字符串 'Failed to create session'。",
+        "affectedModules": ["SessionDao", "SessionRepository"]
+      },
+      {
+        "code": 5001,
+        "name": "TASK_NOT_FOUND",
+        "currentBehavior": "TaskDao 按 id 查询返回 null，调用方抛出字符串 'Task not found'。",
+        "affectedModules": ["TaskDao", "TaskRepository"]
+      },
+      {
+        "code": 5002,
+        "name": "TASK_ALREADY_RUNNING",
+        "currentBehavior": "对 status=Running 的 Task 再次调用 start，抛出 IllegalStateException 'Task already running'。",
+        "affectedModules": ["TaskRepository", "TaskScheduler"]
+      },
+      {
+        "code": 5003,
+        "name": "TASK_CANCELLED",
+        "currentBehavior": "协程被 cancel 后抛出 CancellationException，被吞并或包装为字符串 'Task cancelled'。",
+        "affectedModules": ["TaskScheduler", "CoroutineScope"]
+      },
+      {
+        "code": 5004,
+        "name": "TASK_TIMEOUT",
+        "currentBehavior": "withTimeout 抛出 TimeoutCancellationException，被包装为字符串 'Task timeout'。",
+        "affectedModules": ["TaskScheduler", "CoroutineScope"]
+      },
+      {
+        "code": 6001,
+        "name": "WORKFLOW_INVALID_DAG",
+        "currentBehavior": "WorkflowExecutor 校验节点/边引用一致性失败时抛出 IllegalArgumentException 'Invalid DAG'。",
+        "affectedModules": ["WorkflowExecutor", "DagValidator"]
+      },
+      {
+        "code": 6002,
+        "name": "WORKFLOW_NODE_FAILED",
+        "currentBehavior": "AGENT 节点调用失败或 60 秒超时，WorkflowExecutionState.error 写入散落字符串描述。",
+        "affectedModules": ["WorkflowExecutor", "WorkflowNode"]
+      },
+      {
+        "code": 6003,
+        "name": "WORKFLOW_CYCLE_DETECTED",
+        "currentBehavior": "拓扑排序检测到环时抛出 IllegalStateException 'Cycle detected'。",
+        "affectedModules": ["WorkflowExecutor", "TopologicalSort"]
+      },
+      {
+        "code": 6004,
+        "name": "WORKFLOW_TIMEOUT",
+        "currentBehavior": "整个工作流 withTimeout 触发，错误写入 state.error 为字符串。当前未与单节点超时(6002)区分。",
+        "affectedModules": ["WorkflowExecutor", "CoroutineScope"]
+      },
+      {
+        "code": 7001,
+        "name": "PLUGIN_NOT_FOUND",
+        "currentBehavior": "PluginRegistry 按 id 查找返回 null 时抛出字符串 'Plugin not found'。",
+        "affectedModules": ["PluginRegistry", "PluginManager"]
+      },
+      {
+        "code": 7002,
+        "name": "PLUGIN_DISABLED",
+        "currentBehavior": "Plugin.isEnabled=false 时执行，抛出 IllegalStateException 'Plugin disabled'。",
+        "affectedModules": ["PluginManager", "Plugin"]
+      },
+      {
+        "code": 7003,
+        "name": "PLUGIN_EXECUTION_FAILED",
+        "currentBehavior": "HttpCall 失败或 Intent 发送失败，catch 后返回 PluginResult(content=错误字符串)，无统一码。",
+        "affectedModules": ["PluginExecutor", "HttpCall", "BroadcastCall"]
+      },
+      {
+        "code": 8001,
+        "name": "MCP_SERVER_UNREACHABLE",
+        "currentBehavior": "MCP HTTP POST 连接失败抛出 IOException 'MCP server unreachable'（MCP 桥为新增模块，迁移时直接采用本码）。",
+        "affectedModules": ["McpBridge", "McpHttpClient"]
+      },
+      {
+        "code": 8002,
+        "name": "MCP_TOOL_NOT_FOUND",
+        "currentBehavior": "tools/list 结果中无对应 name，抛出字符串 'MCP tool not found'。",
+        "affectedModules": ["McpBridge", "McpToolRegistry"]
+      },
+      {
+        "code": 8003,
+        "name": "MCP_TOOL_EXECUTION_ERROR",
+        "currentBehavior": "tools/call 返回 isError=true 或抛异常，包装为字符串 'MCP tool execution error'。",
+        "affectedModules": ["McpBridge", "McpToolCaller"]
+      },
+      {
+        "code": 8004,
+        "name": "MCP_INITIALIZATION_FAILED",
+        "currentBehavior": "initialize 握手未返回预期 capabilities，抛出字符串 'MCP init failed'。",
+        "affectedModules": ["McpBridge", "McpInitializer"]
+      },
+      {
+        "code": 9001,
+        "name": "FILE_TOO_LARGE",
+        "currentBehavior": "附件大小超过 10MB 时 AttachmentProcessor 抛出 IllegalStateException 'File too large'。压缩前判定。",
+        "affectedModules": ["AttachmentProcessor", "MessageRepository"]
+      },
+      {
+        "code": 9002,
+        "name": "FILE_NOT_FOUND",
+        "currentBehavior": "读取本地文件路径不存在时抛出 FileNotFoundException，包装为字符串 'File not found'。",
+        "affectedModules": ["AttachmentProcessor", "FilePicker"]
+      },
+      {
+        "code": 9003,
+        "name": "FILE_TRANSFER_FAILED",
+        "currentBehavior": "v1 无服务端上传；v2 分块上传失败时抛出字符串 'File transfer failed'。预留码。",
+        "affectedModules": ["FileTransferClient (future)", "MessageRepository"]
+      },
+      {
+        "code": 10001,
+        "name": "CRYPTO_DECRYPT_FAILED",
+        "currentBehavior": "ApiKeyStore 解密 'AKS:' 前缀密文失败，抛出 GeneralSecurityException，被包装为字符串 'Decrypt failed'。",
+        "affectedModules": ["ApiKeyStore", "CryptoBox"]
+      },
+      {
+        "code": 10002,
+        "name": "CRYPTO_KEYSTORE_UNAVAILABLE",
+        "currentBehavior": "Android Keystore 未解锁或 iOS Keychain 返回 errSecAuthFailed，抛出字符串 'Keystore unavailable'。",
+        "affectedModules": ["ApiKeyStore", "KeystoreWrapper"]
+      },
+      {
+        "code": 10003,
+        "name": "CRYPTO_E2E_KEY_MISMATCH",
+        "currentBehavior": "E2E 加密模块（预留）密钥协商不一致，抛出字符串 'E2E key mismatch'。",
+        "affectedModules": ["E2EEncryptor (future)", "KeyAgreement"]
+      }
+    ]
+  },
+  "notes": {
+    "registry_authority": "本注册表是错误码的唯一权威来源。新增错误码必须先在此登记，再在代码中引用。禁止两端硬编码未登记的错误码。",
+    "code_allocation": "错误码按类别分段（1xxx-10xxx）。新增类别从下一个未使用的千位段开始。类别内新增码沿用递增。",
+    "migration_strategy": "迁移期间允许保留散落字符串用于 UI 展示，但内部错误处理、日志、埋点须使用 code/name。最终目标是用结构化 AgentError(code, name, message, category) 取代所有字符串错误。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 必须使用完全相同的 code/name/message/category。两端建议各自生成强类型枚举（Kotlin enum class / Swift enum）以保证编译期一致性。",
+    "reserved_ranges": "1xxx-10xxx 已分配。11xxx 及以上保留给未来类别。每个类别内的码段不可跨类别复用。"
+  }
+}

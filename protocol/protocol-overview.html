@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentHub 协议层 — 双原生统一契约</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-hover: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-orange: #d29922;
+    --accent-purple: #bc8cff;
+    --accent-red: #f85149;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1f2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 40px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    max-width: 640px;
+    margin: 0 auto 24px;
+  }
+  .hero .version-badge {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-green);
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+  .section { margin-bottom: 56px; }
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+  }
+  .principle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .principle-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .principle-card:hover { border-color: var(--accent); }
+  .principle-card .icon {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+  .principle-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .principle-card p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .module-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .module-table th {
+    background: #21262d;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .module-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .module-table tr:last-child td { border-bottom: none; }
+  .module-table tr:hover { background: var(--surface-hover); }
+  .module-table .mono {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-data { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+  .badge-transport { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+  .badge-protocol { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+  }
+  .arch-layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .arch-box {
+    padding: 14px 28px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 200px;
+  }
+  .arch-box .arch-sub {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .arch-ui { background: rgba(88, 166, 255, 0.12); border: 1px solid var(--accent); color: var(--accent); }
+  .arch-logic { background: rgba(63, 185, 80, 0.12); border: 1px solid var(--accent-green); color: var(--accent-green); }
+  .arch-protocol { background: rgba(188, 140, 255, 0.15); border: 2px solid var(--accent-purple); color: var(--accent-purple); }
+  .arch-platform { background: rgba(210, 153, 34, 0.12); border: 1px solid var(--accent-orange); color: var(--accent-orange); }
+  .arch-arrow {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    margin: 4px 0;
+  }
+  .protocol-band {
+    background: rgba(188, 140, 255, 0.06);
+    border: 2px dashed var(--accent-purple);
+    border-radius: 12px;
+    padding: 8px 0;
+    margin: 12px 0;
+  }
+  .protocol-band-label {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--accent-purple);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .dual-platform {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .platform-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .platform-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .platform-card.android h3 { color: var(--accent-green); }
+  .platform-card.ios h3 { color: var(--accent); }
+  .platform-card .tech-list {
+    list-style: none;
+  }
+  .platform-card .tech-list li {
+    padding: 6px 0;
+    font-size: 0.88rem;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  }
+  .platform-card .tech-list li:last-child { border-bottom: none; }
+  .platform-card .tech-list .label { color: var(--text-secondary); }
+  .platform-card .tech-list .value { font-family: var(--font-mono); font-size: 0.82rem; }
+  .file-tree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .file-tree .dir { color: var(--accent); font-weight: 600; }
+  .file-tree .file { color: var(--text); }
+  .file-tree .comment { color: var(--text-secondary); }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-card .label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .error-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.85rem;
+  }
+  .error-table th {
+    background: #21262d;
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .error-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .error-table tr:last-child td { border-bottom: none; }
+  .error-code { font-family: var(--font-mono); color: var(--accent-orange); font-weight: 600; }
+  .error-name { font-family: var(--font-mono); color: var(--accent-red); }
+  .cat-1 { color: var(--accent); }
+  .cat-2 { color: var(--accent-green); }
+  .cat-3 { color: var(--accent-orange); }
+  .cat-4 { color: var(--accent-purple); }
+  code.inline {
+    font-family: var(--font-mono);
+    background: rgba(110, 118, 129, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent);
+  }
+  .callout {
+    background: rgba(88, 166, 255, 0.08);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+  .callout strong { color: var(--accent); }
+  @media (max-width: 768px) {
+    .container { padding: 20px; }
+    .hero { padding: 40px 20px 30px; }
+    .hero h1 { font-size: 1.6rem; }
+    .dual-platform { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>AgentHub 协议层</h1>
+  <p class="subtitle">Android (Kotlin) 与 iOS (Swift) 之间永久统一的协议契约。只统一协议层，不强求代码复用。</p>
+  <span class="version-badge">v2.1.3</span>
+</div>
+
+<div class="container">
+
+  <!-- 统计概览 -->
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="number">16</div>
+      <div class="label">统一模块</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">10</div>
+      <div class="label">JSON Schema</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">4</div>
+      <div class="label">传输协议</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">37</div>
+      <div class="label">错误码</div>
+    </div>
+  </div>
+
+  <!-- 设计原则 -->
+  <div class="section">
+    <h2 class="section-title">设计原则</h2>
+    <p class="section-desc">AgentHub 是系统型应用，原生能力（后台、通知、网络、权限、硬件）是核心竞争力。双原生方案让两端各用平台最佳实践，只在协议层统一。</p>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="icon">📋</div>
+        <h3>JSON Schema 是唯一事实来源</h3>
+        <p>数据模型的字段名、类型、枚举值以 schema 文件为准，两端手写映射，不搞代码生成。</p>
+      </div>
+      <div class="principle-card">
+        <div class="icon">🔗</div>
+        <h3>传输格式跨平台一致</h3>
+        <p>HTTP/SSE/WebSocket/MCP 的线上字节流格式必须完全相同，两端可互操作。</p>
+      </div>
+      <div class="principle-card">
+        <div class="icon">🔐</div>
+        <h3>加密格式跨平台兼容</h3>
+        <p><code class="inline">AKS:</code> 前缀（静态存储）和 <code class="inline">AH1:</code> 前缀（传输加密）在两端行为一致。</p>
+      </div>
+      <div class="principle-card">
+        <div class="icon">📐</div>
+        <h3>向后兼容的变更策略</h3>
+        <p>新增字段加 default，移除字段先 deprecated，枚举只能新增值，传输变更两端同步。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 架构分层 -->
+  <div class="section">
+    <h2 class="section-title">架构分层</h2>
+    <p class="section-desc">协议层是两端的唯一交汇点。上层 UI 和下层平台 API 各自独立，只在协议层保持一致。</p>
+    <div class="arch-diagram">
+      <div class="arch-layer">
+        <div class="arch-box arch-ui">
+          UI 层
+          <div class="arch-sub">Android: Jetpack Compose · iOS: SwiftUI</div>
+        </div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer">
+        <div class="arch-box arch-logic">
+          业务逻辑层
+          <div class="arch-sub">Android: MVVM + Hilt · iOS: MVVM + 原生 DI</div>
+        </div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="protocol-band">
+        <div class="protocol-band-label">━━━ 协议层（永久统一）━━━</div>
+        <div class="arch-layer">
+          <div class="arch-box arch-protocol">
+            JSON Schema + 传输协议规范
+            <div class="arch-sub">10 个 Schema · 4 个传输协议 · 37 个错误码</div>
+          </div>
+        </div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer" style="gap: 24px;">
+        <div class="arch-box arch-platform">
+          Android 平台 API
+          <div class="arch-sub">Keystore · Room · Ktor · WorkManager</div>
+        </div>
+        <div class="arch-box arch-platform">
+          iOS 平台 API
+          <div class="arch-sub">Keychain · SwiftData · URLSession · BackgroundTasks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16 个统一模块 -->
+  <div class="section">
+    <h2 class="section-title">16 个统一模块</h2>
+    <p class="section-desc">所有模块的协议契约已从 Android 现有代码中提取，作为 iOS 实现的依据。</p>
+    <table class="module-table">
+      <thead>
+        <tr>
+          <th style="width: 20%;">模块</th>
+          <th style="width: 15%;">类别</th>
+          <th style="width: 30%;">契约文件</th>
+          <th>核心内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Agent ID</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">agent-schema.json</span></td>
+          <td><code class="inline">Agent.id</code>，格式 <code class="inline">agent_&lt;uuid&gt;</code></td>
+        </tr>
+        <tr>
+          <td>Agent 信息模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">agent-schema.json</span></td>
+          <td>name / status / capabilities / protocol / config</td>
+        </tr>
+        <tr>
+          <td>Session 模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">session-schema.json</span></td>
+          <td>sessionId 贯穿 WebSocket 传输全链路</td>
+        </tr>
+        <tr>
+          <td>Message 模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">message-schema.json</span></td>
+          <td>4 种角色 / 4 种状态 / 附件 / 回应 / 回复</td>
+        </tr>
+        <tr>
+          <td>Task 模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">task-schema.json</span></td>
+          <td>5 种类型 / 5 种状态，异步可追踪执行单元</td>
+        </tr>
+        <tr>
+          <td>Workflow 模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">workflow-schema.json</span></td>
+          <td>DAG 工作流 / 4 种节点 / 8 种变换</td>
+        </tr>
+        <tr>
+          <td>Event 模型</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">event-schema.json</span></td>
+          <td>6 种实时事件，判别联合（discriminated union）</td>
+        </tr>
+        <tr>
+          <td>Error Code</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">error-codes.json</span></td>
+          <td>37 个错误码 / 10 个类别，取代散落字符串</td>
+        </tr>
+        <tr>
+          <td>JSON Schema</td>
+          <td><span class="badge badge-data">数据模型</span></td>
+          <td><span class="mono">schemas/*.json</span></td>
+          <td>全部以 JSON Schema 2020-12 规范定义</td>
+        </tr>
+        <tr>
+          <td>HTTP API</td>
+          <td><span class="badge badge-transport">传输协议</span></td>
+          <td><span class="mono">transport/http-api.md</span></td>
+          <td>OpenAI 兼容 <code class="inline">/v1/chat/completions</code></td>
+        </tr>
+        <tr>
+          <td>SSE 协议</td>
+          <td><span class="badge badge-transport">传输协议</span></td>
+          <td><span class="mono">transport/sse-protocol.md</span></td>
+          <td><code class="inline">choices[0].delta.content</code> 增量解析</td>
+        </tr>
+        <tr>
+          <td>WebSocket 协议</td>
+          <td><span class="badge badge-transport">传输协议</span></td>
+          <td><span class="mono">transport/websocket-protocol.md</span></td>
+          <td>JSON 帧 / auth 鉴权 / 服务端有状态会话</td>
+        </tr>
+        <tr>
+          <td>Auth Token</td>
+          <td><span class="badge badge-transport">传输协议</span></td>
+          <td><span class="mono">transport/auth.md</span></td>
+          <td>Bearer Token / <code class="inline">AKS:</code> 加密存储 / <code class="inline">AH1:</code> E2E</td>
+        </tr>
+        <tr>
+          <td>Plugin 协议</td>
+          <td><span class="badge badge-protocol">扩展协议</span></td>
+          <td><span class="mono">plugin-schema.json</span></td>
+          <td>HttpCall / Broadcast / Workflow 三种动作</td>
+        </tr>
+        <tr>
+          <td>MCP Bridge 协议</td>
+          <td><span class="badge badge-protocol">扩展协议</span></td>
+          <td><span class="mono">mcp-schema.json</span></td>
+          <td>JSON-RPC 2.0 / initialize / tools-list / tools-call</td>
+        </tr>
+        <tr>
+          <td>File Transfer 协议</td>
+          <td><span class="badge badge-protocol">扩展协议</span></td>
+          <td><span class="mono">file-transfer-schema.json</span></td>
+          <td>v1 内联 Base64 ≤10MB / v2 分块上传</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 双原生技术栈 -->
+  <div class="section">
+    <h2 class="section-title">双原生技术栈</h2>
+    <p class="section-desc">不为了"统一"让 iOS 用 KMP 或让 Android 迁 Flutter。系统型应用的原生能力比代码复用更重要。</p>
+    <div class="dual-platform">
+      <div class="platform-card android">
+        <h3>Android</h3>
+        <ul class="tech-list">
+          <li><span class="label">开发语言</span><span class="value">Kotlin</span></li>
+          <li><span class="label">UI 框架</span><span class="value">Jetpack Compose</span></li>
+          <li><span class="label">架构模式</span><span class="value">MVVM + Hilt</span></li>
+          <li><span class="label">异步</span><span class="value">Coroutines + Flow</span></li>
+          <li><span class="label">网络层</span><span class="value">Ktor Client</span></li>
+          <li><span class="label">WebSocket</span><span class="value">Ktor WebSocket</span></li>
+          <li><span class="label">本地数据库</span><span class="value">Room</span></li>
+          <li><span class="label">Key-Value</span><span class="value">DataStore</span></li>
+          <li><span class="label">密钥存储</span><span class="value">Android Keystore</span></li>
+          <li><span class="label">后台任务</span><span class="value">WorkManager</span></li>
+          <li><span class="label">JSON</span><span class="value">Gson / Kotlin Serialization</span></li>
+        </ul>
+      </div>
+      <div class="platform-card ios">
+        <h3>iOS</h3>
+        <ul class="tech-list">
+          <li><span class="label">开发语言</span><span class="value">Swift</span></li>
+          <li><span class="label">UI 框架</span><span class="value">SwiftUI</span></li>
+          <li><span class="label">架构模式</span><span class="value">MVVM + 原生 DI</span></li>
+          <li><span class="label">异步</span><span class="value">async/await + AsyncStream</span></li>
+          <li><span class="label">网络层</span><span class="value">URLSession</span></li>
+          <li><span class="label">WebSocket</span><span class="value">URLSessionWebSocketTask</span></li>
+          <li><span class="label">本地数据库</span><span class="value">SwiftData</span></li>
+          <li><span class="label">Key-Value</span><span class="value">UserDefaults</span></li>
+          <li><span class="label">密钥存储</span><span class="value">Keychain</span></li>
+          <li><span class="label">后台任务</span><span class="value">BackgroundTasks</span></li>
+          <li><span class="label">JSON</span><span class="value">Codable</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 目录结构 -->
+  <div class="section">
+    <h2 class="section-title">目录结构</h2>
+    <div class="file-tree">
+<span class="dir">protocol/</span>
+├── <span class="dir">schemas/</span>                        <span class="comment"># JSON Schema 契约（唯一事实来源）</span>
+│   ├── <span class="file">agent-schema.json</span>           <span class="comment"># Agent 标识 + 信息模型 + 配置</span>
+│   ├── <span class="file">session-schema.json</span>         <span class="comment"># 会话模型</span>
+│   ├── <span class="file">message-schema.json</span>         <span class="comment"># 消息模型 + 角色枚举 + 附件</span>
+│   ├── <span class="file">task-schema.json</span>            <span class="comment"># 任务模型 + 类型/状态枚举</span>
+│   ├── <span class="file">workflow-schema.json</span>        <span class="comment"># 工作流 DAG 模型</span>
+│   ├── <span class="file">event-schema.json</span>           <span class="comment"># 实时事件模型（判别联合）</span>
+│   ├── <span class="file">error-codes.json</span>            <span class="comment"># 错误码注册表（37 码 / 10 类）</span>
+│   ├── <span class="file">plugin-schema.json</span>          <span class="comment"># 插件协议</span>
+│   ├── <span class="file">mcp-schema.json</span>             <span class="comment"># MCP 桥接协议（JSON-RPC 2.0）</span>
+│   └── <span class="file">file-transfer-schema.json</span>   <span class="comment"># 文件传输协议（v1/v2）</span>
+│
+├── <span class="dir">transport/</span>                      <span class="comment"># 传输协议规范（人类可读）</span>
+│   ├── <span class="file">http-api.md</span>                 <span class="comment"># HTTP REST API（OpenAI 兼容）</span>
+│   ├── <span class="file">sse-protocol.md</span>             <span class="comment"># SSE 流式输出协议</span>
+│   ├── <span class="file">websocket-protocol.md</span>       <span class="comment"># WebSocket 双向通信协议</span>
+│   └── <span class="file">auth.md</span>                     <span class="comment"># 认证与令牌机制</span>
+│
+├── <span class="file">protocol-overview.html</span>         <span class="comment"># 本文件（可视化总览）</span>
+└── <span class="file">README.md</span>                       <span class="comment"># 协议层入口</span>
+    </div>
+  </div>
+
+  <!-- 错误码概览 -->
+  <div class="section">
+    <h2 class="section-title">错误码注册表概览</h2>
+    <p class="section-desc">当前代码库无统一错误码，错误以散落字符串表达。协议层定义了 37 个结构化错误码，分为 10 个类别。</p>
+    <table class="error-table">
+      <thead>
+        <tr><th>类别</th><th>码段</th><th>数量</th><th>示例</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="cat-1">Transport</td><td>1xxx</td><td>5</td><td><span class="error-code">1003</span> <span class="error-name">TRANSPORT_TIMEOUT</span></td></tr>
+        <tr><td class="cat-1">Protocol</td><td>2xxx</td><td>4</td><td><span class="error-code">2003</span> <span class="error-name">PROTOCOL_PARSE_ERROR</span></td></tr>
+        <tr><td class="cat-2">Agent</td><td>3xxx</td><td>5</td><td><span class="error-code">3002</span> <span class="error-name">AGENT_OFFLINE</span></td></tr>
+        <tr><td class="cat-2">Session</td><td>4xxx</td><td>2</td><td><span class="error-code">4001</span> <span class="error-name">SESSION_NOT_FOUND</span></td></tr>
+        <tr><td class="cat-3">Task</td><td>5xxx</td><td>4</td><td><span class="error-code">5003</span> <span class="error-name">TASK_CANCELLED</span></td></tr>
+        <tr><td class="cat-3">Workflow</td><td>6xxx</td><td>4</td><td><span class="error-code">6003</span> <span class="error-name">WORKFLOW_CYCLE_DETECTED</span></td></tr>
+        <tr><td class="cat-4">Plugin</td><td>7xxx</td><td>3</td><td><span class="error-code">7002</span> <span class="error-name">PLUGIN_DISABLED</span></td></tr>
+        <tr><td class="cat-4">MCP</td><td>8xxx</td><td>4</td><td><span class="error-code">8002</span> <span class="error-name">MCP_TOOL_NOT_FOUND</span></td></tr>
+        <tr><td class="cat-1">File</td><td>9xxx</td><td>3</td><td><span class="error-code">9001</span> <span class="error-name">FILE_TOO_LARGE</span></td></tr>
+        <tr><td class="cat-2">Crypto</td><td>10xxx</td><td>3</td><td><span class="error-code">10001</span> <span class="error-name">CRYPTO_DECRYPT_FAILED</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 关键注意事项 -->
+  <div class="section">
+    <h2 class="section-title">跨平台一致性约束</h2>
+    <div class="callout">
+      <strong>MessageRole 大小写差异</strong>：HTTP API 中使用小写（<code class="inline">user</code> / <code class="inline">assistant</code> / <code class="inline">system</code> / <code class="inline">tool</code>），WebSocket 帧中使用枚举名首字母大写（<code class="inline">User</code>）。两端序列化时必须做映射，不能混用。
+    </div>
+    <div class="callout">
+      <strong>加密前缀格式</strong>：<code class="inline">AKS:</code> 用于 API Key 静态存储（Keystore/Keychain），<code class="inline">AH1:</code> 用于消息 E2E 传输加密。两个前缀格式不可混用，iOS 实现必须支持相同的解密逻辑。
+    </div>
+    <div class="callout">
+      <strong>sessionId 贯穿全链路</strong>：WebSocket 传输中 sessionId 由服务端维护会话状态，客户端不重放历史。HTTP 传输中 sessionId 仅用于客户端侧滑动窗口历史管理（上限 20 条），服务端无状态。
+    </div>
+    <div class="callout">
+      <strong>systemPrompt 当前未注入</strong>：Android HTTP 传输的请求体只发送 model / messages / stream / temperature / max_tokens，未注入 systemPrompt。协议层保留此字段，iOS 实现可选择注入或保持一致。
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

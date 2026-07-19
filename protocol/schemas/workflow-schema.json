@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/workflow-schema.json",
+  "title": "AgentHub Workflow Schema",
+  "description": "工作流模型永久统一契约。基于 Android (Kotlin) 实际实现，Android (Kotlin) 与 iOS (Swift) 共享此定义。工作流是由节点 (Node) 和边 (Edge) 组成的有向无环图 (DAG)，通过拓扑排序执行，每个 AGENT 节点调用单次 60 秒超时。",
+  "type": "object",
+  "definitions": {
+    "NodeType": {
+      "title": "NodeType",
+      "description": "工作流节点类型枚举。INPUT=输入节点（接收用户输入），AGENT=Agent 调用节点，TRANSFORM=数据变换节点，OUTPUT=输出节点（汇聚最终结果）",
+      "type": "string",
+      "enum": ["INPUT", "AGENT", "TRANSFORM", "OUTPUT"]
+    },
+    "TransformType": {
+      "title": "TransformType",
+      "description": "TRANSFORM 节点的变换类型枚举。PASSTHROUGH=直接透传，EXTRACT=正则提取，TO_UPPERCASE=转大写，TO_LOWERCASE=转小写，TRIM=去首尾空白，PREFIX=加前缀，SUFFIX=加后缀，JSON_EXTRACT=JSON 字段提取",
+      "type": "string",
+      "enum": ["PASSTHROUGH", "EXTRACT", "TO_UPPERCASE", "TO_LOWERCASE", "TRIM", "PREFIX", "SUFFIX", "JSON_EXTRACT"]
+    },
+    "WorkflowNode": {
+      "title": "WorkflowNode",
+      "description": "工作流节点。AGENT 节点的 prompt 字段支持 {input} 占位符，运行时会被上游节点的输出替换。transformType 仅对 TRANSFORM 节点生效。positionX/positionY 供画布 UI 布局使用，不影响执行语义。outputCache 存储节点最近一次执行的输出，便于调试与回放。",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "节点唯一标识，默认随机 UUID",
+          "default": ""
+        },
+        "type": { "$ref": "#/definitions/NodeType" },
+        "label": {
+          "type": "string",
+          "description": "节点显示名称，供 UI 展示",
+          "default": ""
+        },
+        "agentType": {
+          "description": "Agent 类型（仅 AGENT 节点有效）。引用 agent-schema.json 中的 AgentType 定义。null 表示未指定",
+          "oneOf": [
+            { "$ref": "agent-schema.json#/definitions/AgentType" },
+            { "type": "null" }
+          ],
+          "default": null
+        },
+        "prompt": {
+          "type": "string",
+          "description": "AGENT 节点的提示词模板。支持 {input} 占位符，运行时被上游节点输出替换。例如：'请总结以下内容：{input}'",
+          "default": ""
+        },
+        "transformType": {
+          "$ref": "#/definitions/TransformType",
+          "default": "PASSTHROUGH"
+        },
+        "positionX": {
+          "type": "number",
+          "format": "float",
+          "description": "画布 X 坐标（仅 UI 用途）",
+          "default": 0
+        },
+        "positionY": {
+          "type": "number",
+          "format": "float",
+          "description": "画布 Y 坐标（仅 UI 用途）",
+          "default": 0
+        },
+        "outputCache": {
+          "type": "string",
+          "description": "节点最近一次执行输出缓存，便于调试与回放",
+          "default": ""
+        }
+      }
+    },
+    "WorkflowEdge": {
+      "title": "WorkflowEdge",
+      "description": "工作流边，表示节点间的数据流向。condition 为 null 表示无条件执行（即上游完成后总是执行下游）；非空时为条件表达式，满足时才执行下游节点。",
+      "type": "object",
+      "required": ["fromNodeId", "toNodeId"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "边唯一标识，默认随机 UUID",
+          "default": ""
+        },
+        "fromNodeId": {
+          "type": "string",
+          "description": "起始节点 ID"
+        },
+        "toNodeId": {
+          "type": "string",
+          "description": "目标节点 ID"
+        },
+        "condition": {
+          "type": ["string", "null"],
+          "description": "执行条件表达式。null=总是执行（无条件边）；非空时需满足条件才执行下游节点",
+          "default": null
+        }
+      }
+    },
+    "Workflow": {
+      "title": "Workflow",
+      "description": "工作流定义。由节点集合与边集合组成的有向无环图。执行时按边进行拓扑排序，依次执行节点。",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "工作流唯一标识，默认随机 UUID",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "工作流名称"
+        },
+        "description": {
+          "type": "string",
+          "description": "工作流描述",
+          "default": ""
+        },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/WorkflowNode" },
+          "description": "节点列表",
+          "default": []
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/WorkflowEdge" },
+          "description": "边列表",
+          "default": []
+        }
+      }
+    },
+    "WorkflowExecutionState": {
+      "title": "WorkflowExecutionState",
+      "description": "工作流执行状态快照。记录当前运行状态、当前节点、已完成节点、最终输出、错误信息和执行日志。",
+      "type": "object",
+      "properties": {
+        "isRunning": {
+          "type": "boolean",
+          "description": "是否正在执行",
+          "default": false
+        },
+        "currentNodeId": {
+          "type": ["string", "null"],
+          "description": "当前正在执行的节点 ID。未执行时为 null",
+          "default": null
+        },
+        "completedNodeIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "已完成的节点 ID 列表",
+          "default": []
+        },
+        "output": {
+          "type": "string",
+          "description": "工作流最终输出（OUTPUT 节点的输出）",
+          "default": ""
+        },
+        "error": {
+          "type": ["string", "null"],
+          "description": "错误信息。执行失败时设置，正常时为 null",
+          "default": null
+        },
+        "logs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "执行日志（按时间顺序的字符串列表）",
+          "default": []
+        }
+      }
+    }
+  },
+  "notes": {
+    "execution_semantics": "工作流执行按边进行拓扑排序，依次执行节点。AGENT 节点调用单次 Agent，超时时间 60 秒。",
+    "input_placeholder": "AGENT 节点的 prompt 字段支持 {input} 占位符，运行时被上游节点输出替换。若无上游节点，{input} 替换为空字符串。",
+    "dag_constraint": "工作流必须为有向无环图 (DAG)。检测到环时返回错误码 6003 WORKFLOW_CYCLE_DETECTED。",
+    "timeout": "单个 AGENT 节点调用超时 60 秒，触发错误码 6002 WORKFLOW_NODE_FAILED。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 实现须遵循相同的拓扑排序、占位符替换和超时语义。"
+  }
+}

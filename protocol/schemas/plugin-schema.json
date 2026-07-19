@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/plugin-schema.json",
+  "title": "AgentHub Plugin Schema",
+  "description": "插件协议永久统一契约。基于 Android (Kotlin) 实际实现，Android (Kotlin) 与 iOS (Swift) 共享此定义。Plugin 描述一个可由用户触发的快捷动作，其 action 决定执行方式（HTTP 调用、Android Intent 广播、工作流提示词）。所有模板字段支持 {query} 占位符，运行时被用户输入替换。",
+  "type": "object",
+  "definitions": {
+    "PluginActionType": {
+      "title": "PluginActionType",
+      "description": "插件动作类型枚举。http=HTTP 调用，broadcast=Android Intent 广播（iOS 端需等价降级处理），workflow=生成提示词发送给 Agent，none=无动作（仅展示）",
+      "type": "string",
+      "enum": ["http", "broadcast", "workflow", "none"]
+    },
+    "StringMap": {
+      "title": "StringMap",
+      "description": "字符串到字符串的映射 (Map<String,String>)",
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "default": {}
+    },
+    "HttpPluginAction": {
+      "title": "HttpPluginAction",
+      "description": "HTTP 调用动作。url 与 bodyTemplate 支持 {query} 占位符。url 中的 {query} 使用 URLEncoder.encode 编码后替换；bodyTemplate 中的 {query} 使用原始值替换。HTTP 响应正文截断到 3000 字符。",
+      "type": "object",
+      "required": ["type", "url"],
+      "properties": {
+        "type": { "type": "string", "const": "http" },
+        "url": {
+          "type": "string",
+          "description": "请求 URL。支持 {query} 占位符，运行时 {query} 被 URLEncoder.encode(用户输入) 替换"
+        },
+        "method": {
+          "type": "string",
+          "description": "HTTP 方法（GET/POST/PUT/DELETE 等）",
+          "default": "GET"
+        },
+        "headers": {
+          "$ref": "#/definitions/StringMap",
+          "description": "请求头映射。默认空映射",
+          "default": {}
+        },
+        "bodyTemplate": {
+          "type": ["string", "null"],
+          "description": "请求体模板。支持 {query} 占位符，运行时 {query} 被原始用户输入替换（不编码）。null 表示无请求体",
+          "default": null
+        }
+      }
+    },
+    "BroadcastPluginAction": {
+      "title": "BroadcastPluginAction",
+      "description": "Android Intent 广播动作。action 为 Intent action 字符串；extras 为附加数据，其值支持 {query} 占位符。iOS 端无 Intent 广播等价物，需降级为 URL Scheme 或自定义事件总线。",
+      "type": "object",
+      "required": ["type", "action"],
+      "properties": {
+        "type": { "type": "string", "const": "broadcast" },
+        "action": {
+          "type": "string",
+          "description": "Android Intent action 字符串，如 'com.agenthub.action.SEARCH'"
+        },
+        "extras": {
+          "$ref": "#/definitions/StringMap",
+          "description": "Intent extras 映射。每个 value 支持 {query} 占位符，运行时被用户输入替换",
+          "default": {}
+        }
+      }
+    },
+    "WorkflowPluginAction": {
+      "title": "WorkflowPluginAction",
+      "description": "工作流提示词动作。promptTemplate 支持 {query} 占位符，运行时被用户输入替换。生成结果作为提示词发送给 Agent。",
+      "type": "object",
+      "required": ["type", "promptTemplate"],
+      "properties": {
+        "type": { "type": "string", "const": "workflow" },
+        "promptTemplate": {
+          "type": "string",
+          "description": "提示词模板。支持 {query} 占位符，运行时被用户输入替换。例如：'搜索关于 {query} 的最新新闻并总结'"
+        }
+      }
+    },
+    "NonePluginAction": {
+      "title": "NonePluginAction",
+      "description": "无动作类型。表示插件仅用于展示，不执行任何动作。等价于 Plugin.action 为 null。",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "none" }
+      }
+    },
+    "PluginAction": {
+      "title": "PluginAction",
+      "description": "插件动作标签联合 (discriminated union)。通过 type 字段判别具体子类型。none 类型与 Plugin.action=null 等价（仅展示）。",
+      "oneOf": [
+        { "$ref": "#/definitions/HttpPluginAction" },
+        { "$ref": "#/definitions/BroadcastPluginAction" },
+        { "$ref": "#/definitions/WorkflowPluginAction" },
+        { "$ref": "#/definitions/NonePluginAction" }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "Plugin": {
+      "title": "Plugin",
+      "description": "插件定义。action 为 null 或 type=none 时表示仅展示用插件（点击无动作）。permissions 声明所需权限（如 'android.permission.INTERNET'、'android.permission.SEND_BROADCAST'），供两端做权限校验。",
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "插件唯一标识"
+        },
+        "name": {
+          "type": "string",
+          "description": "插件显示名称"
+        },
+        "description": {
+          "type": "string",
+          "description": "插件描述",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "插件图标（emoji、资源名或 URL）",
+          "default": ""
+        },
+        "isEnabled": {
+          "type": "boolean",
+          "description": "是否启用。false 时不可执行（触发错误码 7002 PLUGIN_DISABLED）",
+          "default": true
+        },
+        "permissions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "所需权限声明列表",
+          "default": []
+        },
+        "version": {
+          "type": "string",
+          "description": "插件版本号（语义化版本）",
+          "default": "1.0.0"
+        },
+        "action": {
+          "description": "插件动作。null 表示仅展示用插件（点击无动作），等价于 type=none",
+          "oneOf": [
+            { "$ref": "#/definitions/PluginAction" },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    },
+    "PluginResult": {
+      "title": "PluginResult",
+      "description": "插件执行结果。sendToAgent=true 时 content 作为提示词发送给当前 Agent；sendToAgent=false 时 content 直接展示给用户。",
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "description": "结果内容。HTTP 响应正文（截断到 3000 字符）、广播回执或生成的提示词"
+        },
+        "sendToAgent": {
+          "type": "boolean",
+          "description": "是否将 content 作为提示词发送给 Agent。workflow 类型默认 true，http/broadcast 默认 false",
+          "default": false
+        }
+      }
+    }
+  },
+  "notes": {
+    "query_placeholder": "{query} 占位符在 url、bodyTemplate、promptTemplate、extras 的值中均受支持，运行时被用户输入替换。",
+    "encoding_rules": "HttpPluginAction.url 中的 {query} 使用 URLEncoder.encode 编码后替换（保证 URL 合法）；bodyTemplate 中的 {query} 使用原始值替换（保留特殊字符）。",
+    "response_truncation": "HttpPluginAction 的 HTTP 响应正文截断到 3000 字符，超出部分丢弃。两端须保持一致的截断行为。",
+    "broadcast_platform": "BroadcastPluginAction 基于 Android Intent。iOS (Swift) 无等价物，需降级为 URL Scheme、NSUserActivity 或自定义事件总线；两端须在 PluginResult 上保持一致语义。",
+    "display_only": "Plugin.action=null 与 PluginAction.type=none 语义等价，均为仅展示用插件。点击不触发任何动作。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 须遵循相同的占位符替换、编码与截断规则。"
+  }
+}

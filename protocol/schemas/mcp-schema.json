@@ -1,0 +1,405 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/mcp-schema.json",
+  "title": "AgentHub MCP Bridge Schema",
+  "description": "MCP (Model Context Protocol) 桥接协议永久统一契约。基于 MCP 2025-03-26 规范，Android (Kotlin) 与 iOS (Swift) 共享此定义。定义 MCP Server 配置、工具发现 (tools/list)、工具调用 (tools/call)、JSON-RPC 2.0 信封与传输层约定。AgentHub 通过 McpBridge 将远程 MCP Server 的工具能力接入 Agent 生态。",
+  "type": "object",
+  "definitions": {
+    "McpTransportType": {
+      "title": "McpTransportType",
+      "description": "MCP 传输类型枚举。STDIO=标准输入输出（本地进程），SSE=Server-Sent Events，HTTP=HTTP 请求/响应。当前 AgentHub 默认使用 SSE。",
+      "type": "string",
+      "enum": ["STDIO", "SSE", "HTTP"]
+    },
+    "McpServerCapabilities": {
+      "title": "McpServerCapabilities",
+      "description": "MCP Server 能力声明。对应 initialize 握手结果中 server 声明的能力。各布尔字段表示 Server 是否支持该能力。",
+      "type": "object",
+      "properties": {
+        "tools": {
+          "type": "boolean",
+          "description": "是否支持 tools 能力（tools/list、tools/call）",
+          "default": false
+        },
+        "resources": {
+          "type": "boolean",
+          "description": "是否支持 resources 能力",
+          "default": false
+        },
+        "prompts": {
+          "type": "boolean",
+          "description": "是否支持 prompts 能力",
+          "default": false
+        },
+        "logging": {
+          "type": "boolean",
+          "description": "是否支持 logging 能力",
+          "default": false
+        }
+      }
+    },
+    "McpServer": {
+      "title": "McpServer",
+      "description": "MCP Server 配置。AgentHub 通过 transportUrl 连接 MCP Server，使用 apiKey 做 Bearer 认证。",
+      "type": "object",
+      "required": ["id", "name", "transportUrl"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "MCP Server 唯一标识"
+        },
+        "name": {
+          "type": "string",
+          "description": "MCP Server 显示名称"
+        },
+        "transportUrl": {
+          "type": "string",
+          "description": "传输端点 URL。HTTP/SSE 模式下为完整 HTTP URL；STDIO 模式下为可执行文件路径"
+        },
+        "transportType": {
+          "$ref": "#/definitions/McpTransportType",
+          "default": "SSE"
+        },
+        "apiKey": {
+          "type": ["string", "null"],
+          "description": "API 密钥（Bearer Token）。存在时以 'Authorization: Bearer {apiKey}' 头发送。null 表示无需认证",
+          "default": null
+        },
+        "isEnabled": {
+          "type": "boolean",
+          "description": "是否启用",
+          "default": true
+        },
+        "capabilities": {
+          "$ref": "#/definitions/McpServerCapabilities",
+          "description": "Server 能力声明（initialize 握手后回填）",
+          "default": {}
+        }
+      }
+    },
+    "McpToolProperty": {
+      "title": "McpToolProperty",
+      "description": "MCP 工具输入参数属性描述。对应 JSON Schema 中的属性定义。",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "属性类型，如 'string'、'number'、'boolean'、'integer'、'array'、'object'"
+        },
+        "description": {
+          "type": "string",
+          "description": "属性描述",
+          "default": ""
+        },
+        "enum": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "枚举可选值列表。null 表示非枚举类型",
+          "default": null
+        }
+      }
+    },
+    "McpToolSchema": {
+      "title": "McpToolSchema",
+      "description": "MCP 工具输入参数 JSON Schema。遵循 JSON Schema 子集，type 默认 'object'。",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Schema 类型，默认 'object'",
+          "default": "object"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/McpToolProperty" },
+          "description": "属性映射 (Map<String, McpToolProperty>)",
+          "default": {}
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "必填属性名列表",
+          "default": []
+        }
+      }
+    },
+    "McpTool": {
+      "title": "McpTool",
+      "description": "MCP 工具定义。由 tools/list 返回，包含名称、描述、输入 Schema 与所属 Server。",
+      "type": "object",
+      "required": ["name", "serverId"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "工具名称（在所属 Server 内唯一）"
+        },
+        "description": {
+          "type": "string",
+          "description": "工具描述",
+          "default": ""
+        },
+        "inputSchema": {
+          "$ref": "#/definitions/McpToolSchema",
+          "description": "工具输入参数 Schema",
+          "default": {}
+        },
+        "serverId": {
+          "type": "string",
+          "description": "所属 MCP Server ID"
+        }
+      }
+    },
+    "TextMcpContent": {
+      "title": "TextMcpContent",
+      "description": "文本类型 MCP 内容",
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "type": "string", "const": "text" },
+        "text": {
+          "type": "string",
+          "description": "文本内容"
+        }
+      }
+    },
+    "ImageMcpContent": {
+      "title": "ImageMcpContent",
+      "description": "图片类型 MCP 内容，Base64 编码",
+      "type": "object",
+      "required": ["type", "data", "mimeType"],
+      "properties": {
+        "type": { "type": "string", "const": "image" },
+        "data": {
+          "type": "string",
+          "description": "图片 Base64 编码数据",
+          "contentEncoding": "base64"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "图片 MIME 类型，如 'image/png'、'image/jpeg'"
+        }
+      }
+    },
+    "AudioMcpContent": {
+      "title": "AudioMcpContent",
+      "description": "音频类型 MCP 内容，Base64 编码",
+      "type": "object",
+      "required": ["type", "data", "mimeType"],
+      "properties": {
+        "type": { "type": "string", "const": "audio" },
+        "data": {
+          "type": "string",
+          "description": "音频 Base64 编码数据",
+          "contentEncoding": "base64"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "音频 MIME 类型，如 'audio/wav'、'audio/mpeg'"
+        }
+      }
+    },
+    "McpContent": {
+      "title": "McpContent",
+      "description": "MCP 内容标签联合 (discriminated union)。通过 type 字段判别具体子类型：text、image、audio。",
+      "oneOf": [
+        { "$ref": "#/definitions/TextMcpContent" },
+        { "$ref": "#/definitions/ImageMcpContent" },
+        { "$ref": "#/definitions/AudioMcpContent" }
+      ],
+      "discriminator": {
+        "propertyName": "type"
+      }
+    },
+    "McpToolResult": {
+      "title": "McpToolResult",
+      "description": "MCP 工具调用结果。对应 tools/call 响应中的 result 字段。isError=true 表示工具执行出错（非 JSON-RPC 层错误，而是工具自身逻辑错误）。",
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/McpContent" },
+          "description": "内容数组（可包含多个文本/图片/音频片段）"
+        },
+        "isError": {
+          "type": "boolean",
+          "description": "是否为工具执行错误。true 时触发错误码 8003 MCP_TOOL_EXECUTION_ERROR",
+          "default": false
+        }
+      }
+    },
+    "JsonRpcError": {
+      "title": "JsonRpcError",
+      "description": "JSON-RPC 2.0 错误对象",
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "description": "错误码（JSON-RPC 标准错误码或 Server 自定义码）"
+        },
+        "message": {
+          "type": "string",
+          "description": "错误描述"
+        }
+      }
+    },
+    "JsonRpcRequest": {
+      "title": "JsonRpcRequest",
+      "description": "JSON-RPC 2.0 请求信封。所有 MCP 调用均封装为 JSON-RPC 2.0 请求。",
+      "type": "object",
+      "required": ["id", "method"],
+      "properties": {
+        "jsonrpc": {
+          "type": "string",
+          "description": "JSON-RPC 版本，固定 '2.0'",
+          "default": "2.0"
+        },
+        "id": {
+          "type": "integer",
+          "description": "请求 ID（用于匹配响应）"
+        },
+        "method": {
+          "type": "string",
+          "description": "调用的方法名，如 'initialize'、'tools/list'、'tools/call'"
+        },
+        "params": {
+          "type": "object",
+          "description": "方法参数对象",
+          "default": {}
+        }
+      }
+    },
+    "JsonRpcResponse": {
+      "title": "JsonRpcResponse",
+      "description": "JSON-RPC 2.0 响应信封。result 与 error 互斥：成功时 result 非 null 且 error 为 null；失败时 result 为 null 且 error 非 null。",
+      "type": "object",
+      "required": ["jsonrpc", "id"],
+      "properties": {
+        "jsonrpc": {
+          "type": "string",
+          "description": "JSON-RPC 版本，固定 '2.0'"
+        },
+        "id": {
+          "type": "integer",
+          "description": "对应请求的 ID"
+        },
+        "result": {
+          "description": "调用结果（成功时）。可为任意类型；失败时为 null",
+          "default": null
+        },
+        "error": {
+          "description": "错误对象（失败时）。成功时为 null",
+          "oneOf": [
+            { "$ref": "#/definitions/JsonRpcError" },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    },
+    "InitializeParams": {
+      "title": "InitializeParams",
+      "description": "initialize 方法参数。客户端声明协议版本、能力与客户端信息。",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "string",
+          "description": "MCP 协议版本，固定 '2025-03-26'",
+          "default": "2025-03-26"
+        },
+        "capabilities": {
+          "type": "object",
+          "description": "客户端能力声明",
+          "default": {}
+        },
+        "clientInfo": {
+          "type": "object",
+          "description": "客户端信息",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "客户端名称，固定 'AgentHub'",
+              "default": "AgentHub"
+            },
+            "version": {
+              "type": "string",
+              "description": "客户端版本号"
+            }
+          },
+          "required": ["name", "version"],
+          "default": { "name": "AgentHub", "version": "1.0.0" }
+        }
+      }
+    },
+    "ToolsListParams": {
+      "title": "ToolsListParams",
+      "description": "tools/list 方法参数。无参数。",
+      "type": "object",
+      "default": {}
+    },
+    "ToolsCallParams": {
+      "title": "ToolsCallParams",
+      "description": "tools/call 方法参数。指定要调用的工具名与参数。",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "要调用的工具名"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "工具参数对象，须符合工具的 inputSchema",
+          "default": {}
+        }
+      }
+    }
+  },
+  "methods": {
+    "description": "AgentHub MCP Bridge 支持的 JSON-RPC 方法集。每个方法对应 JsonRpcRequest.method 的取值。",
+    "initialize": {
+      "method": "initialize",
+      "params": { "$ref": "#/definitions/InitializeParams" },
+      "description": "初始化握手。客户端发送 protocolVersion='2025-03-26'、capabilities={}、clientInfo={name:'AgentHub', version}。失败时触发错误码 8004 MCP_INITIALIZATION_FAILED。"
+    },
+    "tools/list": {
+      "method": "tools/list",
+      "params": { "$ref": "#/definitions/ToolsListParams" },
+      "description": "列出 Server 提供的所有工具。返回 result 为 McpTool 数组。"
+    },
+    "tools/call": {
+      "method": "tools/call",
+      "params": { "$ref": "#/definitions/ToolsCallParams" },
+      "description": "调用指定工具。返回 result 为 McpToolResult。工具不存在时触发错误码 8002 MCP_TOOL_NOT_FOUND；isError=true 时触发 8003 MCP_TOOL_EXECUTION_ERROR。"
+    }
+  },
+  "transport": {
+    "description": "传输层约定。当前 AgentHub 默认通过 HTTP/SSE 传输。",
+    "http": {
+      "method": "POST",
+      "url": "{transportUrl}",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {apiKey}（当 apiKey 存在时附加）"
+      },
+      "timeout_seconds": 30,
+      "description": "HTTP POST 到 transportUrl 发送 JsonRpcRequest，Content-Type 为 application/json。apiKey 存在时附加 'Authorization: Bearer {apiKey}' 头。单次请求超时 30 秒，超时触发错误码 8001 MCP_SERVER_UNREACHABLE。"
+    },
+    "stdio": {
+      "description": "STDIO 传输（本地进程）。通过子进程标准输入输出收发 JSON-RPC 消息。transportUrl 为可执行文件路径。"
+    },
+    "sse": {
+      "description": "SSE 传输。通过 Server-Sent Events 长连接接收推送消息，请求通过 HTTP POST 发送。"
+    }
+  },
+  "notes": {
+    "spec_version": "本契约基于 MCP 2025-03-26 规范。protocolVersion 固定为 '2025-03-26'。",
+    "jsonrpc_version": "所有请求/响应使用 JSON-RPC 2.0 信封，jsonrpc 字段固定为 '2.0'。",
+    "auth": "认证通过 HTTP 头 'Authorization: Bearer {apiKey}' 实现，仅当 McpServer.apiKey 非 null 时附加。apiKey 持久化时由平台 Keystore/Keychain 加密（与 AgentConfig.apiKey 一致，使用 'AKS:' 前缀格式）。",
+    "timeout": "单次 HTTP 请求超时 30 秒。超时或连接失败触发错误码 8001 MCP_SERVER_UNREACHABLE。",
+    "error_mapping": "JSON-RPC error.code 与本注册表错误码体系独立：JSON-RPC 层错误映射到 8xxx 类别（如 -32601 method not found → 8002，工具 isError=true → 8003，initialize 失败 → 8004）。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 须实现相同的 initialize、tools/list、tools/call 流程与 30 秒超时语义。"
+  }
+}

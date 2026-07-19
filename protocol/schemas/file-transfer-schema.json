@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/file-transfer-schema.json",
+  "title": "AgentHub File Transfer Schema",
+  "description": "文件传输协议永久统一契约。当前代码库没有服务端文件上传——附件仅以客户端 Base64 形式存在（存于 MessageEntity.attachmentData）。本契约 DEFINES（定义）未来统一文件传输协议，作为 Android (Kotlin) 与 iOS (Swift) 共享的永久契约。v1 为当前行为（内联 Base64，≤10MB），v2 为未来行为（分块上传至 uploadUrl，返回文件 URL）。",
+  "type": "object",
+  "definitions": {
+    "FileTransferDirection": {
+      "title": "FileTransferDirection",
+      "description": "文件传输方向枚举。upload=上传（客户端→服务端），download=下载（服务端→客户端）",
+      "type": "string",
+      "enum": ["upload", "download"]
+    },
+    "FileTransferStatus": {
+      "title": "FileTransferStatus",
+      "description": "文件传输状态枚举。pending=待处理，uploading=上传中，completed=已完成，failed=失败，cancelled=已取消",
+      "type": "string",
+      "enum": ["pending", "uploading", "completed", "failed", "cancelled"]
+    },
+    "FileMetadata": {
+      "title": "FileMetadata",
+      "description": "文件元数据。checksum 为 SHA-256 十六进制摘要，用于完整性校验。",
+      "type": "object",
+      "required": ["filename", "mimeType", "size", "checksum"],
+      "properties": {
+        "filename": {
+          "type": "string",
+          "description": "文件名（含扩展名）"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "MIME 类型，如 'image/jpeg'、'application/pdf'、'text/plain'"
+        },
+        "size": {
+          "type": "integer",
+          "description": "文件大小（字节数）。v1 上限 10MB（10485760 字节，压缩前），超出触发错误码 9001 FILE_TOO_LARGE"
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "SHA-256 摘要，64 位十六进制字符串，用于完整性校验"
+        }
+      }
+    },
+    "FileTransferRequest": {
+      "title": "FileTransferRequest",
+      "description": "文件传输请求。v1：小文件（≤10MB）以 Base64 编码内联在 data 字段，uploadUrl 为 null。v2：大文件分块上传至 uploadUrl，data 为 null，上传完成后由服务端返回文件 URL。",
+      "type": "object",
+      "required": ["id", "direction", "metadata"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "传输请求唯一标识"
+        },
+        "direction": {
+          "$ref": "#/definitions/FileTransferDirection"
+        },
+        "metadata": {
+          "$ref": "#/definitions/FileMetadata",
+          "description": "文件元数据"
+        },
+        "data": {
+          "type": ["string", "null"],
+          "description": "文件 Base64 编码数据。v1：小文件（≤10MB）内联于此字段，存于 MessageEntity.attachmentData；v2：大文件不使用此字段（为 null），改用 uploadUrl 分块上传",
+          "contentEncoding": "base64",
+          "default": null
+        },
+        "uploadUrl": {
+          "type": ["string", "null"],
+          "description": "分块上传目标 URL（v2）。null 表示使用 v1 内联 Base64 模式；非空表示使用 v2 分块上传模式",
+          "default": null
+        },
+        "status": {
+          "$ref": "#/definitions/FileTransferStatus",
+          "default": "pending"
+        }
+      }
+    },
+    "FileTransferResponse": {
+      "title": "FileTransferResponse",
+      "description": "文件传输响应（v2）。上传完成后服务端返回文件 URL，消息体引用该 URL 而非内联 Base64。",
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "对应 FileTransferRequest.id"
+        },
+        "fileUrl": {
+          "type": ["string", "null"],
+          "description": "上传完成后的文件访问 URL（v2）。v1 内联模式为 null",
+          "default": null
+        },
+        "status": {
+          "$ref": "#/definitions/FileTransferStatus"
+        },
+        "error": {
+          "type": ["string", "null"],
+          "description": "错误描述。status=failed 时设置，触发错误码 9003 FILE_TRANSFER_FAILED",
+          "default": null
+        }
+      }
+    }
+  },
+  "versions": {
+    "v1": {
+      "title": "v1 - 内联 Base64（当前行为）",
+      "description": "当前代码库行为。文件 ≤10MB 编码为 Base64 存于 FileTransferRequest.data 字段，最终存入 MessageEntity.attachmentData。无服务端上传。",
+      "inline_base64": true,
+      "max_size": "10MB（10485760 字节，压缩前）",
+      "storage": "MessageEntity.attachmentData（客户端本地数据库）",
+      "image_compression": {
+        "max_edge_px": 720,
+        "format": "JPEG",
+        "quality": 85,
+        "description": "图片附件压缩：最大边 720px，JPEG 质量 85。压缩在编码 Base64 前完成。"
+      },
+      "no_server_upload": true,
+      "oversize_error": "9001 FILE_TOO_LARGE"
+    },
+    "v2": {
+      "title": "v2 - 分块上传（未来行为）",
+      "description": "未来统一协议。大文件分块上传至 uploadUrl，使用 multipart/form-data。上传完成后服务端返回文件 URL，消息体引用 URL 而非内联 Base64。",
+      "inline_base64": false,
+      "upload_method": "multipart/form-data",
+      "upload_url_field": "FileTransferRequest.uploadUrl",
+      "response": "FileTransferResponse.fileUrl",
+      "message_reference": "消息体引用 fileUrl 而非内联 Base64，减少消息体积",
+      "chunked": true,
+      "description_detail": "分块上传到 uploadUrl，使用 multipart/form-data。返回文件 URL。消息引用文件 URL 而非内联 Base64。"
+    }
+  },
+  "notes": {
+    "version_transition": "v1 与 v2 通过 FileTransferRequest.uploadUrl 区分：null=内联 Base64（v1），非空=分块上传（v2）。两端实现须同时支持两种模式，按 uploadUrl 是否存在自动选择。",
+    "size_limit": "v1 内联模式文件上限 10MB（压缩前）。超出触发错误码 9001 FILE_TOO_LARGE。v2 分块模式无固定上限（由服务端配置）。",
+    "image_compression": "图片附件在传输前压缩：最大边 720px，JPEG 质量 85。压缩规则两端必须一致，保证 Base64/校验和可复现。",
+    "integrity": "FileMetadata.checksum 为 SHA-256 十六进制摘要，传输前后两端须校验一致性。校验失败触发错误码 9003 FILE_TRANSFER_FAILED。",
+    "storage_consistency": "v1 存储于 MessageEntity.attachmentData；v2 消息体引用 fileUrl。两端数据库 schema 须兼容两种存储方式。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 须遵循相同的压缩参数、大小上限、校验和算法与版本判定逻辑。"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agenthub.dev/protocol/schemas/agent-schema.json",
+  "title": "AgentHub Agent Schema",
+  "description": "Agent 标识、信息模型、配置的永久统一契约。Android (Kotlin) 与 iOS (Swift) 共享此定义。",
+  "type": "object",
+  "definitions": {
+    "AgentType": {
+      "title": "AgentType",
+      "description": "Agent 类型枚举，决定 TransportFactory 路由到具体传输实现。过渡期保留，未来由 AgentProtocol + AgentCapability 取代。",
+      "type": "string",
+      "enum": ["Hermes", "OpenCode", "OpenClaw", "OpenAI", "XiaomiMiMo", "LocalModel"]
+    },
+    "AgentProtocol": {
+      "title": "AgentProtocol",
+      "description": "Agent 通信协议类型",
+      "type": "string",
+      "enum": ["WebSocket", "HttpSSE", "MCP", "Local"]
+    },
+    "AgentStatus": {
+      "title": "AgentStatus",
+      "description": "Agent 连接状态",
+      "type": "string",
+      "enum": ["Online", "Offline", "Connecting", "Error"]
+    },
+    "AgentCapability": {
+      "title": "AgentCapability",
+      "description": "Agent 能力声明，用于按能力查询 Agent",
+      "type": "string",
+      "enum": [
+        "CHAT",
+        "TASK",
+        "WORKFLOW",
+        "MCP",
+        "FILESYSTEM",
+        "TERMINAL",
+        "VOICE",
+        "IMAGE_GEN",
+        "CODE_EXECUTION"
+      ]
+    },
+    "AgentConfig": {
+      "title": "AgentConfig",
+      "description": "Agent 连接配置。apiKey 在持久化时由平台 Keystore/Keychain 加密，传输时使用 AKS: 前缀格式。",
+      "type": "object",
+      "required": ["id", "name", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "配置唯一标识，默认 'default'",
+          "default": "default"
+        },
+        "name": {
+          "type": "string",
+          "description": "Agent 显示名称",
+          "default": "Default Agent"
+        },
+        "type": { "$ref": "#/definitions/AgentType" },
+        "serverUrl": {
+          "type": "string",
+          "description": "服务端地址。WebSocket 会自动 http→ws 替换并追加 /ws；HTTP 会追加 /v1/chat/completions",
+          "default": ""
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "API 密钥。持久化格式：'AKS:' + Base64(IV[12] ‖ ciphertext)，AES-256-GCM。传输时为明文。",
+          "default": ""
+        },
+        "model": {
+          "type": "string",
+          "description": "模型标识，如 'gpt-4o'、'claude-3-opus'、'qwen2.5:7b'",
+          "default": ""
+        },
+        "systemPrompt": {
+          "type": "string",
+          "description": "系统提示词（当前 Android HTTP 传输未注入此字段，协议层保留以供未来使用）",
+          "default": ""
+        },
+        "temperature": {
+          "type": "number",
+          "format": "float",
+          "description": "采样温度，0.0-2.0",
+          "default": 0.7
+        },
+        "maxTokens": {
+          "type": "integer",
+          "description": "最大生成 token 数",
+          "default": 4096
+        }
+      }
+    },
+    "Agent": {
+      "title": "Agent",
+      "description": "Agent 运行时实例，包含状态和能力声明",
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Agent 唯一标识。格式：agent_<uuid> 或自定义"
+        },
+        "name": {
+          "type": "string",
+          "description": "显示名称"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "连接端点（URL 或 host:port）",
+          "default": ""
+        },
+        "status": {
+          "$ref": "#/definitions/AgentStatus",
+          "default": "Offline"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/AgentCapability" },
+          "default": ["CHAT"]
+        },
+        "protocol": {
+          "$ref": "#/definitions/AgentProtocol",
+          "default": "WebSocket"
+        },
+        "config": {
+          "description": "关联的 AgentConfig（可选）",
+          "oneOf": [
+            { "$ref": "#/definitions/AgentConfig" },
+            { "type": "null" }
+          ],
+          "default": null
+        }
+      }
+    }
+  }
+}
