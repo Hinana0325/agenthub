@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
  *  - HTTP 传输：服务端无状态，多轮上下文需由客户端维护并随请求一起发送。
  *    [clearHistory] / [clearAllHistory] 用于清空客户端侧维护的会话历史。
  */
-sealed interface AgentTransport {
+interface AgentTransport {
     val events: Flow<AgentEvent>
     val connectionState: StateFlow<AgentConnectionState>
     fun connect(config: AgentConfig, e2eKey: String? = null)
