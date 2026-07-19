@@ -41,7 +41,7 @@ fun PluginScreen(
         )
     }
     val pluginManager = remember { entryPoint.pluginManager() }
-    val executor = remember { PluginExecutor(context) }
+    val executor = remember { entryPoint.pluginExecutor() }
     val scope = rememberCoroutineScope()
     val plugins: List<Plugin> by pluginManager.plugins.collectAsStateWithLifecycle()
     var selectedPlugin by remember { mutableStateOf<Plugin?>(null) }
@@ -428,4 +428,5 @@ private fun PluginDetailDialog(
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
 interface PluginManagerEntryPoint {
     fun pluginManager(): PluginManager
+    fun pluginExecutor(): PluginExecutor
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.agenthub.app.plugin.api.Plugin
 import com.agenthub.app.plugin.api.PluginAction
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.request
@@ -14,6 +15,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * 插件执行引擎：根据 [Plugin.action] 真实执行动作。
@@ -22,8 +25,14 @@ import java.net.URLEncoder
  *  - [PluginAction.Workflow]  -> 产出提示词，交由已连接 Agent 执行（[PluginResult.sendToAgent]=true）。
  *
  * 所有网络/IO 均在 IO 调度器执行。
+ *
+ * Phase 5.1: 从普通 class 改为 [@Singleton]，通过 Hilt 注入 [@ApplicationContext]。
+ * 便于测试时替换为 mock，且保证整个 App 生命周期内只有一个 HttpClient 实例。
  */
-class PluginExecutor(private val context: Context) {
+@Singleton
+class PluginExecutor @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private val client = HttpClient(OkHttp)
 
