@@ -1,8 +1,15 @@
 package com.agenthub.app.core.database.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Phase 2.4: 添加 timestamp 和 role 单列索引。
+ * - timestamp: getLastMessage 使用 ORDER BY timestamp DESC LIMIT 1（无 sessionId 过滤），
+ *   复合索引 (sessionId, timestamp) 无法高效服务此查询。
+ * - role: getAllAssistantMessages 使用 WHERE role = 'Assistant'，无索引时全表扫描。
+ */
 @Entity(
     tableName = "messages",
     foreignKeys = [
@@ -13,7 +20,11 @@ import androidx.room.PrimaryKey
             onDelete = androidx.room.ForeignKey.CASCADE
         )
     ],
-    indices = [androidx.room.Index(value = ["sessionId", "timestamp"])],
+    indices = [
+        androidx.room.Index(value = ["sessionId", "timestamp"]),
+        Index("timestamp"),
+        Index("role")
+    ],
 )
 data class MessageEntity(
     @PrimaryKey val id: String,

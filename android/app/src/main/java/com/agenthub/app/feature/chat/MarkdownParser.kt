@@ -17,6 +17,25 @@ package com.agenthub.app.feature.chat
  */
 object MarkdownParser {
 
+    // Phase 2.3: 缓存所有 Regex 实例到 object 级别常量。
+    // 此前每次 parse/parseInline 调用都新建 Regex（涉及 pattern 编译，开销大），
+    // 流式响应期间每个 delta 都触发重新 parse，是 CPU 热点。
+
+    /** 水平分割线：---、***、___（至少 3 个） */
+    private val HR_REGEX = Regex("^[-*_]{3,}$")
+    /** 标题：# ~ #### 后跟文本 */
+    private val HEADING_REGEX = Regex("^(#{1,4})\\s+(.+)$")
+    /** 表格分隔行：|---|:---:|---| 等 */
+    private val TABLE_SEPARATOR_REGEX = Regex("^\\|?\\s*:?-+:?\\s*(\\|\\s*:?-+:?\\s*)*\\|?\\s*$")
+    /** 无序列表项：- 或 * 后跟空格 */
+    private val UNORDERED_LIST_REGEX = Regex("^[-*]\\s+.*")
+    /** 无序列表项前缀（用于剥离） */
+    private val UNORDERED_LIST_PREFIX_REGEX = Regex("^[-*]\\s+")
+    /** 有序列表项：数字. 后跟空格 */
+    private val ORDERED_LIST_REGEX = Regex("^\\d+\\.\\s+.*")
+    /** 有序列表项前缀（用于剥离） */
+    private val ORDERED_LIST_PREFIX_REGEX = Regex("^\\d+\\.\\s+")
+
     fun parse(text: String): List<MarkdownBlock> {
         if (text.isBlank()) return listOf(MarkdownBlock.Paragraph(listOf(MarkdownSpan.Text(""))))
 
@@ -45,14 +64,14 @@ object MarkdownParser {
             }
 
             // ── Horizontal rule ──
-            if (line.trim().matches(Regex("^[-*_]{3,}$"))) {
+            if (line.trim().matches(HR_REGEX)) {
                 blocks.add(MarkdownBlock.Divider(line.trim()))
                 i++
                 continue
             }
 
             // ── Heading ──
-            val headingMatch = Regex("^(#{1,4})\\s+(.+)$").matchEntire(line)
+            val headingMatch = HEADING_REGEX.matchEntire(line)
             if (headingMatch != null) {
                 val level = headingMatch.groupValues[1].length
                 blocks.add(MarkdownBlock.Heading(level, headingMatch.groupValues[2]))
@@ -61,7 +80,7 @@ object MarkdownParser {
             }
 
             // ── Table ──
-            if (line.contains("|") && i + 1 < lines.size && lines[i + 1].matches(Regex("^\\|?\\s*:?-+:?\\s*(\\|\\s*:?-+:?\\s*)*\\|?\\s*$"))) {
+            if (line.contains("|") && i + 1 < lines.size && lines[i + 1].matches(TABLE_SEPARATOR_REGEX)) {
                 val headerCells = parseTableRow(line)
                 i += 2 // skip header + separator
                 val rows = mutableListOf<List<String>>()
@@ -86,10 +105,10 @@ object MarkdownParser {
             }
 
             // ── Unordered list ──
-            if (line.trimStart().matches(Regex("^[-*]\\s+.*"))) {
+            if (line.trimStart().matches(UNORDERED_LIST_REGEX)) {
                 val items = mutableListOf<List<MarkdownSpan>>()
-                while (i < lines.size && lines[i].trimStart().matches(Regex("^[-*]\\s+.*"))) {
-                    val itemText = lines[i].trimStart().replaceFirst(Regex("^[-*]\\s+"), "")
+                while (i < lines.size && lines[i].trimStart().matches(UNORDERED_LIST_REGEX)) {
+                    val itemText = lines[i].trimStart().replaceFirst(UNORDERED_LIST_PREFIX_REGEX, "")
                     items.add(parseInline(itemText))
                     i++
                 }
@@ -98,10 +117,10 @@ object MarkdownParser {
             }
 
             // ── Ordered list ──
-            if (line.trimStart().matches(Regex("^\\d+\\.\\s+.*"))) {
+            if (line.trimStart().matches(ORDERED_LIST_REGEX)) {
                 val items = mutableListOf<List<MarkdownSpan>>()
-                while (i < lines.size && lines[i].trimStart().matches(Regex("^\\d+\\.\\s+.*"))) {
-                    val itemText = lines[i].trimStart().replaceFirst(Regex("^\\d+\\.\\s+"), "")
+                while (i < lines.size && lines[i].trimStart().matches(ORDERED_LIST_REGEX)) {
+                    val itemText = lines[i].trimStart().replaceFirst(ORDERED_LIST_PREFIX_REGEX, "")
                     items.add(parseInline(itemText))
                     i++
                 }
@@ -115,9 +134,9 @@ object MarkdownParser {
                 !lines[i].trimStart().startsWith("```") &&
                 !lines[i].trimStart().startsWith("#") &&
                 !lines[i].startsWith(">") &&
-                !lines[i].trimStart().matches(Regex("^[-*]\\s+.*")) &&
-                !lines[i].trimStart().matches(Regex("^\\d+\\.\\s+.*")) &&
-                !lines[i].trim().matches(Regex("^[-*_]{3,}$"))
+                !lines[i].trimStart().matches(UNORDERED_LIST_REGEX) &&
+                !lines[i].trimStart().matches(ORDERED_LIST_REGEX) &&
+                !lines[i].trim().matches(HR_REGEX)
             ) {
                 paraLines.add(lines[i])
                 i++
@@ -135,21 +154,26 @@ object MarkdownParser {
         return blocks
     }
 
+    /**
+     * Phase 2.3: 缓存 inline span 的复合正则。
+     * 匹配 ***bold+italic***、**bold**、*italic*、`code`、![img](url)、[link](url)、plain text
+     */
+    private val INLINE_SPAN_REGEX = Regex(
+        """\*\*\*(.+?)\*\*\*|""" +
+        """\*\*(.+?)\*\*|""" +
+        """\*(.+?)\*|""" +
+        """`([^`]+)`|""" +
+        """!\[([^\]]*)\]\(([^)]+)\)|""" +
+        """\[([^\]]+)\]\(([^)]+)\)|""" +
+        """([^*`\[]+)"""
+    )
+
     /** Parse inline spans: bold, italic, bold+italic, code, links, images */
     fun parseInline(text: String): List<MarkdownSpan> {
         if (text.isBlank()) return listOf(MarkdownSpan.Text(""))
 
         val spans = mutableListOf<MarkdownSpan>()
-        // Pattern: ***bold+italic***, **bold**, *italic*, `code`, ![img](url), [link](url), plain text
-        val regex = Regex(
-            """\*\*\*(.+?)\*\*\*|""" +
-            """\*\*(.+?)\*\*|""" +
-            """\*(.+?)\*|""" +
-            """`([^`]+)`|""" +
-            """!\[([^\]]*)\]\(([^)]+)\)|""" +
-            """\[([^\]]+)\]\(([^)]+)\)|""" +
-            """([^*`\[]+)"""
-        )
+        val regex = INLINE_SPAN_REGEX
 
         for (match in regex.findAll(text)) {
             when {

@@ -578,12 +578,10 @@ private fun ChatContent(
     // Messages already on screen at first composition are considered "seen" so they
     // don't replay the spring entrance while merely scrolling. Only genuinely new
     // messages (added later this session) animate in.
-    val seenMessageIds = remember { mutableSetOf<String>() }
-
-    // Update seen IDs when messages change
-    LaunchedEffect(uiState.messages.size) {
-        uiState.messages.forEach { seenMessageIds.add(it.id) }
-    }
+    //
+    // Phase 2.2: 改为 mutableStateMapOf 驱动 Compose 重组，不再作为参数下传到
+    // MessageBubble（MutableSet 非 @Stable，会导致所有可见 item 每次都重组）。
+    val seenMessageIds = remember { androidx.compose.runtime.mutableStateMapOf<String, Unit>() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 离线横幅：未连接且非连接中时，醒目提示用户去连接模型端点
@@ -956,24 +954,23 @@ fun MessageBubble(
     onReaction: () -> Unit = {},
     onEdit: (() -> Unit)? = null,
     onReply: (() -> Unit)? = null,
-    // Ids already shown at least once. Bubble only plays the spring entrance for
-    // genuinely-new messages; once seen it is added here so scrolling back never
-    // replays the animation. We drive the *enter transition* (not visibility) so a
-    // marked-seen bubble never triggers AnimatedVisibility's exit.
-    seenMessageIds: MutableSet<String> = mutableSetOf()
+    // Phase 2.2: seenMessageIds 改为 SnapshotStateMap，由调用方在外层 remember
+    // 并通过 Lambda 或直接传入。SnapshotStateMap 是 @Stable 的，读取其值会
+    // 正确参与 Compose 重组，不会导致所有可见 item 每次都重组。
+    seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Unit> = androidx.compose.runtime.mutableStateMapOf()
 ) {
     val isUser = message.role == MessageRole.User
     val isStreaming = message.status == MessageStatus.Sending
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
 
-    val hasEntered = seenMessageIds.contains(message.id)
+    val hasEntered = seenMessageIds.containsKey(message.id)
 
     var showContextMenu by remember { mutableStateOf(false) }
 
     // Mark this message as seen after first composition so future scroll-ins are static.
     LaunchedEffect(message.id) {
-        seenMessageIds.add(message.id)
+        seenMessageIds[message.id] = Unit
     }
 
     AnimatedVisibility(
@@ -2029,7 +2026,13 @@ private fun SearchResultItem(
     }
 }
 
+/**
+ * Phase 2.2: 缓存 SimpleDateFormat 实例，避免每个 MessageBubble 重组时都新建。
+ * SimpleDateFormat 构造昂贵（解析 pattern、查 Locale 数据）。
+ * Compose 主线程单线程访问，无需同步。
+ */
+private val TIME_FORMAT = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+
 private fun formatTimestamp(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(timestamp))
+    return TIME_FORMAT.format(java.util.Date(timestamp))
 }

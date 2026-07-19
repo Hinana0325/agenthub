@@ -26,7 +26,7 @@ import com.agenthub.app.core.database.entity.SessionEntity
         ActivityLogEntity::class,
         PluginEntity::class
     ],
-    version = 6,
+    version = 7,
     // 启用 schema 导出以便迁移测试。
     // TODO: 需在 app/build.gradle 的 ksp / kapt 配置中添加
     //   ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -57,6 +57,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Phase 2.4: 为 activity_log.timestamp / messages.timestamp / messages.role
+         * 添加单列索引，避免分页查询和角色过滤时全表扫描。
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_activity_log_timestamp ON activity_log (timestamp)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_timestamp ON messages (timestamp)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_role ON messages (role)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -66,9 +78,9 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     // 不使用 fallbackToDestructiveMigration()：缺少迁移时会抛
                     // IllegalStateException，优先于静默丢失用户数据。
-                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6；后续新增版本时
+                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6 / MIGRATION_6_7；后续新增版本时
                     // 必须显式补齐对应的 Migration。
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build().also { INSTANCE = it }
             }
         }
