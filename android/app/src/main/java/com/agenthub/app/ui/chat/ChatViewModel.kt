@@ -123,6 +123,15 @@ class ChatViewModel @Inject constructor(
                 connectWith(savedConfig)
             }
         }
+        // Preload most recent session messages
+        viewModelScope.launch {
+            val sessions = repository.getAllSessionsList()
+            val mostRecent = sessions.maxByOrNull { it.updatedAt }
+            if (mostRecent != null) {
+                _currentSessionId.value = mostRecent.id
+                _uiState.update { it.copy(currentSessionId = mostRecent.id, showWizard = false) }
+            }
+        }
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         viewModelScope.launch {
             _transport.filterNotNull().flatMapLatest { it.events }.collect { event ->
@@ -711,6 +720,11 @@ class ChatViewModel @Inject constructor(
                 val bytes = inputStream?.readBytes()
                 inputStream?.close()
                 if (bytes != null) {
+                    // Warn if attachment is very large
+                    if (bytes.size > 10 * 1024 * 1024) { // 10MB
+                        _uiState.update { it.copy(errorMessage = "Attachment too large (>10MB)") }
+                        return@launch
+                    }
                     val finalBytes = if (isImage && bytes.size > 1_000_000) {
                         try {
                             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)

@@ -538,8 +538,11 @@ private fun ChatContent(
     // Messages already on screen at first composition are considered "seen" so they
     // don't replay the spring entrance while merely scrolling. Only genuinely new
     // messages (added later this session) animate in.
-    val seenMessageIds = remember {
-        mutableSetOf<String>().apply { addAll(uiState.messages.map { it.id }) }
+    val seenMessageIds = remember { mutableSetOf<String>() }
+
+    // Update seen IDs when messages change
+    LaunchedEffect(uiState.messages.size) {
+        uiState.messages.forEach { seenMessageIds.add(it.id) }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
