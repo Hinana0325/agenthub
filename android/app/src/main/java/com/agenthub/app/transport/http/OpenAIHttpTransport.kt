@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.get
@@ -60,6 +61,18 @@ class OpenAIHttpTransport(
 
     private val client = HttpClient(OkHttp) {
         install(Logging)
+        // Phase 1.1: 为 HTTP 请求配置超时，防止网络卡顿时 sendMessage 无限挂起
+        // 导致 UI isStreaming 永远为 true。
+        //   - connectTimeoutMillis: TCP 连接建立超时，10s 足够覆盖慢网络。
+        //   - requestTimeoutMillis: 整个请求超时（含 SSE 流），设为 120s 给
+        //     LLM 长回复留足空间。流式场景下首个 token 可能延迟数十秒。
+        //   - socketTimeoutMillis: 两次数据包之间的最大间隔，30s。SSE 流中
+        //     token 之间通常间隔很短，30s 足够检测到死连接。
+        install(HttpTimeout) {
+            connectTimeoutMillis = 10_000
+            requestTimeoutMillis = 120_000
+            socketTimeoutMillis = 30_000
+        }
     }
 
     private var currentConfig: AgentConfig? = null
@@ -85,11 +98,20 @@ class OpenAIHttpTransport(
      * 当前请求的助手回复累加器。在 [sendMessage] 起始处清空，由 [emitDelta] /
      * [emitFull] 追加增量，[saveAssistantResponse] 在流结束时将其写入历史。
      *
-     * 这是单实例字段，依赖「同一 transport 实例上 sendMessage 不会被并发调用」
-     * 的约定（与 ChatViewModel 单协程发送模式一致）。历史字段的并发安全由
-     * [historyMutex] 保证；累加器本身不跨请求共享状态（每次请求开头会清空）。
+     * Phase 1.5: 累加器访问由 [sendMutex] 串行化保护，不再依赖
+     * 「sendMessage 不会被并发调用」的隐含约定。
      */
     private val responseAccumulator = StringBuilder()
+
+    /**
+     * Phase 1.5: 串行化 sendMessage 调用，防止并发请求撕裂 [responseAccumulator]。
+     *
+     * 此前依赖「同一 transport 实例上 sendMessage 不会被并发调用」的隐含约定，
+     * 一旦上层引入并发发送（如 CompareViewModel 或未来的 TaskExecutor）会撕裂
+     * 累加器。加锁后即使并发调用也能安全串行执行，代价是同一时刻只能有一个
+     * 流式请求在途（对单 Agent 场景完全够用）。
+     */
+    private val sendMutex = Mutex()
 
     override fun connect(config: AgentConfig, e2eKey: String?) {
         // HTTP 传输：对端是 LLM 服务，需要明文请求体，E2E 不适用（忽略 e2eKey）。
@@ -135,79 +157,87 @@ class OpenAIHttpTransport(
             }
             val status = response.status.value
             status in 200..299 || status == 401 || status == 403 || status == 404
+        } catch (e: CancellationException) {
+            // Phase 1.6: 重抛 CancellationException，避免 shutdown() 取消 eventScope 后
+            // probeEndpoint 吞掉取消信号，导致 connect() 继续执行并覆盖已重置的状态。
+            throw e
         } catch (_: Exception) {
             false
         }
     }
 
     override suspend fun sendMessage(sessionId: String, content: String) {
-        val config = currentConfig ?: run {
-            _events.send(AgentEvent.Error("Not connected"))
-            return
-        }
-
-        // 1. 把本轮用户消息追加到历史，按滑动窗口裁剪，并原子地取一份快照用于
-        //    构建请求体。整个「追加 + 裁剪 + 快照」在同一把锁内完成，避免
-        //    并发 [clearHistory] 在两步之间插入导致 messages 数组为空。
-        //    历史快照为空时（理论上的并发清空场景）退化为单条用户消息，
-        //    与原有单轮行为完全一致（向后兼容）。
-        val messagesPayload: List<Map<String, String>> = historyMutex.withLock {
-            val history = conversationHistory.getOrPut(sessionId) { mutableListOf() }
-            history.add(ConversationMessage("user", content))
-            trimHistory(history)
-            history.map { msg ->
-                mapOf("role" to msg.role, "content" to msg.content)
+        // Phase 1.5: 串行化整个 sendMessage，防止并发请求撕裂 responseAccumulator。
+        // 锁内包含历史读取、请求发送、流解析、历史写入的完整流程。
+        sendMutex.withLock {
+            val config = currentConfig ?: run {
+                _events.send(AgentEvent.Error("Not connected"))
+                return
             }
-        }
 
-        // 2. 重置助手回复累加器，准备接收本轮 SSE 增量。
-        responseAccumulator.setLength(0)
-
-        val url = config.serverUrl.trimEnd('/') + "/v1/chat/completions"
-        val requestBody = mapOf(
-            "model" to config.model,
-            // 多轮对话：messages 数组由本 session 的历史快照构成，包含此前
-            // 的 user / assistant 轮次，让模型获得上下文。滑动窗口由
-            // [trimHistory] 限制在 [MAX_HISTORY_MESSAGES] 条以内。
-            "messages" to messagesPayload,
-            "stream" to true,
-            "temperature" to config.temperature,
-            "max_tokens" to config.maxTokens
-        )
-        var streamSucceeded = false
-        try {
-            client.preparePost(url) {
-                header("Authorization", "Bearer ${config.apiKey}")
-                header("Content-Type", "application/json")
-                setBody(gson.toJson(requestBody))
-            }.execute { response ->
-                if (response.status != HttpStatusCode.OK) {
-                    val errBody = response.bodyAsText().take(2000)
-                    _events.send(AgentEvent.Error("HTTP ${response.status.value}: $errBody"))
-                    _connectionState.value = _connectionState.value.copy(isConnected = false)
-                    return@execute
+            // 1. 把本轮用户消息追加到历史，按滑动窗口裁剪，并原子地取一份快照用于
+            //    构建请求体。整个「追加 + 裁剪 + 快照」在同一把锁内完成，避免
+            //    并发 [clearHistory] 在两步之间插入导致 messages 数组为空。
+            //    历史快照为空时（理论上的并发清空场景）退化为单条用户消息，
+            //    与原有单轮行为完全一致（向后兼容）。
+            val messagesPayload: List<Map<String, String>> = historyMutex.withLock {
+                val history = conversationHistory.getOrPut(sessionId) { mutableListOf() }
+                history.add(ConversationMessage("user", content))
+                trimHistory(history)
+                history.map { msg ->
+                    mapOf("role" to msg.role, "content" to msg.content)
                 }
-                // Stream the SSE response line-by-line as it arrives instead of
-                // buffering the whole body with bodyAsText() — that would defeat
-                // the point of streaming and delay first-token latency.
-                parseStream(response.bodyAsChannel())
-                streamSucceeded = true
             }
-            // 3. 流结束后，把累加的助手回复写入历史。此调用覆盖三种流结束情况：
-            //    - SSE 流中收到 `data: [DONE]`（flushData 返回 false，循环退出）
-            //    - 流自然结束（channel 关闭，while 退出）
-            //    - 非 SSE 整包回退（emitFull 路径）
-            //    若累加器为空（HTTP 非 200 / 请求失败），不会写入历史。
-            saveAssistantResponse(sessionId)
-            // 4. 通知上层流式响应已结束，使其重置 isStreaming 状态。
-            //    仅在流成功完成时发送（HTTP 非 200 已通过 Error 事件通知上层）。
-            if (streamSucceeded) {
-                _events.send(AgentEvent.StreamComplete)
+
+            // 2. 重置助手回复累加器，准备接收本轮 SSE 增量。
+            responseAccumulator.setLength(0)
+
+            val url = config.serverUrl.trimEnd('/') + "/v1/chat/completions"
+            val requestBody = mapOf(
+                "model" to config.model,
+                // 多轮对话：messages 数组由本 session 的历史快照构成，包含此前
+                // 的 user / assistant 轮次，让模型获得上下文。滑动窗口由
+                // [trimHistory] 限制在 [MAX_HISTORY_MESSAGES] 条以内。
+                "messages" to messagesPayload,
+                "stream" to true,
+                "temperature" to config.temperature,
+                "max_tokens" to config.maxTokens
+            )
+            var streamSucceeded = false
+            try {
+                client.preparePost(url) {
+                    header("Authorization", "Bearer ${config.apiKey}")
+                    header("Content-Type", "application/json")
+                    setBody(gson.toJson(requestBody))
+                }.execute { response ->
+                    if (response.status != HttpStatusCode.OK) {
+                        val errBody = response.bodyAsText().take(2000)
+                        _events.send(AgentEvent.Error("HTTP ${response.status.value}: $errBody"))
+                        _connectionState.value = _connectionState.value.copy(isConnected = false)
+                        return@execute
+                    }
+                    // Stream the SSE response line-by-line as it arrives instead of
+                    // buffering the whole body with bodyAsText() — that would defeat
+                    // the point of streaming and delay first-token latency.
+                    parseStream(response.bodyAsChannel())
+                    streamSucceeded = true
+                }
+                // 3. 流结束后，把累加的助手回复写入历史。此调用覆盖三种流结束情况：
+                //    - SSE 流中收到 `data: [DONE]`（flushData 返回 false，循环退出）
+                //    - 流自然结束（channel 关闭，while 退出）
+                //    - 非 SSE 整包回退（emitFull 路径）
+                //    若累加器为空（HTTP 非 200 / 请求失败），不会写入历史。
+                saveAssistantResponse(sessionId)
+                // 4. 通知上层流式响应已结束，使其重置 isStreaming 状态。
+                //    仅在流成功完成时发送（HTTP 非 200 已通过 Error 事件通知上层）。
+                if (streamSucceeded) {
+                    _events.send(AgentEvent.StreamComplete)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _events.send(AgentEvent.Error(e.message ?: "Request failed"))
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _events.send(AgentEvent.Error(e.message ?: "Request failed"))
         }
     }
 

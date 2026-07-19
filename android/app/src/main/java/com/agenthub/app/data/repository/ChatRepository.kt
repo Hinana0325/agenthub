@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Singleton
 
 @Singleton
@@ -63,9 +64,10 @@ class ChatRepository @javax.inject.Inject constructor(
 
     fun getAllSessions(): Flow<List<Session>> =
         sessionDao.getAllSessions().map { entities -> entities.map { it.toModel() } }
+            .flowOn(Dispatchers.IO)
 
     suspend fun getAllSessionsList(): List<Session> =
-        sessionDao.getAllSessionsOnce().map { it.toModel() }
+        withContext(Dispatchers.IO) { sessionDao.getAllSessionsOnce().map { it.toModel() } }
 
     suspend fun getSessionById(id: String): Session? =
         sessionDao.getSessionById(id)?.toModel()
@@ -105,9 +107,10 @@ class ChatRepository @javax.inject.Inject constructor(
 
     fun getMessagesBySession(sessionId: String): Flow<List<Message>> =
         messageDao.getMessagesBySession(sessionId).map { entities -> entities.map { it.toModel() } }
+            .flowOn(Dispatchers.IO)
 
     suspend fun getMessagesBySessionList(sessionId: String): List<Message> =
-        messageDao.getMessagesBySessionOnce(sessionId).map { it.toModel() }
+        withContext(Dispatchers.IO) { messageDao.getMessagesBySessionOnce(sessionId).map { it.toModel() } }
 
     suspend fun sendMessage(
         sessionId: String,
@@ -130,8 +133,11 @@ class ChatRepository @javax.inject.Inject constructor(
             attachmentName = attachmentName,
             replyToId = replyToId
         )
-        messageDao.insertMessage(message)
-        sessionDao.incrementMessageCount(sessionId, System.currentTimeMillis())
+        // Phase 1.2: 包裹事务，保证 insertMessage 与 incrementMessageCount 原子完成。
+        database.withTransaction {
+            messageDao.insertMessage(message)
+            sessionDao.incrementMessageCount(sessionId, System.currentTimeMillis())
+        }
         return message.toModel()
     }
 
@@ -140,14 +146,20 @@ class ChatRepository @javax.inject.Inject constructor(
     }
 
     suspend fun deleteMessagesBySession(sessionId: String) {
-        messageDao.deleteMessagesBySession(sessionId)
-        sessionDao.resetMessageCount(sessionId, System.currentTimeMillis())
+        // Phase 1.2: 包裹事务，保证删消息与重置计数原子完成。
+        database.withTransaction {
+            messageDao.deleteMessagesBySession(sessionId)
+            sessionDao.resetMessageCount(sessionId, System.currentTimeMillis())
+        }
     }
 
     suspend fun deleteMessage(messageId: String) {
-        val message = messageDao.getMessageById(messageId)
-        messageDao.deleteMessageById(messageId)
-        message?.sessionId?.let { sessionDao.decrementMessageCount(it) }
+        // Phase 1.2: 包裹事务，保证查消息、删消息、减计数原子完成。
+        database.withTransaction {
+            val message = messageDao.getMessageById(messageId)
+            messageDao.deleteMessageById(messageId)
+            message?.sessionId?.let { sessionDao.decrementMessageCount(it) }
+        }
     }
 
     // ── Backup Import (atomic) ──
@@ -179,7 +191,10 @@ class ChatRepository @javax.inject.Inject constructor(
 
     suspend fun searchMessages(query: String): List<Message> {
         val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        return messageDao.searchMessages("%$escaped%").map { it.toModel() }
+        // Phase 1.2: LIKE 查询 + toModel 映射在 IO 线程执行。
+        return withContext(Dispatchers.IO) {
+            messageDao.searchMessages("%$escaped%").map { it.toModel() }
+        }
     }
 
     suspend fun updateReaction(messageId: String, reaction: String) {
@@ -192,10 +207,14 @@ class ChatRepository @javax.inject.Inject constructor(
         agentConfigDao.getAllConfigs().map { entities -> entities.map { it.toModel() } }.flowOn(Dispatchers.IO)
 
     suspend fun getAllConfigsList(): List<AgentConfig> =
-        agentConfigDao.getAllConfigsOnce().map { it.toModel() }
+        // Phase 1.2: toModel() 内部调用 KeystoreManager.decryptOrRaw（硬件 Keystore +
+        // AES-GCM 同步操作），必须在 IO 线程执行，否则阻塞主线程导致 ANR。
+        withContext(Dispatchers.IO) { agentConfigDao.getAllConfigsOnce().map { it.toModel() } }
 
     suspend fun saveConfig(config: AgentConfig) {
-        agentConfigDao.insertConfig(config.toEntity())
+        // Phase 1.2: toEntity() 内部调用 KeystoreManager.encrypt（硬件 Keystore +
+        // AES-GCM 同步操作），必须在 IO 线程执行。
+        withContext(Dispatchers.IO) { agentConfigDao.insertConfig(config.toEntity()) }
     }
 
     suspend fun deleteConfig(id: String) {
@@ -206,6 +225,7 @@ class ChatRepository @javax.inject.Inject constructor(
 
     fun getAllActivities(): Flow<List<ActivityItem>> =
         activityDao.getAllActivities().map { entities -> entities.map { it.toActivityModel() } }
+            .flowOn(Dispatchers.IO)
 
     suspend fun logActivity(type: String, title: String, description: String = "") {
         val entity = ActivityLogEntity(
@@ -242,8 +262,8 @@ class ChatRepository @javax.inject.Inject constructor(
         timestamp = timestamp,
         status = try { MessageStatus.valueOf(status) } catch (_: Exception) { MessageStatus.Sent },
         metadata = try {
-            val type = object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
-            (gson.fromJson(metadataJson, type) as? Map<String, String>) ?: emptyMap()
+            // Phase 1.2: 使用缓存的 TypeToken，避免每次调用都新建匿名子类实例（反射开销大）。
+            (gson.fromJson(metadataJson, METADATA_MAP_TYPE) as? Map<String, String>) ?: emptyMap()
         } catch (_: Exception) { emptyMap() },
         attachmentType = attachmentType,
         attachmentData = attachmentData,
@@ -283,4 +303,13 @@ class ChatRepository @javax.inject.Inject constructor(
         description = description,
         timestamp = timestamp
     )
+
+    companion object {
+        /**
+         * Phase 1.2: 缓存 metadata Map 的 TypeToken，避免每次 toModel() 调用都
+         * 新建匿名 TypeToken 子类实例（涉及类加载 + 反射，开销极大）。
+         * TypeToken.type 是线程安全的，可在 companion object 中共享。
+         */
+        private val METADATA_MAP_TYPE = object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+    }
 }

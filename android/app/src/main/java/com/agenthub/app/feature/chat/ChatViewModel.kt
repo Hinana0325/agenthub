@@ -225,38 +225,52 @@ class ChatViewModel @Inject constructor(
                 }
 
                 if (event.isDelta) {
-                    val lastIdx = _uiState.value.messages.lastIndex
-                    if (lastIdx >= 0) {
-                        val last = _uiState.value.messages[lastIdx]
-                        if (last.role == MessageRole.Assistant) {
-                            val newContent = last.content + event.content
-                            _uiState.update { state ->
-                                val updated = state.messages.toMutableList()
-                                updated[lastIdx] = last.copy(
-                                    content = newContent,
+                    // Phase 1.3: 将 lastIdx/last 读取移入 _uiState.update lambda 内部，
+                    // 保证原子性。此前在 lambda 外部读取，Room Flow 可能在读取与更新
+                    // 之间发射新列表，导致索引越界或覆盖错误。
+                    //
+                    // 同时移除每个 delta 的 Room 写入（此前每次 delta 都调用
+                    // repository.updateMessageStatus），改为仅在 StreamComplete 时
+                    // 批量持久化，大幅减少流式期间的磁盘 I/O 与 Flow 重发。
+                    val deltaContent = event.content
+                    _uiState.update { state ->
+                        val lastIdx = state.messages.lastIndex
+                        if (lastIdx >= 0 && state.messages[lastIdx].role == MessageRole.Assistant) {
+                            val last = state.messages[lastIdx]
+                            val updated = state.messages.toMutableList()
+                            updated[lastIdx] = last.copy(
+                                content = last.content + deltaContent,
+                                status = MessageStatus.Received
+                            )
+                            state.copy(messages = updated)
+                        } else {
+                            // 没有 assistant 消息可追加：创建一条新的（首个 delta）
+                            state.copy(
+                                messages = state.messages + Message(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    sessionId = sessionId,
+                                    role = MessageRole.Assistant,
+                                    content = deltaContent,
                                     status = MessageStatus.Received
                                 )
-                                state.copy(messages = updated)
-                            }
-                            // Persist accumulated delta to Room so it survives app restarts
-                            repository.updateMessageStatus(last.id, newContent, MessageStatus.Received)
-                            return
+                            )
                         }
                     }
-                }
-
-                // Non-delta: persist via repository and use returned message (same ID) to avoid duplicates
-                val persistedMsg = repository.sendMessage(sessionId, event.content, MessageRole.Assistant)
-                repository.logActivity("message", "Agent response received", event.content.take(80))
-                _uiState.update { state ->
-                    val filtered = state.messages.filter { it.id != persistedMsg.id }
-                    state.copy(
-                        messages = filtered + Message(
-                            id = persistedMsg.id, sessionId = sessionId, role = MessageRole.Assistant,
-                            content = event.content, status = MessageStatus.Received
-                        ),
-                        isStreaming = false
-                    )
+                    // 不再在此处写 Room —— 由 StreamComplete 统一批量持久化。
+                } else {
+                    // Non-delta: persist via repository and use returned message (same ID) to avoid duplicates
+                    val persistedMsg = repository.sendMessage(sessionId, event.content, MessageRole.Assistant)
+                    repository.logActivity("message", "Agent response received", event.content.take(80))
+                    _uiState.update { state ->
+                        val filtered = state.messages.filter { it.id != persistedMsg.id }
+                        state.copy(
+                            messages = filtered + Message(
+                                id = persistedMsg.id, sessionId = sessionId, role = MessageRole.Assistant,
+                                content = event.content, status = MessageStatus.Received
+                            ),
+                            isStreaming = false
+                        )
+                    }
                 }
             }
             is AgentEvent.Error -> {
@@ -275,8 +289,19 @@ class ChatViewModel @Inject constructor(
                 repository.logActivity("connection", "Agent reconnecting...")
             }
             is AgentEvent.StreamComplete -> {
-                // HTTP SSE 纯增量流结束后由传输层发出此事件，重置 isStreaming。
-                // 解决此前纯增量流结束后发送按钮一直停留在 Stop 状态的问题。
+                // HTTP SSE 纯增量流结束后由传输层发出此事件。
+                // Phase 1.3: 在此统一持久化流式期间累加的助手回复，替代此前
+                // 每个 delta 都写 Room 的高频 I/O 模式。同时重置 isStreaming。
+                val messages = _uiState.value.messages
+                val lastAssistant = messages.lastOrNull { it.role == MessageRole.Assistant }
+                if (lastAssistant != null && lastAssistant.content.isNotEmpty()) {
+                    repository.updateMessageStatus(
+                        lastAssistant.id,
+                        lastAssistant.content,
+                        MessageStatus.Received
+                    )
+                    repository.logActivity("message", "Agent response received", lastAssistant.content.take(80))
+                }
                 _uiState.update { it.copy(isStreaming = false) }
             }
         }
