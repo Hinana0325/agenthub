@@ -14,6 +14,7 @@ import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.data.repository.ChatRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,6 +92,7 @@ class AgentsViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }
         }
@@ -140,6 +142,7 @@ class AgentsViewModel @Inject constructor(
                     _uiState.update { it.copy(exportMessage = "Imported ${configs.size} configs") }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(exportMessage = "Import failed: ${e.message}") }
             }
         }

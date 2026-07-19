@@ -383,6 +383,7 @@ class OpenAIHttpTransport(
             }
         } catch (e: Exception) {
             // Don't break the stream; log and continue so subsequent deltas still emit.
+            if (e is CancellationException) throw e
             Log.w(TAG, "Failed to parse SSE delta: ${e.message}; data=$data")
         }
     }
@@ -401,6 +402,7 @@ class OpenAIHttpTransport(
                 _events.send(AgentEvent.MessageReceived(text, isDelta = false))
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w(TAG, "Failed to parse full JSON: ${e.message}; json=$jsonText")
         }
     }

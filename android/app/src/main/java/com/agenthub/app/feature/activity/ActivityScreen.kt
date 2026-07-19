@@ -27,13 +27,14 @@ import com.agenthub.app.ui.theme.GlassTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityScreen(
     activityViewModel: ActivityViewModel = hiltViewModel()
 ) {
-    val uiState by activityViewModel.uiState.collectAsState()
+    val uiState by activityViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
     val useDualPane = adaptive.windowSize == WindowSize.Expanded
 

@@ -39,6 +39,7 @@ import com.agenthub.app.R
 import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.runtime.workflow.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,7 @@ fun WorkflowScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     // The engine is owned by the ViewModel so execution state survives navigation
     // away and back (previously `remember { WorkflowEngine() }` reset it on leave).
-    val executionState by viewModel.executionState.collectAsState()
+    val executionState by viewModel.executionState.collectAsStateWithLifecycle()
 
     if (selectedWorkflow != null) {
         WorkflowDetailScreen(

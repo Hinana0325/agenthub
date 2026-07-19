@@ -28,6 +28,7 @@ import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.data.update.UpdateManager
 import com.agenthub.app.ui.theme.GlassTopAppBar
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,14 +40,14 @@ fun SettingsScreen(
     onNavigateToPlugins: () -> Unit = {},
     onNavigateToInsights: () -> Unit = {}
 ) {
-    val uiState by settingsViewModel.uiState.collectAsState()
+    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
     val context = LocalContext.current
     val useDualPane = adaptive.windowSize == WindowSize.Expanded
 
     // Agent-config count sourced from the Hilt-injected repository via the ViewModel
     // (previously fetched directly via the now-removed AppModule singleton).
-    val agentConfigs by settingsViewModel.agentConfigs.collectAsState()
+    val agentConfigs by settingsViewModel.agentConfigs.collectAsStateWithLifecycle()
 
     // Refresh performance metrics only while the Settings screen is visible.
     // This replaces the permanent `while (isActive)` loop that previously ran in
@@ -77,7 +78,7 @@ fun SettingsScreen(
         }
     }
 
-    val performanceMetrics by settingsViewModel.getPerformanceMetrics().collectAsState()
+    val performanceMetrics by settingsViewModel.getPerformanceMetrics().collectAsStateWithLifecycle()
 
     // --- In-app update check ---
     val currentVersion = remember {

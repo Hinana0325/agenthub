@@ -105,6 +105,18 @@ class ChatViewModel @Inject constructor(
     private val _currentSessionId = MutableStateFlow<String?>(null)
 
     /**
+     * Phase 3.4: 统一 currentSessionId 更新入口。
+     * 同时更新 [_currentSessionId]（驱动消息流 flatMapLatest）和
+     * [_uiState] 的 currentSessionId（驱动 UI 显示），消除双源不一致风险。
+     * 所有需要修改当前会话的位置必须通过本方法，禁止直接写 [_currentSessionId]
+     * 或 `_uiState.update { it.copy(currentSessionId = ...) }`。
+     */
+    private fun setCurrentSession(sessionId: String?) {
+        _currentSessionId.value = sessionId
+        _uiState.update { it.copy(currentSessionId = sessionId) }
+    }
+
+    /**
      * 当前流式请求对应的 Coroutine Job，用于在用户点击 Stop 按钮时取消流式响应。
      * 在 [sendMessage] 开始流式时赋值，在流式完成/失败/取消时置 null。
      */
@@ -138,8 +150,8 @@ class ChatViewModel @Inject constructor(
             val sessions = repository.getAllSessionsList()
             val mostRecent = sessions.maxByOrNull { it.updatedAt }
             if (mostRecent != null) {
-                _currentSessionId.value = mostRecent.id
-                _uiState.update { it.copy(currentSessionId = mostRecent.id, showWizard = false) }
+                setCurrentSession(mostRecent.id)
+                _uiState.update { it.copy(showWizard = false) }
             }
         }
         @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -356,8 +368,7 @@ class ChatViewModel @Inject constructor(
         streamingJob = viewModelScope.launch {
             val sessionId = state.currentSessionId
                 ?: repository.createSession("New Chat").let { session ->
-                    _currentSessionId.value = session.id
-                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    setCurrentSession(session.id)
                     session.id
                 }
 
@@ -539,8 +550,7 @@ class ChatViewModel @Inject constructor(
     fun createNewSession() {
         viewModelScope.launch {
             val session = repository.createSession("New Chat")
-            _currentSessionId.value = session.id
-            _uiState.update { it.copy(currentSessionId = session.id) }
+            setCurrentSession(session.id)
         }
     }
 
@@ -548,10 +558,9 @@ class ChatViewModel @Inject constructor(
         // 切换会话前清除上一个会话的残留状态，避免编辑/回复/附件/流式等
         // 状态泄漏到新会话。先取消流式 Job，再重置 UI 状态。
         stopStreaming()
-        _currentSessionId.value = sessionId
+        setCurrentSession(sessionId)
         _uiState.update {
             it.copy(
-                currentSessionId = sessionId,
                 isStreaming = false,
                 editingMessageId = null,
                 replyingToMessageId = null,
@@ -578,8 +587,7 @@ class ChatViewModel @Inject constructor(
                 if (next != null) {
                     switchToSession(next.id)
                 } else {
-                    _currentSessionId.value = null
-                    _uiState.update { it.copy(currentSessionId = null) }
+                    setCurrentSession(null)
                 }
             }
         }
@@ -735,8 +743,7 @@ class ChatViewModel @Inject constructor(
                 viewModelScope.launch {
                     val sessionId = _uiState.value.currentSessionId
                         ?: repository.createSession("Help").let { session ->
-                            _currentSessionId.value = session.id
-                            _uiState.update { it.copy(currentSessionId = session.id) }
+                            setCurrentSession(session.id)
                             session.id
                         }
                     repository.sendMessage(sessionId, helpText, MessageRole.Assistant)
@@ -779,8 +786,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val sessionId = _uiState.value.currentSessionId
                 ?: repository.createSession("Shared Content").let { session ->
-                    _currentSessionId.value = session.id
-                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    setCurrentSession(session.id)
                     session.id
                 }
             val userMsg = repository.sendMessage(sessionId, text, MessageRole.User)
@@ -815,8 +821,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val sessionId = _uiState.value.currentSessionId
                 ?: repository.createSession("Widget Message").let { session ->
-                    _currentSessionId.value = session.id
-                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    setCurrentSession(session.id)
                     session.id
                 }
             val userMsg = repository.sendMessage(sessionId, text, MessageRole.User)
@@ -855,8 +860,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val sessionId = _uiState.value.currentSessionId
                 ?: repository.createSession("Notification Reply").let { session ->
-                    _currentSessionId.value = session.id
-                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    setCurrentSession(session.id)
                     session.id
                 }
             val userMsg = repository.sendMessage(sessionId, text, MessageRole.User)

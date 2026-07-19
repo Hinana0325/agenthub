@@ -10,6 +10,7 @@ import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
@@ -54,6 +55,7 @@ class PluginExecutor(private val context: Context) {
             val text = response.bodyAsText().take(3000)
             PluginResult("HTTP ${response.status.value}\n${text}")
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             PluginResult("Request failed: ${e.message ?: e.javaClass.simpleName}")
         }
     }

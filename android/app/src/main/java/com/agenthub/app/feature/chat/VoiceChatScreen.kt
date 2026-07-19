@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agenthub.app.R
 import com.agenthub.app.core.ui.VoiceChatManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * 全屏语音对话界面
@@ -40,7 +41,7 @@ fun VoiceChatOverlay(
     onExit: () -> Unit,
     onSendMessage: (String) -> Unit
 ) {
-    val state by voiceManager.state.collectAsState()
+    val state by voiceManager.state.collectAsStateWithLifecycle()
 
     // Auto-send when speech result arrives
     LaunchedEffect(state.recognizedText) {

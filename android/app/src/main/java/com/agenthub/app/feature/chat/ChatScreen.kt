@@ -1585,7 +1585,7 @@ fun WizardOverlay(
     onDismiss: () -> Unit,
     onConnect: (String, String, com.agenthub.app.agent.model.AgentType) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var serverUrl by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(com.agenthub.app.agent.model.AgentType.Hermes) }

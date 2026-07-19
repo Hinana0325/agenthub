@@ -260,6 +260,7 @@ class WebSocketTransport(
             // Surface the failure as an error event instead of silently
             // swallowing it (the previous `catch (_: Exception) {}` hid
             // real send failures from the UI layer).
+            if (e is CancellationException) throw e
             _events.send(
                 AgentEvent.Error("Failed to send message: ${e.message ?: e.javaClass.simpleName}")
             )

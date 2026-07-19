@@ -4,6 +4,7 @@ import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.data.model.MarketplaceAgent
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
@@ -105,6 +106,7 @@ class MarketplaceClient {
                 val agents = resp.data?.agents?.map { it.toMarketplaceAgent() } ?: emptyList()
                 Result.success(agents)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         }
@@ -144,6 +146,7 @@ class MarketplaceClient {
                 val agents = resp.items?.map { it.toMarketplaceAgent() } ?: emptyList()
                 Result.success(agents)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         }
@@ -167,6 +170,7 @@ class MarketplaceClient {
                     Result.success(combined)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         }

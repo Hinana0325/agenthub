@@ -9,6 +9,7 @@ import com.agenthub.app.transport.protocol.AgentEvent
 import com.agenthub.app.transport.protocol.AgentTransport
 import com.agenthub.app.transport.TransportFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,8 @@ data class CompareUiState(
 @HiltViewModel
 class CompareViewModel @Inject constructor(
     application: Application,
-    private val repository: ChatRepository
+    private val repository: ChatRepository,
+    private val transportFactory: TransportFactory
 ) : AndroidViewModel(application) {
     private val _transportA = MutableStateFlow<AgentTransport?>(null)
     private val _transportB = MutableStateFlow<AgentTransport?>(null)
@@ -76,10 +78,11 @@ class CompareViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val transportA = TransportFactory.create(configA.type).also { _transportA.value = it }
+                val transportA = transportFactory.create(configA.type).also { _transportA.value = it }
                 transportA.connect(configA)
                 transportA.sendMessage("${sessionId}_a", prompt)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _transportA.value?.shutdown()
                 _transportA.value = null
                 // A failed to start: mark A complete and only stop comparing if B is done.
@@ -91,10 +94,11 @@ class CompareViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                val transportB = TransportFactory.create(configB.type).also { _transportB.value = it }
+                val transportB = transportFactory.create(configB.type).also { _transportB.value = it }
                 transportB.connect(configB)
                 transportB.sendMessage("${sessionId}_b", prompt)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _transportB.value?.shutdown()
                 _transportB.value = null
                 // B failed to start: mark B complete and only stop comparing if A is done.

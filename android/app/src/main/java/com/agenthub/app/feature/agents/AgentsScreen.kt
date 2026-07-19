@@ -42,13 +42,14 @@ import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
 import com.agenthub.app.ui.theme.GlassDropdownMenu
 import com.agenthub.app.ui.theme.GlassDropdownMenuItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentsScreen(
     agentsViewModel: AgentsViewModel = hiltViewModel()
 ) {
-    val uiState by agentsViewModel.uiState.collectAsState()
+    val uiState by agentsViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
     val useGrid = adaptive.windowSize == WindowSize.Expanded
     val context = LocalContext.current

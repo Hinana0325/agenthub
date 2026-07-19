@@ -20,6 +20,7 @@ import com.agenthub.app.core.datastore.SettingsDataStore
 import com.agenthub.app.core.common.PerformanceMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -168,6 +169,7 @@ class SettingsViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_export_failed, e.message ?: "")) }
             }
         }
@@ -217,6 +219,7 @@ class SettingsViewModel @Inject constructor(
                     _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, backup.sessions.size, backup.messages.size)) }
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restore_failed, e.message ?: "")) }
             }
         }

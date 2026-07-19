@@ -23,6 +23,7 @@ import com.agenthub.app.data.sync.DeviceSyncManager
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,8 +31,8 @@ fun DeviceSyncScreen(
     viewModel: DeviceSyncViewModel = hiltViewModel(),
     onBack: () -> Unit = {}
 ) {
-    val pairedDevices by viewModel.pairedDevices.collectAsState()
-    val syncState by viewModel.syncState.collectAsState()
+    val pairedDevices by viewModel.pairedDevices.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     var showDiscoverDialog by remember { mutableStateOf(false) }
     var discoveredDevices by remember { mutableStateOf<List<DeviceSyncManager.DiscoveredDevice>>(emptyList()) }
     var isDiscovering by remember { mutableStateOf(false) }

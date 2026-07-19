@@ -1,5 +1,6 @@
 package com.agenthub.app.localmodel
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -118,6 +119,7 @@ class LocalModelManager {
                 )
                 models
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _state.value = _state.value.copy(
                     isDiscovering = false,
                     error = "Failed to connect to $endpoint: ${e.message}"

@@ -1,23 +1,36 @@
 package com.agenthub.app.feature.insights
 
 import android.content.Context
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
 import com.agenthub.app.core.database.dao.MessageDao
 import com.agenthub.app.core.database.dao.SessionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
+/**
+ * 导出结果事件，由 [InsightsScreen] 收集后展示 Toast。
+ * Phase 3.5: 将 Toast 从 ViewModel 移至 Composable 层，
+ * ViewModel 只负责业务逻辑和事件发射。
+ */
+sealed interface ExportEvent {
+    data class Success(val filePath: String) : ExportEvent
+    data class Failure(val message: String) : ExportEvent
+}
+
 @HiltViewModel
 class InsightsViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     messageDao: MessageDao,
     sessionDao: SessionDao
 ) : ViewModel() {
@@ -30,6 +43,9 @@ class InsightsViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _exportEvent = Channel<ExportEvent>(Channel.BUFFERED)
+    val exportEvent = _exportEvent.receiveAsFlow()
+
     init {
         loadInsights()
     }
@@ -39,7 +55,8 @@ class InsightsViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 _insights.value = insightsManager.generateInsights()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 // Keep default empty insights
             } finally {
                 _isLoading.value = false
@@ -47,25 +64,22 @@ class InsightsViewModel @Inject constructor(
         }
     }
 
-    fun exportReport(context: Context) {
+    /**
+     * Phase 3.5: 不再接收 [Context] 参数，改用构造器注入的 [appContext]。
+     * 不再直接调用 Toast，改为发射 [ExportEvent] 供 UI 层消费。
+     */
+    fun exportReport() {
         viewModelScope.launch {
             try {
                 val report = insightsManager.exportReport()
-                val dir = File(context.cacheDir, "insights")
+                val dir = File(appContext.cacheDir, "insights")
                 dir.mkdirs()
                 val file = File(dir, "agenthub_insights_${System.currentTimeMillis()}.txt")
                 file.writeText(report)
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.insights_export_success, file.absolutePath),
-                    Toast.LENGTH_LONG
-                ).show()
+                _exportEvent.send(ExportEvent.Success(file.absolutePath))
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.insights_export_failed, e.message ?: ""),
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (e is CancellationException) throw e
+                _exportEvent.send(ExportEvent.Failure(e.message ?: ""))
             }
         }
     }

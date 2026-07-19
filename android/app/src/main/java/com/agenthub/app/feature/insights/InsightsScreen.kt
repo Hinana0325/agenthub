@@ -1,5 +1,6 @@
 package com.agenthub.app.feature.insights
 
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,7 @@ import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,9 +37,27 @@ fun InsightsScreen(
     onBack: () -> Unit = {},
     viewModel: InsightsViewModel = hiltViewModel()
 ) {
-    val insights by viewModel.insights.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val insights by viewModel.insights.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Phase 3.5: 消费 ViewModel 发射的 ExportEvent，在 Composable 层展示 Toast
+    LaunchedEffect(Unit) {
+        viewModel.exportEvent.collect { event ->
+            when (event) {
+                is ExportEvent.Success -> Toast.makeText(
+                    context,
+                    context.getString(R.string.insights_export_success, event.filePath),
+                    Toast.LENGTH_LONG
+                ).show()
+                is ExportEvent.Failure -> Toast.makeText(
+                    context,
+                    context.getString(R.string.insights_export_failed, event.message),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -49,7 +69,7 @@ fun InsightsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.exportReport(context) }) {
+                    IconButton(onClick = { viewModel.exportReport() }) {
                         Icon(Icons.Default.FileDownload, contentDescription = stringResource(R.string.insights_export))
                     }
                     IconButton(onClick = { viewModel.loadInsights() }) {

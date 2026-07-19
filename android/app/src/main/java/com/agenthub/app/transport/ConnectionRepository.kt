@@ -43,7 +43,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class ConnectionRepository @Inject constructor(
-    @ApplicationContext private val appContext: Context
+    @ApplicationContext private val appContext: Context,
+    private val transportFactory: TransportFactory
 ) {
 
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -138,7 +139,7 @@ class ConnectionRepository @Inject constructor(
             val needsNew = current == null || current.connectionState.value.agentType != config.type
             val transport = if (needsNew) {
                 current?.shutdown()
-                TransportFactory.create(config.type).also { _transport.value = it }
+                transportFactory.create(config.type).also { _transport.value = it }
             } else {
                 current
             }

@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -87,6 +88,7 @@ class UpdateManager(
                 Result.success(null) // already up-to-date
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Result.failure(e)
         } finally {
             // Critical 2 修复：无论成功还是异常都 disconnect，避免 HttpURLConnection 泄漏。

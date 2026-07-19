@@ -37,6 +37,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +46,7 @@ fun SessionsScreen(
 ) {
     val adaptive = currentAdaptiveConfig()
     val context = LocalContext.current
-    val uiState = chatViewModel?.uiState?.collectAsState()?.value
+    val uiState = chatViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val sessionList = uiState?.sessions ?: emptyList()
     val currentSessionId = uiState?.currentSessionId
     val useDualPane = adaptive.shouldShowSidebar // Expanded or Medium+Landscape
@@ -79,7 +80,7 @@ private fun SessionsDualPaneLayout(
     adaptive: com.agenthub.app.ui.adaptive.AdaptiveConfig
 ) {
     val sidebarWidth = adaptive.panelConfig.sidebarWidth
-    val uiState by chatViewModel.uiState.collectAsState()
+    val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val refreshScope = rememberCoroutineScope()
 
