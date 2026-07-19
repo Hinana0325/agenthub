@@ -3,12 +3,14 @@ buildscript {
         kotlinVersion = '2.2.0'
     }
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        // Official repos first (reliable in CI)
         google()
         mavenCentral()
         gradlePluginPortal()
+        // Aliyun mirrors as fallback (for China network)
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:8.9.0'
