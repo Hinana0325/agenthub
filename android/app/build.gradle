@@ -74,9 +74,11 @@ android {
         }
         release {
             // 优先使用固定的 release 签名；keystore 不存在时回退到 debug 签名。
-            signingConfig signingConfigs.release.storeFile != null
-                ? signingConfigs.release
-                : signingConfigs.debug
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
