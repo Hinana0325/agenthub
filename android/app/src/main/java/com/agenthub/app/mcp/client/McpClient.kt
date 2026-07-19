@@ -114,7 +114,7 @@ class McpClient @Inject constructor() {
                 val toolMap = toolRaw as? Map<*, *> ?: return@mapNotNull null
                 val name = toolMap["name"] as? String ?: return@mapNotNull null
                 val description = toolMap["description"] as? String ?: ""
-                val schemaMap = toolMap["inputSchema"] as? Map<*, *> ?: emptyMap()
+                val schemaMap = toolMap["inputSchema"] as? Map<*, *> ?: emptyMap<String, Any?>()
 
                 McpTool(
                     name = name,
@@ -163,7 +163,7 @@ class McpClient @Inject constructor() {
             }
 
             val result = response.result as? Map<*, *> ?: return@withContext null
-            val contentRaw = result["content"] as? List<*> ?: return@withContext emptyList()
+            val contentRaw = result["content"] as? List<*> ?: return@withContext McpToolResult(content = emptyList())
             val isError = result["isError"] as? Boolean ?: false
 
             val content = contentRaw.mapNotNull { item ->
@@ -247,7 +247,9 @@ class McpClient @Inject constructor() {
                 )
             }
             // result 是任意类型，这里转为 Map 便于后续处理
-            val result = json.get("result")?.let { gson.fromJson(it, object : TypeToken<Map<String, Any?>>() {}.type) }
+            val result: Map<String, Any?>? = json.get("result")?.let {
+                gson.fromJson(it, object : TypeToken<Map<String, Any?>>() {}.type)
+            }
             JsonRpcResponse(id = id, result = result, error = error)
         } catch (_: Exception) {
             null
