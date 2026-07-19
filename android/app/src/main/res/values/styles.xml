@@ -19,11 +19,12 @@
         <item name="android:alertDialogTheme">@style/AppDialogTheme</item>
     </style>
 
-    <!-- AlertDialog 专用主题：避免圆角黑边 -->
+    <!-- AlertDialog 专用主题：避免圆角黑边。
+         注意：colorBackground 不能用 @color/background（=#0a0a0f 近黑），否则弹窗背景变黑。
+         Compose AlertDialog 由 Theme.kt 的 surfaceContainerHigh 驱动容器色；
+         传统 View AlertDialog 由 ?attr/colorSurface 驱动，交由 Material3 主题处理。 -->
     <style name="AppDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:windowBackground">@android:color/transparent</item>
-        <!-- 使用 Material3 surface 色，避免黑边 -->
-        <item name="android:colorBackground">@color/background</item>
         <item name="shapeAppearanceOverlay">@style/DialogShapeOverlay</item>
     </style>
 

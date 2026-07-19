@@ -2,7 +2,6 @@ package com.agenthub.app
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -126,15 +125,18 @@ class MainActivity : ComponentActivity() {
         AgentConnectionService.start(this, "AgentHub")
     }
 
+    /**
+     * 更新窗口背景。
+     *
+     * Glass 模式下，背景视觉由 Compose 端的 [GlassBackdrop] Composable 统一绘制
+     * （渐变 + 动态径向光晕）。这里只给 decorView 设一个与 GlassBackdrop 底色一致的
+     * 纯色兜底，避免闪屏/转场时露出黑色，同时避免与 GlassBackdrop 的渐变叠加导致浑浊。
+     */
     private fun updateWindowBackground(isGlass: Boolean, isDark: Boolean) {
         if (isGlass) {
-            val topColor = if (isDark) GlassBackdropGradientTopDark.toArgb() else GlassBackdropGradientTopLight.toArgb()
-            val bottomColor = if (isDark) GlassBackdropGradientBottomDark.toArgb() else GlassBackdropGradientBottomLight.toArgb()
-            val gradient = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(topColor, bottomColor)
-            )
-            window.decorView.background = gradient
+            // 纯色兜底（取 GlassBackdrop 渐变的底色），不叠加渐变 —— 渐变由 GlassBackdrop 绘制
+            val fallbackColor = if (isDark) GlassBackdropGradientBottomDark else GlassBackdropGradientBottomLight
+            window.decorView.setBackgroundColor(fallbackColor.toArgb())
         } else {
             window.decorView.background = null
             window.setBackgroundDrawable(null)

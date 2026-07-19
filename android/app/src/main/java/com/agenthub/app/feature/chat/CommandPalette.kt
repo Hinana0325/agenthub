@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -22,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.agenthub.app.R
+import com.agenthub.app.ui.theme.LocalIsGlass
+import com.agenthub.app.ui.theme.glassBackground
 
 /**
  * Represents a slash command available in the chat input.
@@ -74,14 +77,21 @@ fun CommandPalette(
         enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
         exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
     ) {
+        val isGlass = LocalIsGlass.current
+        val paletteShape = RoundedCornerShape(16.dp)
         Surface(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 8.dp,
-            shadowElevation = 4.dp
+                .padding(horizontal = 12.dp)
+                .then(
+                    // Glass 模式下用 glassBackground 提供玻璃质感 + 深度阴影；
+                    // 非 Glass 模式走 Material3 默认 tonalElevation/shadowElevation。
+                    if (isGlass) Modifier.glassBackground(shape = paletteShape) else Modifier
+                ),
+            shape = paletteShape,
+            color = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+            tonalElevation = if (isGlass) 0.dp else 8.dp,
+            shadowElevation = if (isGlass) 0.dp else 4.dp
         ) {
             Column(
                 modifier = Modifier.padding(vertical = 8.dp)
@@ -112,11 +122,12 @@ private fun CommandItem(
     command: Command,
     onClick: () -> Unit
 ) {
+    val isGlass = LocalIsGlass.current
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = if (isGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
             modifier = Modifier

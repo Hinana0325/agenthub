@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -267,6 +268,11 @@ fun GlassTopAppBar(
 
 /**
  * Glass-styled [NavigationBar] with active-pill spring indicator handled by caller.
+ *
+ * **Insets 契约**：Glass 模式下传入 `windowInsets = WindowInsets(0, 0, 0, 0)`，
+ * 让底部系统栏 insets 由外层 Scaffold 的 `contentWindowInsets` 统一管理，
+ * 避免 NavigationBar 默认 insets 与 Scaffold insets 双重叠加导致底部栏错位。
+ * 同时显式 `tonalElevation = 0.dp`，避免在透明 containerColor 上叠加意外 tint。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -287,6 +293,8 @@ fun GlassNavigationBar(
     NavigationBar(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0, 0, 0, 0),
         content = content,
         modifier = modifier.glassBackground(shape = RoundedCornerShape(0.dp)),
     )

@@ -47,7 +47,14 @@ fun buildColorScheme(
         onSurface = DarkOnBackground,
         outline = DarkOutline,
         outlineVariant = DarkOutlineVariant,
-        surfaceTint = DarkSurfaceTint
+        surfaceTint = DarkSurfaceTint,
+        // Glass 模式下 surfaceContainer* 必须同步设为半透明玻璃色，否则 AlertDialog /
+        // ModalBottomSheet 等使用 surfaceContainerHigh 的组件会显示为深色实色背景（弹窗黑框）。
+        surfaceContainerLowest = if (isGlass) GlassSurfaceDark.copy(alpha = 0.90f) else Color(0xFF0C0B0F),
+        surfaceContainerLow = if (isGlass) GlassSurfaceDark.copy(alpha = 0.85f) else Color(0xFF1D1B20),
+        surfaceContainer = if (isGlass) GlassSurfaceDark.copy(alpha = 0.80f) else Color(0xFF211F26),
+        surfaceContainerHigh = if (isGlass) GlassSurfaceDark.copy(alpha = 0.75f) else Color(0xFF2B2930),
+        surfaceContainerHighest = if (isGlass) GlassSurfaceDark.copy(alpha = 0.70f) else Color(0xFF36343B)
     )
 } else {
     lightColorScheme(
@@ -66,7 +73,13 @@ fun buildColorScheme(
         onSurface = LightOnBackground,
         outline = LightOutline,
         outlineVariant = LightOutlineVariant,
-        surfaceTint = LightSurfaceTint
+        surfaceTint = LightSurfaceTint,
+        // Glass 模式下 surfaceContainer* 同步设为半透明玻璃色，保持与 surface 一致的透明语义。
+        surfaceContainerLowest = if (isGlass) GlassSurfaceLight.copy(alpha = 0.95f) else Color(0xFFFFFFFF),
+        surfaceContainerLow = if (isGlass) GlassSurfaceLight.copy(alpha = 0.90f) else Color(0xFFF7F2FA),
+        surfaceContainer = if (isGlass) GlassSurfaceLight.copy(alpha = 0.85f) else Color(0xFFF3EDF7),
+        surfaceContainerHigh = if (isGlass) GlassSurfaceLight.copy(alpha = 0.80f) else Color(0xFFECE6F0),
+        surfaceContainerHighest = if (isGlass) GlassSurfaceLight.copy(alpha = 0.75f) else Color(0xFFE6E1E9)
     )
 }
 
