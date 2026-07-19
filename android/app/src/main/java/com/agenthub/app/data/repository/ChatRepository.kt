@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class ChatRepository(
+class ChatRepository @javax.inject.Inject constructor(
     private val sessionDao: SessionDao,
     private val messageDao: MessageDao,
     private val agentConfigDao: AgentConfigDao,

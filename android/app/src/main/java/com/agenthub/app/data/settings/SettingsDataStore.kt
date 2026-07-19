@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
-class SettingsDataStore(private val context: Context) {
+class SettingsDataStore @javax.inject.Inject constructor(private val context: Context) {
 
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
