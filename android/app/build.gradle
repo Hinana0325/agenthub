@@ -34,14 +34,36 @@ android {
     }
 
     signingConfigs {
+        // 固化的 release 签名配置。
+        // 密码来源优先级：
+        //   1. keystore.properties 文件（本地开发）
+        //   2. 环境变量 KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD（CI）
+        //   3. 都没有 → release 回退到 debug 签名（见 buildTypes.release）
         release {
             def keystoreFile = rootProject.file('agenthub.keystore')
-            if (keystoreFile.exists()) {
+            def propsFile = rootProject.file('keystore.properties')
+
+            def storePass = System.getenv('KEYSTORE_PASSWORD')
+            def keyAlias = System.getenv('KEY_ALIAS') ?: 'agenthub'
+            def keyPass = System.getenv('KEY_PASSWORD')
+
+            // 本地开发：从 keystore.properties 读取
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+                storePass = storePass ?: props['storePassword']
+                keyAlias = props['keyAlias'] ?: keyAlias
+                keyPass = keyPass ?: props['keyPassword']
+                def fileFromProps = props['storeFile']
+                if (fileFromProps) keystoreFile = rootProject.file(fileFromProps)
+            }
+
+            if (keystoreFile.exists() && storePass) {
                 storeFile keystoreFile
                 storeType 'PKCS12'
-                storePassword System.getenv('KEYSTORE_PASSWORD') ?: ''
-                keyAlias System.getenv('KEY_ALIAS') ?: 'agenthub'
-                keyPassword System.getenv('KEY_PASSWORD') ?: ''
+                storePassword storePass
+                keyAlias keyAlias
+                keyPassword keyPass
             }
         }
     }
@@ -51,8 +73,10 @@ android {
             minifyEnabled false
         }
         release {
-            // Use debug signing when no keystore is available (CI / dev builds).
-            signingConfig signingConfigs.debug
+            // 优先使用固定的 release 签名；keystore 不存在时回退到 debug 签名。
+            signingConfig signingConfigs.release.storeFile != null
+                ? signingConfigs.release
+                : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

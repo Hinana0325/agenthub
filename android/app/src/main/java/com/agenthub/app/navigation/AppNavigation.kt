@@ -164,7 +164,13 @@ private fun AppNavHost(
         startDestination = Screen.Chat.route,
         modifier = modifier
     ) {
-        composable(Screen.Chat.route) { ChatScreen(chatViewModel, navController) }
+        composable(Screen.Chat.route) {
+            ChatScreen(
+                viewModel = chatViewModel,
+                navController = navController,
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+            )
+        }
         composable(Screen.Sessions.route) { SessionsScreen(chatViewModel) }
         composable(Screen.Activity.route) { ActivityScreen() }
         composable(Screen.Settings.route) {

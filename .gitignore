@@ -19,6 +19,7 @@ android/capacitor-cordova-android-plugins/build/
 # Keystore (sensitive - never commit)
 *.keystore
 *.jks
+android/keystore.properties
 
 # APK binaries
 *.apk
