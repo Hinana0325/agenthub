@@ -67,7 +67,7 @@ fun AppNavigation() {
                 header = { Spacer(modifier = Modifier.height(24.dp)) }
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Screen.tabs.forEach { screen ->
+                Screen.getTabs().forEach { screen ->
                     val selected = currentDestination?.hierarchy?.any {
                         it.route == screen.route
                     } == true
@@ -111,7 +111,7 @@ fun AppNavigation() {
             contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
             bottomBar = {
                 GlassNavigationBar {
-                    Screen.tabs.forEach { screen ->
+                    Screen.getTabs().forEach { screen ->
                         val selected = currentDestination?.hierarchy?.any {
                             it.route == screen.route
                         } == true

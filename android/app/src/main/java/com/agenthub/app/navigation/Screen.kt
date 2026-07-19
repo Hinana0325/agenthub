@@ -34,6 +34,7 @@ sealed class Screen(
     data object Plugins : Screen("plugins", R.string.plugin_title, Icons.Default.Extension)
 
     companion object {
-        val tabs = listOf(Chat, Sessions, Activity, Settings)
+        /** Returns the list of primary tab screens shown in the bottom bar / navigation rail. */
+        fun getTabs(): List<Screen> = listOf(Chat, Sessions, Activity, Settings)
     }
 }
