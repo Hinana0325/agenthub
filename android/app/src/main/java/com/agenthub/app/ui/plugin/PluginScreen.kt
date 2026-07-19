@@ -18,9 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agenthub.app.R
-import com.agenthub.app.data.plugin.Plugin
-import com.agenthub.app.data.plugin.PluginExecutor
-import com.agenthub.app.data.plugin.PluginManager
+import com.agenthub.app.plugin.api.Plugin
+import com.agenthub.app.plugin.runtime.PluginExecutor
+import com.agenthub.app.plugin.runtime.PluginManager
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
 import dagger.hilt.android.EntryPointAccessors

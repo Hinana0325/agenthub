@@ -48,8 +48,8 @@ import com.agenthub.app.ui.sync.DeviceSyncScreen
 import com.agenthub.app.ui.plugin.PluginScreen
 import com.agenthub.app.ui.insights.InsightsScreen
 import com.agenthub.app.data.model.MarketplaceAgent
-import com.agenthub.app.data.model.AgentConfig
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentConfig
+import com.agenthub.app.agent.model.AgentType
 import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class)

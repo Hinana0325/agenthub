@@ -1,5 +1,6 @@
-package com.agenthub.app.util
+package com.agenthub.app.runtime.workflow
 
+import com.agenthub.app.agent.model.AgentType
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -59,7 +60,7 @@ class WorkflowEngineTest {
             id = "test-id",
             type = NodeType.AGENT,
             label = "My Agent",
-            agentType = com.agenthub.app.data.model.AgentType.OpenAI,
+            agentType = com.agenthub.app.agent.model.AgentType.OpenAI,
             prompt = "Hello",
             positionX = 100f,
             positionY = 200f
@@ -67,7 +68,7 @@ class WorkflowEngineTest {
         assertEquals("test-id", node.id)
         assertEquals(NodeType.AGENT, node.type)
         assertEquals("My Agent", node.label)
-        assertEquals(com.agenthub.app.data.model.AgentType.OpenAI, node.agentType)
+        assertEquals(com.agenthub.app.agent.model.AgentType.OpenAI, node.agentType)
         assertEquals("Hello", node.prompt)
         assertEquals(100f, node.positionX)
         assertEquals(200f, node.positionY)

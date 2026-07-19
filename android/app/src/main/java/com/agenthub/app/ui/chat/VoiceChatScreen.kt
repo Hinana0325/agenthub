@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agenthub.app.R
-import com.agenthub.app.util.VoiceChatManager
+import com.agenthub.app.core.ui.VoiceChatManager
 
 /**
  * 全屏语音对话界面

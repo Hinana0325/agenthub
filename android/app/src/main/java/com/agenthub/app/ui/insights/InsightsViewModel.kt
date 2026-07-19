@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
 import com.agenthub.app.data.insights.DataInsightsManager
-import com.agenthub.app.data.local.dao.MessageDao
-import com.agenthub.app.data.local.dao.SessionDao
+import com.agenthub.app.core.database.dao.MessageDao
+import com.agenthub.app.core.database.dao.SessionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

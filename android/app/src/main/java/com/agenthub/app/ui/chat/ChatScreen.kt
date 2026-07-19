@@ -73,7 +73,7 @@ import com.agenthub.app.ui.theme.GlassDropdownMenu
 import com.agenthub.app.ui.theme.GlassDropdownMenuItem
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
-import com.agenthub.app.util.HapticFeedback
+import com.agenthub.app.core.ui.HapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1505,7 +1505,7 @@ private fun OfflineBanner(onConnect: () -> Unit) {
 
 @Composable
 fun EmptyChatPlaceholder(
-    connectionState: com.agenthub.app.data.model.ConnectionState,
+    connectionState: com.agenthub.app.agent.model.ConnectionState,
     modifier: Modifier = Modifier
 ) {
     val emptyChatText = stringResource(R.string.a11y_empty_chat)
@@ -1543,12 +1543,12 @@ fun EmptyChatPlaceholder(
 fun WizardOverlay(
     viewModel: ChatViewModel,
     onDismiss: () -> Unit,
-    onConnect: (String, String, com.agenthub.app.data.model.AgentType) -> Unit
+    onConnect: (String, String, com.agenthub.app.agent.model.AgentType) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var serverUrl by remember { mutableStateOf("") }
     var apiKey by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(com.agenthub.app.data.model.AgentType.Hermes) }
+    var selectedType by remember { mutableStateOf(com.agenthub.app.agent.model.AgentType.Hermes) }
     var showSaved by remember { mutableStateOf(false) }
     val isConnecting = uiState.isConnecting
 
@@ -1558,9 +1558,9 @@ fun WizardOverlay(
         // Only add ws:// prefix for WebSocket-based agents (Hermes/OpenClaw/OpenCode)
         // HTTP-based agents (OpenAI/LocalModel/XiaomiMiMo) should keep their http(s):// URL
         if (selectedType in setOf(
-                com.agenthub.app.data.model.AgentType.Hermes,
-                com.agenthub.app.data.model.AgentType.OpenClaw,
-                com.agenthub.app.data.model.AgentType.OpenCode
+                com.agenthub.app.agent.model.AgentType.Hermes,
+                com.agenthub.app.agent.model.AgentType.OpenClaw,
+                com.agenthub.app.agent.model.AgentType.OpenCode
             )
         ) {
             if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
@@ -1780,7 +1780,7 @@ fun WizardOverlay(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
-                        com.agenthub.app.data.model.AgentType.entries.forEach { type ->
+                        com.agenthub.app.agent.model.AgentType.entries.forEach { type ->
                             GlassDropdownMenuItem(
                                 text = { Text(type.displayName) },
                                 onClick = { selectedType = type; expanded = false }

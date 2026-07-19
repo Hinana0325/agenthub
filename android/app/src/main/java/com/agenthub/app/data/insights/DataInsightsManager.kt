@@ -1,8 +1,8 @@
 package com.agenthub.app.data.insights
 
-import com.agenthub.app.data.local.dao.MessageDao
-import com.agenthub.app.data.local.dao.SessionDao
-import com.agenthub.app.data.local.entity.MessageEntity
+import com.agenthub.app.core.database.dao.MessageDao
+import com.agenthub.app.core.database.dao.SessionDao
+import com.agenthub.app.core.database.entity.MessageEntity
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -82,7 +82,7 @@ class DataInsightsManager(
         return hourMap.maxByOrNull { it.value.size }?.key ?: 0
     }
 
-    private fun findTopAgentType(sessions: List<com.agenthub.app.data.local.entity.SessionEntity>): String {
+    private fun findTopAgentType(sessions: List<com.agenthub.app.core.database.entity.SessionEntity>): String {
         if (sessions.isEmpty()) return ""
         // 使用 session 标题中最常见的关键词作为 agent 类型
         val words = sessions.flatMap { it.title.split(" ") }
@@ -99,7 +99,7 @@ class DataInsightsManager(
             .toSortedMap()
     }
 
-    private fun groupByAgent(sessions: List<com.agenthub.app.data.local.entity.SessionEntity>): Map<String, Long> {
+    private fun groupByAgent(sessions: List<com.agenthub.app.core.database.entity.SessionEntity>): Map<String, Long> {
         if (sessions.isEmpty()) return emptyMap()
         // 按 session 标题分组，取前 15 字符避免过长，并合并同名
         return sessions

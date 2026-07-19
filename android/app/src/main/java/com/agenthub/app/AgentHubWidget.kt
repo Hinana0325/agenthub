@@ -8,7 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import com.agenthub.app.data.local.AppDatabase
+import com.agenthub.app.core.database.AppDatabase
 import com.agenthub.app.widget.WidgetInputActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -32,8 +32,8 @@ import com.agenthub.app.navigation.AppNavigation
 import com.agenthub.app.ui.settings.SettingsViewModel
 import com.agenthub.app.ui.theme.AgentHubTheme
 import com.agenthub.app.ui.theme.ThemeMode
-import com.agenthub.app.util.StatusNotificationManager
-import com.agenthub.app.util.LocalNotificationManager
+import com.agenthub.app.runtime.notification.StatusNotificationManager
+import com.agenthub.app.runtime.notification.LocalNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
 
 /**

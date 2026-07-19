@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agenthub.app.R
 import com.agenthub.app.data.marketplace.MarketplaceClient
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.data.model.MarketplaceAgent
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.theme.GlassCard

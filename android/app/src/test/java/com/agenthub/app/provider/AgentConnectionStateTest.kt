@@ -1,6 +1,6 @@
-package com.agenthub.app.provider
+package com.agenthub.app.transport.protocol
 
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentType
 import org.junit.Assert.*
 import org.junit.Test
 

@@ -3,11 +3,11 @@ package com.agenthub.app.ui.compare
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.model.AgentConfig
+import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.data.repository.ChatRepository
-import com.agenthub.app.provider.AgentEvent
-import com.agenthub.app.provider.AgentTransport
-import com.agenthub.app.provider.TransportFactory
+import com.agenthub.app.transport.protocol.AgentEvent
+import com.agenthub.app.transport.protocol.AgentTransport
+import com.agenthub.app.transport.TransportFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

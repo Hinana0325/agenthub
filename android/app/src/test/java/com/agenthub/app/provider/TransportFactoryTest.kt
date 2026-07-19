@@ -1,6 +1,8 @@
-package com.agenthub.app.provider
+package com.agenthub.app.transport
 
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentType
+import com.agenthub.app.transport.http.OpenAIHttpTransport
+import com.agenthub.app.transport.websocket.WebSocketTransport
 import org.junit.Assert.*
 import org.junit.Test
 

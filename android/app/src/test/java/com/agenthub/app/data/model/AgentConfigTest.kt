@@ -1,5 +1,7 @@
 package com.agenthub.app.data.model
 
+import com.agenthub.app.agent.model.AgentConfig
+import com.agenthub.app.agent.model.AgentType
 import org.junit.Assert.*
 import org.junit.Test
 

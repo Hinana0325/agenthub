@@ -1,5 +1,7 @@
 package com.agenthub.app.data.model
 
+import com.agenthub.app.agent.model.AgentType
+
 data class MarketplaceAgent(
     val id: String,
     val name: String,

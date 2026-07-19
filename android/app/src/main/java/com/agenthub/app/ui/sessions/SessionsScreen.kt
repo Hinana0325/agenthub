@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.agenthub.app.data.model.Session
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.adaptive.shouldShowSidebar
-import com.agenthub.app.util.HapticFeedback
+import com.agenthub.app.core.ui.HapticFeedback
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.agenthub.app.R

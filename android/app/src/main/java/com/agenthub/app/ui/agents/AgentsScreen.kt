@@ -34,8 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.agenthub.app.R
-import com.agenthub.app.data.model.AgentConfig
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentConfig
+import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.ui.adaptive.WindowSize
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.theme.GlassCard

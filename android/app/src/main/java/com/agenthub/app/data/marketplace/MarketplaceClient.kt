@@ -1,6 +1,6 @@
 package com.agenthub.app.data.marketplace
 
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.data.model.MarketplaceAgent
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName

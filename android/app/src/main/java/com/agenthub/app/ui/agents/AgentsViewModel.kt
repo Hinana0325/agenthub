@@ -6,8 +6,8 @@ import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.agenthub.app.data.model.AgentConfig
-import com.agenthub.app.data.model.AgentType
+import com.agenthub.app.agent.model.AgentConfig
+import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.data.repository.ChatRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken

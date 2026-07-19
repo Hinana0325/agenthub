@@ -1,12 +1,12 @@
 package com.agenthub.app.di
 
 import android.content.Context
-import com.agenthub.app.data.local.AppDatabase
-import com.agenthub.app.data.local.dao.ActivityDao
-import com.agenthub.app.data.local.dao.AgentConfigDao
-import com.agenthub.app.data.local.dao.MessageDao
-import com.agenthub.app.data.local.dao.PluginDao
-import com.agenthub.app.data.local.dao.SessionDao
+import com.agenthub.app.core.database.AppDatabase
+import com.agenthub.app.core.database.dao.ActivityDao
+import com.agenthub.app.core.database.dao.AgentConfigDao
+import com.agenthub.app.core.database.dao.MessageDao
+import com.agenthub.app.core.database.dao.PluginDao
+import com.agenthub.app.core.database.dao.SessionDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

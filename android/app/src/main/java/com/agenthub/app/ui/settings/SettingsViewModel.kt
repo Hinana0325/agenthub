@@ -10,11 +10,11 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.R
-import com.agenthub.app.data.model.AgentConfig
+import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.data.model.ChatBackup
 import com.agenthub.app.data.repository.ChatRepository
-import com.agenthub.app.data.settings.SettingsDataStore
-import com.agenthub.app.util.PerformanceMonitor
+import com.agenthub.app.core.datastore.SettingsDataStore
+import com.agenthub.app.core.common.PerformanceMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow

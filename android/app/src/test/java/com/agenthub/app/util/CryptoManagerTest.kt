@@ -1,5 +1,6 @@
 package com.agenthub.app.util
 
+import com.agenthub.app.core.security.CryptoManager
 import org.junit.Assert.*
 import org.junit.Test
 
