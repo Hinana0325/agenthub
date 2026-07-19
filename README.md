@@ -1,4 +1,4 @@
-# AgentHub v2.0.1
+# AgentHub v2.1.0
 
 **Multi-Agent 移动端远程控制应用** —— 用 Kotlin + Jetpack Compose 原生开发，连接并远程操控多种 AI Agent（Hermes / OpenCode / OpenAI 兼容 / 本地模型）。
 
@@ -15,8 +15,8 @@
 | 架构 | MVVM（`AndroidViewModel` + `StateFlow`）+ 单向数据流 |
 | 网络 | **Ktor**（WebSocket / HTTP + SSE） |
 | 持久化 | **Room**（会话 / 消息 / 配置 / 活动）+ **DataStore**（设置） |
-| 依赖注入 | 手动 DI（`AppModule` 单例 + `AndroidViewModel` 构造函数注入） |
-| 测试 | 10 个单元测试文件，50+ 测试用例（`src/test/`） |
+| 依赖注入 | **Hilt**（`@HiltAndroidApp`、`@HiltViewModel`、`@Inject`） |
+| 测试 | 14 个单元测试文件，75+ 测试用例（`src/test/`） |
 | 构建 | Gradle Kotlin DSL（`gradlew`），AGP + KSP |
 | 目标 | `minSdk` 24，`targetSdk` 最新；支持手机 / 平板 / 折叠屏自适应布局 |
 
@@ -36,11 +36,33 @@
 
 ---
 
+## 技术特性
+
+- 💉 **Hilt 依赖注入**：全量迁移至 Hilt（`@HiltAndroidApp`、`@AndroidEntryPoint`、`@HiltViewModel`），6 个 ViewModel + Repository/DataStore 均使用 `@Inject constructor`
+- ✅ **单元测试**：14 个测试文件、75+ 测试用例，覆盖 MarkdownParser、TransportFactory、CryptoManager、WorkflowEngine、CompareViewModel 等核心模块
+- ♿ **无障碍 (Accessibility)**：Chat、Sessions、Agents、Compare 等屏幕均添加 `contentDescription`，支持 4 语言
+- 🔄 **CI/CD**：GitHub Actions `build-apk.yml`（`assembleDebug` + `testDebugUnitTest`），带 Gradle 缓存
+- 🛡️ **ProGuard**：精细化规则覆盖 Room、Ktor、Gson、coroutines、ViewModels
+- 🔐 **硬件加密**：Android Keystore AES-256-GCM 硬件后端加密存储
+- 🌐 **国际化 (i18n)**：完整支持英文 / 中文 / 日文 / 韩文
+
+## v2.1.0 更新内容
+
+- 💉 **Hilt 依赖注入全面落地**：从手动 DI 迁移至 Hilt，所有 ViewModel 和 Repository 均使用 `@Inject`
+- 🆚 **模型对比**：新增 CompareScreen，支持 side-by-side 模型响应对比
+- ↩️ **消息回复**：长按消息 → 回复，输入栏显示引用消息
+- ✅ **单元测试扩充**：10 → 14 个测试文件，50+ → 75+ 测试用例
+- ♿ **无障碍优化**：核心屏幕添加 contentDescription（4 语言）
+- 🔄 **CI 流水线**：GitHub Actions 自动构建 + 测试
+- 🐛 **CompareViewModel 修复**：传输泄漏、60s 超时、竞态条件、动态会话 ID
+- ⚡ **性能优化**：LazyColumn 动态更新、Splash 预加载、10MB 附件限制
+- 📦 **ProGuard 精细化**：移除全量 keep 规则，改为针对性规则
+- 🗄️ **Room 迁移**：v6 → v7（replyToId 字段）
+
 ## v2.0.1 更新内容
 
 - 🔐 **KeystoreManager 硬件加密**：API 密钥与端到端密钥均使用 Android Keystore 硬件后端加密存储
 - 🛡️ **网络安全加固**：默认禁止明文流量（`cleartextTrafficPermitted=false`）
-- 💉 **依赖注入（已 Revert）**：v2.0.1 曾尝试引入 Hilt（`DatabaseModule` / `RepositoryModule`），但因 KSP 构建问题已 revert。当前使用手动 DI（`AppModule` 单例 + `AndroidViewModel` 构造函数注入）
 - ✅ **单元测试**：10 个测试文件、50+ 测试用例，覆盖模型、传输、加密、工作流等核心模块
 - 🌐 **国际化 (i18n)**：完整支持英文 / 中文 / 日文 / 韩文
 - 📊 **性能监控面板**：`PerformanceMonitor` 实时展示性能指标
@@ -70,8 +92,7 @@ android/app/src/main/java/com/agenthub/app/
 ├── App.kt
 ├── AgentConnectionService.kt          # 前台服务 + 通知内联回复
 ├── di/
-│   ├── DatabaseModule.kt               # 数据库模块（Hilt revert 残留，未使用）
-│   └── RepositoryModule.kt             # Repository 模块（Hilt revert 残留，未使用）
+│   └── DatabaseModule.kt               # Hilt @Provides AppDatabase, DAOs
 ├── data/
 │   ├── AppModule.kt                    # 依赖装配（Repository 单例）
 │   ├── model/                          # AgentConfig, AgentType, Message, Session, ConnectionState

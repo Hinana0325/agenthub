@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-07-19
+
+### Added
+- **Hilt Dependency Injection**: @HiltAndroidApp, @AndroidEntryPoint, @HiltViewModel on all 6 ViewModels, @Inject constructor for ChatRepository and SettingsDataStore
+- **Model Comparison**: CompareScreen for side-by-side agent response comparison (CompareViewModel, CompareScreen)
+- **Message Reply**: Long-press → Reply, input bar shows quoted message
+- **Unit Tests**: 14 test files, 75+ test cases (MarkdownParser, TransportFactory, CryptoManager, WorkflowEngine, AgentType, Message, Session, ConnectionState, AgentConfig, UpdateManager, CompareViewModel, AgentConnectionState, AgentEvent, Screen)
+- **Accessibility**: contentDescription on Chat, Sessions, Agents, Compare screens (4 languages)
+- **CI**: GitHub Actions build-apk.yml (assembleDebug + testDebugUnitTest) with Gradle caching
+- **ProGuard**: Targeted rules for Room, Ktor, Gson, coroutines, ViewModels
+
+### Fixed
+- **CompareViewModel**: Transport leak on error, no timeout (added 60s), race condition on cancel (isCancelled flag), hardcoded session IDs (dynamic timestamps)
+- **CompareScreen**: Hardcoded English strings → i18n, NavHostController parameter → callback pattern, regex optimization
+- **Performance**: LazyColumn seenMessageIds now dynamically updated, splash preloads most recent session, 10MB attachment size limit
+- **sendMessage()**: Indentation fix in ChatViewModel
+
+### Changed
+- **ProGuard**: Removed blanket `-keep class com.agenthub.app.** { *; }` rule, replaced with targeted rules
+- **Room**: Version 6→7 (replyToId migration)
+
+---
+
 ## [2.0.1] - 2025-07-17
 
 ### Security
