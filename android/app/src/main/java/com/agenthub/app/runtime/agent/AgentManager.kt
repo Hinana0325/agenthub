@@ -1,6 +1,7 @@
 package com.agenthub.app.runtime.agent
 
 import com.agenthub.app.agent.model.Agent
+import com.agenthub.app.agent.model.AgentCapability
 import com.agenthub.app.agent.model.AgentStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,9 +23,14 @@ import javax.inject.Singleton
  *
  * 线程安全：@Singleton 会被多协程并发访问，所有 StateFlow 写入均通过
  * `update { }` 原子完成，避免「读-改-写」竞争丢失并发更新。
+ *
+ * Phase 4.3: 注入 [AgentRegistry]，registerAgent/unregisterAgent 同步到
+ * Registry 以支持按 Capability 查询。getAgentsByCapability 委托给 Registry。
  */
 @Singleton
-class AgentManager @Inject constructor() {
+class AgentManager @Inject constructor(
+    private val registry: AgentRegistry
+) {
 
     private val _agents = MutableStateFlow<List<Agent>>(emptyList())
     val agents: StateFlow<List<Agent>> = _agents.asStateFlow()
@@ -37,6 +43,8 @@ class AgentManager @Inject constructor() {
             val index = current.indexOfFirst { it.id == agent.id }
             if (index >= 0) current.toMutableList().also { it[index] = agent } else current + agent
         }
+        // Phase 4.3: 同步到 Registry，支持按 Capability 查询
+        registry.register(agent)
     }
 
     fun unregisterAgent(agentId: String) {
@@ -44,6 +52,8 @@ class AgentManager @Inject constructor() {
         if (_activeAgent.value?.id == agentId) {
             _activeAgent.value = null
         }
+        // Phase 4.3: 同步到 Registry
+        registry.unregister(agentId)
     }
 
     fun setActiveAgent(agentId: String) {
@@ -51,20 +61,31 @@ class AgentManager @Inject constructor() {
     }
 
     fun updateAgentStatus(agentId: String, status: AgentStatus) {
-        _agents.update { current ->
+        val updated: Agent? = _agents.updateAndGet { current ->
             val index = current.indexOfFirst { it.id == agentId }
             if (index >= 0) {
                 current.toMutableList().also { it[index] = it[index].copy(status = status) }
             } else {
                 current
             }
+        }.find { it.id == agentId && it.status == status }
+
+        // Phase 4.3: 同步状态变更到 Registry
+        if (updated != null) {
+            registry.register(updated)
         }
     }
 
     fun getAgent(agentId: String): Agent? = _agents.value.find { it.id == agentId }
 
-    fun getAgentsByCapability(/* capability: AgentCapability */): List<Agent> {
-        // TODO: 按 Capability 过滤 Agent
-        return _agents.value
+    /**
+     * Phase 4.3: 按 [capability] 过滤 Agent，委托给 [AgentRegistry]。
+     * 若 Registry 中无数据（未注册），回退到内存列表的 capabilities 过滤。
+     */
+    fun getAgentsByCapability(capability: AgentCapability): List<Agent> {
+        val fromRegistry = registry.getByCapability(capability)
+        if (fromRegistry.isNotEmpty()) return fromRegistry
+        // 回退：直接过滤内存列表
+        return _agents.value.filter { it.capabilities.contains(capability) }
     }
 }

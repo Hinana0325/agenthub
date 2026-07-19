@@ -12,11 +12,13 @@ import com.agenthub.app.core.database.dao.AgentConfigDao
 import com.agenthub.app.core.database.dao.MessageDao
 import com.agenthub.app.core.database.dao.PluginDao
 import com.agenthub.app.core.database.dao.SessionDao
+import com.agenthub.app.core.database.dao.TaskDao
 import com.agenthub.app.core.database.entity.ActivityLogEntity
 import com.agenthub.app.core.database.entity.AgentConfigEntity
 import com.agenthub.app.core.database.entity.MessageEntity
 import com.agenthub.app.core.database.entity.PluginEntity
 import com.agenthub.app.core.database.entity.SessionEntity
+import com.agenthub.app.core.database.entity.TaskEntity
 
 @Database(
     entities = [
@@ -24,9 +26,10 @@ import com.agenthub.app.core.database.entity.SessionEntity
         MessageEntity::class,
         AgentConfigEntity::class,
         ActivityLogEntity::class,
-        PluginEntity::class
+        PluginEntity::class,
+        TaskEntity::class
     ],
-    version = 7,
+    version = 8,
     // 启用 schema 导出以便迁移测试。
     // TODO: 需在 app/build.gradle 的 ksp / kapt 配置中添加
     //   ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -40,6 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun agentConfigDao(): AgentConfigDao
     abstract fun activityDao(): ActivityDao
     abstract fun pluginDao(): PluginDao
+    abstract fun taskDao(): TaskDao
 
     companion object {
         @Volatile
@@ -69,6 +73,31 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Phase 4.2: 新增 tasks 表，支持 TaskManager 持久化。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS tasks (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        agentId TEXT NOT NULL,
+                        sessionId TEXT,
+                        type TEXT NOT NULL,
+                        input TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        result TEXT,
+                        createdAt INTEGER NOT NULL,
+                        completedAt INTEGER,
+                        error TEXT
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_agentId ON tasks (agentId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_status ON tasks (status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_createdAt ON tasks (createdAt)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -78,9 +107,9 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     // 不使用 fallbackToDestructiveMigration()：缺少迁移时会抛
                     // IllegalStateException，优先于静默丢失用户数据。
-                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6 / MIGRATION_6_7；后续新增版本时
+                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6 / MIGRATION_6_7 / MIGRATION_7_8；后续新增版本时
                     // 必须显式补齐对应的 Migration。
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build().also { INSTANCE = it }
             }
         }

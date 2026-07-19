@@ -1,13 +1,22 @@
 package com.agenthub.app.runtime.workflow
 
+import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.agent.model.AgentType
+import com.agenthub.app.core.database.dao.AgentConfigDao
+import com.agenthub.app.core.database.entity.AgentConfigEntity
+import com.agenthub.app.transport.TransportFactory
+import com.agenthub.app.transport.protocol.AgentEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Agent 编排工作流引擎
@@ -73,18 +82,41 @@ data class WorkflowExecutionState(
     val logs: List<String> = emptyList()
 )
 
-class WorkflowEngine {
+/**
+ * Agent 编排工作流引擎
+ *
+ * 支持多节点 DAG 执行，每个节点可以是：
+ * - INPUT: 接收外部输入
+ * - AGENT: 调用 Agent（本地或远程）
+ * - TRANSFORM: 数据转换（提取、格式化、过滤）
+ * - OUTPUT: 输出最终结果
+ *
+ * Phase 4.1: 从普通 class 改为 [@Singleton]，通过 Hilt 注入
+ * [TransportFactory] 和 [AgentConfigDao]。AGENT 节点不再使用 mock executor，
+ * 而是查询数据库中匹配 [AgentType] 的第一个 [AgentConfigEntity]，创建临时
+ * [com.agenthub.app.transport.protocol.AgentTransport]，connect → sendMessage →
+ * 收集 events 直到 [AgentEvent.StreamComplete] → shutdown → 返回拼接结果。
+ */
+
+@Singleton
+class WorkflowEngine @Inject constructor(
+    private val transportFactory: TransportFactory,
+    private val agentConfigDao: AgentConfigDao
+) {
 
     private val _executionState = MutableStateFlow(WorkflowExecutionState())
     val executionState: StateFlow<WorkflowExecutionState> = _executionState.asStateFlow()
 
     /**
      * 执行工作流
+     *
+     * Phase 4.1: 移除 agentExecutor 参数。AGENT 节点现在通过注入的
+     * [transportFactory] 和 [agentConfigDao] 调用真实 Agent。
+     * 若需测试时替换执行逻辑，可通过 Hilt 注入 mock [TransportFactory]。
      */
     suspend fun execute(
         workflow: Workflow,
-        input: String,
-        agentExecutor: suspend (AgentType, String, String) -> String = { _, prompt, _ -> prompt }
+        input: String
     ): String = withContext(Dispatchers.IO) {
         _executionState.value = WorkflowExecutionState(isRunning = true)
 
@@ -145,7 +177,7 @@ class WorkflowEngine {
                     predecessors.map { results[it] ?: "" }.joinToString("\n\n")
                 }
 
-                val nodeOutput = executeNode(node, nodeInput, agentExecutor)
+                val nodeOutput = executeNode(node, nodeInput)
                 results[nodeId] = nodeOutput
                 visited.add(nodeId)
 
@@ -190,8 +222,7 @@ class WorkflowEngine {
 
     private suspend fun executeNode(
         node: WorkflowNode,
-        input: String,
-        agentExecutor: suspend (AgentType, String, String) -> String
+        input: String
     ): String {
         return when (node.type) {
             NodeType.INPUT -> input
@@ -202,12 +233,83 @@ class WorkflowEngine {
                 } else {
                     input
                 }
-                agentExecutor(agentType, prompt, input)
+                executeAgent(agentType, prompt)
             }
             NodeType.TRANSFORM -> applyTransform(node.transformType, input, node.prompt)
             NodeType.OUTPUT -> input
         }
     }
+
+    /**
+     * Phase 4.1: 通过真实 Transport 执行 Agent 调用。
+     *
+     * 1. 查询数据库中匹配 [agentType] 的第一个 [AgentConfigEntity]
+     * 2. 创建临时 [com.agenthub.app.transport.protocol.AgentTransport]
+     * 3. connect → sendMessage → 收集 events 直到 [AgentEvent.StreamComplete]
+     * 4. 拼接所有 delta 为完整响应
+     * 5. shutdown 释放资源
+     *
+     * 若无匹配配置或超时（60s），返回错误字符串而非抛异常，
+     * 保证工作流后续节点能继续执行。
+     */
+    private suspend fun executeAgent(agentType: AgentType, prompt: String): String {
+        val configEntity = agentConfigDao.getAllConfigsOnce()
+            .firstOrNull { entity ->
+                try { AgentType.valueOf(entity.type) == agentType }
+                catch (_: Exception) { false }
+            }
+            ?: return "Error: No agent config found for type ${agentType.displayName}"
+
+        val config = configEntity.toAgentConfig()
+        val transport = transportFactory.create(agentType)
+
+        return try {
+            transport.connect(config)
+            // 使用唯一 sessionId 避免与主会话冲突
+            val sessionId = "workflow_${UUID.randomUUID()}"
+            transport.sendMessage(sessionId, prompt)
+
+            val responseBuilder = StringBuilder()
+            // 60s 超时保护，避免工作流无限挂起
+            withTimeoutOrNull(60_000L) {
+                try {
+                    transport.events.collect { event ->
+                        when (event) {
+                            is AgentEvent.MessageReceived -> responseBuilder.append(event.content)
+                            is AgentEvent.Error -> throw FlowAbortException
+                            is AgentEvent.StreamComplete -> throw FlowAbortException
+                            else -> { /* Connected/Disconnected/Reconnecting 忽略 */ }
+                        }
+                    }
+                } catch (_: FlowAbortException) {
+                    // 正常结束：收到 StreamComplete 或 Error，停止收集
+                }
+            }
+
+            responseBuilder.toString().ifBlank {
+                "Error: Agent ${agentType.displayName} returned empty response"
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            "Error: ${e.message}"
+        } finally {
+            transport.shutdown()
+        }
+    }
+
+    /** 将 [AgentConfigEntity] 转换为 [AgentConfig]，解密 apiKey。 */
+    private fun AgentConfigEntity.toAgentConfig() = AgentConfig(
+        id = id,
+        name = name,
+        type = try { AgentType.valueOf(type) } catch (_: Exception) { AgentType.Hermes },
+        serverUrl = serverUrl,
+        apiKey = com.agenthub.app.core.security.KeystoreManager.decryptOrRaw(apiKey),
+        model = model,
+        systemPrompt = systemPrompt,
+        temperature = temperature,
+        maxTokens = maxTokens
+    )
 
     private fun applyTransform(type: TransformType, input: String, extra: String): String {
         return when (type) {
@@ -235,6 +337,9 @@ class WorkflowEngine {
         _executionState.value = WorkflowExecutionState()
     }
 }
+
+/** 用于在收到 [AgentEvent.StreamComplete] 或 [AgentEvent.Error] 时中断 Flow 收集。 */
+private object FlowAbortException : Exception()
 
 /**
  * 预置工作流模板

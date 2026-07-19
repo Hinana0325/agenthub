@@ -1,9 +1,15 @@
 package com.agenthub.app.runtime.task
 
+import com.agenthub.app.core.database.dao.TaskDao
+import com.agenthub.app.core.database.entity.TaskEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,9 +25,15 @@ import javax.inject.Singleton
  * - "让 OpenCode 重构这个文件" → Task
  * - "让 Ollama 生成图片" → Task
  * - "让 OpenManus 执行工作流" → Task
+ *
+ * Phase 4.2: 通过 [taskDao] 持久化任务到 Room。
+ * App 重启后任务历史不丢失。内存中的 [_tasks] StateFlow 仍保留用于
+ * 即时 UI 反馈，但真实数据源是数据库。
  */
 @Singleton
-class TaskManager @Inject constructor() {
+class TaskManager @Inject constructor(
+    private val taskDao: TaskDao
+) {
 
     data class AgentTask(
         val id: String,
@@ -39,11 +51,21 @@ class TaskManager @Inject constructor() {
     enum class TaskType { CHAT, CODE, WORKFLOW, TOOL_CALL, FILE_OPERATION }
     enum class TaskStatus { Pending, Running, Completed, Failed, Cancelled }
 
+    private val supervisorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _tasks = MutableStateFlow<List<AgentTask>>(emptyList())
     val tasks: StateFlow<List<AgentTask>> = _tasks.asStateFlow()
 
+    init {
+        // 订阅数据库变更，同步到内存 StateFlow
+        supervisorScope.launch {
+            taskDao.getAllTasks().collect { entities ->
+                _tasks.value = entities.map { it.toModel() }
+            }
+        }
+    }
+
     fun submitTask(agentId: String, type: TaskType, input: String, sessionId: String? = null): AgentTask {
-        // 使用 UUID 而非 currentTimeMillis()，避免同一毫秒提交多个 task 时 ID 碰撞。
         val task = AgentTask(
             id = "task_${UUID.randomUUID()}",
             agentId = agentId,
@@ -51,12 +73,31 @@ class TaskManager @Inject constructor() {
             type = type,
             input = input
         )
-        // 原子更新：使用 update { } 而非 value = value + x，避免「读-改-写」竞争丢失并发更新。
+        // 持久化到数据库
+        supervisorScope.launch {
+            taskDao.upsertTask(task.toEntity())
+        }
+        // 同时更新内存（数据库 Flow 回调也会更新，但这里先更新保证即时反馈）
         _tasks.update { it + task }
         return task
     }
 
     fun updateTaskStatus(taskId: String, status: TaskStatus, result: String? = null, error: String? = null) {
+        val completedAt = if (status == TaskStatus.Completed || status == TaskStatus.Failed || status == TaskStatus.Cancelled) {
+            System.currentTimeMillis()
+        } else null
+
+        // 持久化到数据库
+        supervisorScope.launch {
+            taskDao.updateTaskStatus(
+                taskId = taskId,
+                status = status.name,
+                result = result,
+                error = error,
+                completedAt = completedAt
+            )
+        }
+        // 同时更新内存
         _tasks.update { list ->
             list.map { task ->
                 if (task.id == taskId) {
@@ -64,7 +105,7 @@ class TaskManager @Inject constructor() {
                         status = status,
                         result = result ?: task.result,
                         error = error ?: task.error,
-                        completedAt = if (status == TaskStatus.Completed || status == TaskStatus.Failed) System.currentTimeMillis() else task.completedAt
+                        completedAt = completedAt
                     )
                 } else task
             }
@@ -82,4 +123,40 @@ class TaskManager @Inject constructor() {
     fun cancelTask(taskId: String) {
         updateTaskStatus(taskId, TaskStatus.Cancelled)
     }
+
+    /** 删除任务（从数据库和内存中移除）。 */
+    fun deleteTask(taskId: String) {
+        supervisorScope.launch {
+            taskDao.deleteTask(taskId)
+        }
+        _tasks.update { list -> list.filter { it.id != taskId } }
+    }
+
+    // ── Entity ↔ Model 转换 ──
+
+    private fun AgentTask.toEntity() = TaskEntity(
+        id = id,
+        agentId = agentId,
+        sessionId = sessionId,
+        type = type.name,
+        input = input,
+        status = status.name,
+        result = result,
+        createdAt = createdAt,
+        completedAt = completedAt,
+        error = error
+    )
+
+    private fun TaskEntity.toModel() = AgentTask(
+        id = id,
+        agentId = agentId,
+        sessionId = sessionId,
+        type = try { TaskType.valueOf(type) } catch (_: Exception) { TaskType.CHAT },
+        input = input,
+        status = try { TaskStatus.valueOf(status) } catch (_: Exception) { TaskStatus.Pending },
+        result = result,
+        createdAt = createdAt,
+        completedAt = completedAt,
+        error = error
+    )
 }
