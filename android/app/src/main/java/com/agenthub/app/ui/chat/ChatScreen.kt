@@ -969,9 +969,9 @@ fun MessageBubble(
                     )
                     .semantics {
                         contentDescription = if (isUser)
-                            "User message: ${message.content.take(100)}"
+                            context.getString(R.string.a11y_message_user, message.content.take(50))
                         else
-                            "Agent message: ${message.content.take(100)}"
+                            context.getString(R.string.a11y_message_agent, message.content.take(50))
                     }
                     .combinedClickable(
                         onClick = {},
@@ -1459,7 +1459,11 @@ private fun ClickableAnnotatedText(
 @Composable
 private fun OfflineBanner(onConnect: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                contentDescription = "${stringResource(R.string.a11y_offline_banner)}"
+            },
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.92f)
     ) {
         Row(
@@ -1504,7 +1508,9 @@ fun EmptyChatPlaceholder(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = stringResource(R.string.a11y_empty_chat)
+        },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

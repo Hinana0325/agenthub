@@ -198,7 +198,7 @@
     <string name="a11y_close_search">关闭搜索</string>
     <string name="a11y_message_from_user">来自你的消息</string>
     <string name="a11y_message_from_agent">来自 Agent 的消息</string>
-    <string name="a11y_session_item">会话：%s</string>
+    <string name="a11y_session_item">会话：%s，%d 条消息</string>
     <string name="a11y_pin_session">置顶会话</string>
     <string name="a11y_unpin_session">取消置顶</string>
     <string name="a11y_delete_session">删除会话</string>
@@ -420,4 +420,10 @@
     <string name="compare_summary">对比摘要</string>
     <string name="compare_chars">%d 字符</string>
     <string name="compare_words">%d 词</string>
+
+    <string name="a11y_message_user">你的消息：%s</string>
+    <string name="a11y_message_agent">Agent 消息：%s</string>
+    <string name="a11y_agent_item">Agent：%s，%s</string>
+    <string name="a11y_offline_banner">未连接到任何 Agent</string>
+    <string name="a11y_empty_chat">暂无消息。发送消息开始聊天。</string>
 </resources>

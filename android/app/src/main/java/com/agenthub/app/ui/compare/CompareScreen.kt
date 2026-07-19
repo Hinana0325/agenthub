@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -203,7 +205,9 @@ private fun AgentLabel(
     isComplete: Boolean = false
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = "$name" + if (isComplete) ", completed" else ""
+        },
         shape = RoundedCornerShape(8.dp),
         color = if (isComplete)
             MaterialTheme.colorScheme.primaryContainer
@@ -239,7 +243,9 @@ private fun ResponsePanel(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics {
+            contentDescription = "Response: ${response.take(100)}"
+        },
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp
