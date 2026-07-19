@@ -23,6 +23,7 @@ import com.agenthub.app.data.plugin.PluginExecutor
 import com.agenthub.app.data.plugin.PluginManager
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
+import dagger.hilt.EntryPointAccessors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,12 +35,12 @@ fun PluginScreen(
     // Obtain the Hilt-provided singleton PluginManager via an EntryPoint instead of the
     // removed AppModule singleton. PluginManager is @Singleton-scoped and provided by Hilt
     // (PluginDao is in DatabaseModule, PluginManager uses @Inject constructor).
-    val pluginManager = remember {
-        dagger.hilt.EntryPointAccessors.fromApplication(
-            context.applicationContext,
-            PluginManagerEntryPoint::class.java
-        ).pluginManager()
+    val entryPoint = remember {
+        EntryPointAccessors.fromApplication<PluginManagerEntryPoint>(
+            context.applicationContext
+        )
     }
+    val pluginManager = remember { entryPoint.pluginManager() }
     val executor = remember { PluginExecutor(context) }
     val scope = rememberCoroutineScope()
     val plugins: List<Plugin> by pluginManager.plugins.collectAsStateWithLifecycle()
