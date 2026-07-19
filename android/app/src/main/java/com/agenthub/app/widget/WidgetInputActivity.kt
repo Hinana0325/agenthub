@@ -26,7 +26,7 @@ import com.agenthub.app.R
  *   2. 本 Activity 以对话框样式弹出，内含真实 EditText + Send / Cancel
  *   3. 用户输入文本后点击 Send
  *   4. 本 Activity 通过 Broadcast Intent（[ACTION_WIDGET_SEND_MESSAGE]）
- *      把消息推送给 [com.agenthub.app.ui.chat.ChatViewModel]，
+ *      把消息推送给 [com.agenthub.app.feature.chat.ChatViewModel]，
  *      由其调用 ChatRepository + AgentTransport 完成真实发送
  *   5. 本 Activity 调用 finish() 关闭，Widget 随后刷新显示最新消息
  *

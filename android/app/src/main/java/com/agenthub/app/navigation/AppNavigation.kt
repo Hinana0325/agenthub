@@ -34,19 +34,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.agenthub.app.ui.activity.ActivityScreen
+import com.agenthub.app.feature.activity.ActivityScreen
 import com.agenthub.app.ui.adaptive.currentAdaptiveConfig
 import com.agenthub.app.ui.adaptive.shouldShowRail
-import com.agenthub.app.ui.agents.AgentsScreen
-import com.agenthub.app.ui.chat.ChatScreen
-import com.agenthub.app.ui.sessions.SessionsScreen
-import com.agenthub.app.ui.settings.SettingsScreen
-import com.agenthub.app.ui.compare.CompareScreen
-import com.agenthub.app.ui.compare.CompareViewModel
-import com.agenthub.app.ui.marketplace.AgentMarketScreen
-import com.agenthub.app.ui.sync.DeviceSyncScreen
-import com.agenthub.app.ui.plugin.PluginScreen
-import com.agenthub.app.ui.insights.InsightsScreen
+import com.agenthub.app.feature.agents.AgentsScreen
+import com.agenthub.app.feature.chat.ChatScreen
+import com.agenthub.app.feature.sessions.SessionsScreen
+import com.agenthub.app.feature.settings.SettingsScreen
+import com.agenthub.app.feature.compare.CompareScreen
+import com.agenthub.app.feature.compare.CompareViewModel
+import com.agenthub.app.feature.marketplace.AgentMarketScreen
+import com.agenthub.app.feature.sync.DeviceSyncScreen
+import com.agenthub.app.feature.plugin.PluginScreen
+import com.agenthub.app.feature.insights.InsightsScreen
 import com.agenthub.app.data.model.MarketplaceAgent
 import com.agenthub.app.agent.model.AgentConfig
 import com.agenthub.app.agent.model.AgentType
@@ -59,7 +59,7 @@ fun AppNavigation() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val adaptive = currentAdaptiveConfig()
-    val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = hiltViewModel()
+    val chatViewModel: com.agenthub.app.feature.chat.ChatViewModel = hiltViewModel()
 
     if (adaptive.shouldShowRail) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -156,7 +156,7 @@ fun AppNavigation() {
 @Composable
 private fun AppNavHost(
     navController: androidx.navigation.NavHostController,
-    chatViewModel: com.agenthub.app.ui.chat.ChatViewModel,
+    chatViewModel: com.agenthub.app.feature.chat.ChatViewModel,
     modifier: Modifier = Modifier
 ) {
     NavHost(

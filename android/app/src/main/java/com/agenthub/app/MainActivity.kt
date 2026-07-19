@@ -29,7 +29,7 @@ import com.agenthub.app.ui.theme.GlassBackdropGradientTopDark
 import com.agenthub.app.ui.theme.GlassBackdropGradientTopLight
 import com.agenthub.app.ui.theme.LocalIsGlass
 import com.agenthub.app.navigation.AppNavigation
-import com.agenthub.app.ui.settings.SettingsViewModel
+import com.agenthub.app.feature.settings.SettingsViewModel
 import com.agenthub.app.ui.theme.AgentHubTheme
 import com.agenthub.app.ui.theme.ThemeMode
 import com.agenthub.app.runtime.notification.StatusNotificationManager
@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
             }
 
             // Handle share intent via ChatViewModel
-            val chatViewModel: com.agenthub.app.ui.chat.ChatViewModel = hiltViewModel()
+            val chatViewModel: com.agenthub.app.feature.chat.ChatViewModel = hiltViewModel()
             LaunchedEffect(intent) {
                 handleShareIntent(intent, chatViewModel)
             }
@@ -153,7 +153,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleShareIntent(
         intent: Intent?,
-        chatViewModel: com.agenthub.app.ui.chat.ChatViewModel
+        chatViewModel: com.agenthub.app.feature.chat.ChatViewModel
     ) {
         if (shareHandled) return
         if (intent == null ||
