@@ -1,5 +1,7 @@
 package com.agenthub.app.data.repository
 
+import androidx.room.withTransaction
+import com.agenthub.app.core.database.AppDatabase
 import com.agenthub.app.core.database.dao.ActivityDao
 import com.agenthub.app.core.database.dao.AgentConfigDao
 import com.agenthub.app.core.database.dao.MessageDao
@@ -21,10 +23,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import javax.inject.Singleton
 
+@Singleton
 class ChatRepository @javax.inject.Inject constructor(
+    private val database: AppDatabase,
     private val sessionDao: SessionDao,
     private val messageDao: MessageDao,
     private val agentConfigDao: AgentConfigDao,
@@ -135,10 +141,23 @@ class ChatRepository @javax.inject.Inject constructor(
 
     suspend fun deleteMessagesBySession(sessionId: String) {
         messageDao.deleteMessagesBySession(sessionId)
+        sessionDao.resetMessageCount(sessionId, System.currentTimeMillis())
     }
 
     suspend fun deleteMessage(messageId: String) {
+        val message = messageDao.getMessageById(messageId)
         messageDao.deleteMessageById(messageId)
+        message?.sessionId?.let { sessionDao.decrementMessageCount(it) }
+    }
+
+    // ── Backup Import (atomic) ──
+
+    suspend fun importBackup(sessions: List<Session>, messages: List<Message>) {
+        // 用 Room 事务确保原子性：任一插入失败则整体回滚，避免半导入状态。
+        database.withTransaction {
+            sessions.forEach { insertSessionDirect(it) }
+            messages.forEach { insertMessageDirect(it) }
+        }
     }
 
     suspend fun insertMessageDirect(message: Message) {
@@ -149,13 +168,18 @@ class ChatRepository @javax.inject.Inject constructor(
             content = message.content,
             timestamp = message.timestamp,
             status = message.status.name,
-            metadataJson = Gson().toJson(message.metadata),
+            metadataJson = gson.toJson(message.metadata),
+            attachmentType = message.attachmentType,
+            attachmentData = message.attachmentData,
+            attachmentName = message.attachmentName,
+            reaction = message.reaction,
             replyToId = message.replyToId
         ))
     }
 
     suspend fun searchMessages(query: String): List<Message> {
-        return messageDao.searchMessages("%$query%").map { it.toModel() }
+        val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return messageDao.searchMessages("%$escaped%").map { it.toModel() }
     }
 
     suspend fun updateReaction(messageId: String, reaction: String) {
@@ -165,7 +189,7 @@ class ChatRepository @javax.inject.Inject constructor(
     // ── Agent Configs ──
 
     fun getAllConfigs(): Flow<List<AgentConfig>> =
-        agentConfigDao.getAllConfigs().map { entities -> entities.map { it.toModel() } }
+        agentConfigDao.getAllConfigs().map { entities -> entities.map { it.toModel() } }.flowOn(Dispatchers.IO)
 
     suspend fun getAllConfigsList(): List<AgentConfig> =
         agentConfigDao.getAllConfigsOnce().map { it.toModel() }

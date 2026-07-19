@@ -7,11 +7,15 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.agenthub.app.core.security.KeystoreManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import javax.inject.Singleton
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
+@Singleton
 class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext private val context: Context) {
 
     companion object {
@@ -53,7 +57,7 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
     val e2eKey: Flow<String> = context.dataStore.data.map { prefs ->
         val stored = prefs[E2E_KEY] ?: DEFAULT_E2E_KEY
         if (stored.isBlank()) stored else KeystoreManager.decryptOrRaw(stored)
-    }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun setE2eEnabled(enabled: Boolean) {
         context.dataStore.edit { it[E2E_ENABLED] = enabled }

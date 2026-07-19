@@ -52,10 +52,22 @@ object KeystoreManager {
     /**
      * 获取或创建 Keystore 中的 AES 密钥。
      * 首次调用时自动生成，后续调用直接从 Keystore 读取。
+     *
+     * High 8：加 @Synchronized 防止并发首次调用重复 generateKey 互相覆盖。
+     * High 9：用 `is` 检查而非强转 `as KeyStore.SecretKeyEntry`，避免已存在但
+     *         类型不符（如 TrustedCertificateEntry）的 entry 抛 ClassCastException；
+     *         此时先删除旧 entry 再重新生成。
      */
+    @Synchronized
     private fun getOrCreateKey(): SecretKey {
-        keyStore.getEntry(KEY_ALIAS, null)?.let { entry ->
-            return (entry as KeyStore.SecretKeyEntry).secretKey
+        val existing = keyStore.getEntry(KEY_ALIAS, null)
+        if (existing is KeyStore.SecretKeyEntry) {
+            return existing.secretKey
+        }
+        // 存在但非 SecretKeyEntry（例如误存的证书条目）则先删除，再重新生成，
+        // 避免 generateKey 因别名冲突失败或残留旧条目。
+        if (existing != null) {
+            try { keyStore.deleteEntry(KEY_ALIAS) } catch (_: Exception) {}
         }
         val keyGenerator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE

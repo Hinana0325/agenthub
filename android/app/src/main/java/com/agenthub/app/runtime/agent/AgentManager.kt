@@ -5,6 +5,7 @@ import com.agenthub.app.agent.model.AgentStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,9 @@ import javax.inject.Singleton
  *
  * 设计理念：Agent 是第一公民，不再以 Chat 为中心。
  * User → Agent → Chat/Task/Workflow/Tool/Memory
+ *
+ * 线程安全：@Singleton 会被多协程并发访问，所有 StateFlow 写入均通过
+ * `update { }` 原子完成，避免「读-改-写」竞争丢失并发更新。
  */
 @Singleton
 class AgentManager @Inject constructor() {
@@ -29,14 +33,14 @@ class AgentManager @Inject constructor() {
     val activeAgent: StateFlow<Agent?> = _activeAgent.asStateFlow()
 
     fun registerAgent(agent: Agent) {
-        val current = _agents.value.toMutableList()
-        val index = current.indexOfFirst { it.id == agent.id }
-        if (index >= 0) current[index] = agent else current.add(agent)
-        _agents.value = current
+        _agents.update { current ->
+            val index = current.indexOfFirst { it.id == agent.id }
+            if (index >= 0) current.toMutableList().also { it[index] = agent } else current + agent
+        }
     }
 
     fun unregisterAgent(agentId: String) {
-        _agents.value = _agents.value.filter { it.id != agentId }
+        _agents.update { it.filter { agent -> agent.id != agentId } }
         if (_activeAgent.value?.id == agentId) {
             _activeAgent.value = null
         }
@@ -47,11 +51,13 @@ class AgentManager @Inject constructor() {
     }
 
     fun updateAgentStatus(agentId: String, status: AgentStatus) {
-        val current = _agents.value.toMutableList()
-        val index = current.indexOfFirst { it.id == agentId }
-        if (index >= 0) {
-            current[index] = current[index].copy(status = status)
-            _agents.value = current
+        _agents.update { current ->
+            val index = current.indexOfFirst { it.id == agentId }
+            if (index >= 0) {
+                current.toMutableList().also { it[index] = it[index].copy(status = status) }
+            } else {
+                current
+            }
         }
     }
 

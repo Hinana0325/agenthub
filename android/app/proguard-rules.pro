@@ -45,7 +45,9 @@
 -keep class * extends androidx.lifecycle.ViewModel { *; }
 
 # === Keep entity classes for Room reflection ===
--keep class com.agenthub.app.data.local.entity.** { *; }
+# Critical 1 修复：entity 实际位于 com.agenthub.app.core.database.entity 包，
+# 原 com.agenthub.app.data.local.entity 路径不存在，release 混淆会导致 Room 反射崩溃。
+-keep class com.agenthub.app.core.database.entity.** { *; }
 
 # OkHttp (used by Ktor okhttp engine)
 -dontwarn okhttp3.**

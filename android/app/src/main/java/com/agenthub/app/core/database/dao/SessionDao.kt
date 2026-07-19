@@ -35,6 +35,12 @@ interface SessionDao {
     @Query("UPDATE sessions SET messageCount = messageCount + 1, updatedAt = :updatedAt WHERE id = :id")
     suspend fun incrementMessageCount(id: String, updatedAt: Long)
 
+    @Query("UPDATE sessions SET messageCount = messageCount - 1 WHERE id = :id AND messageCount > 0")
+    suspend fun decrementMessageCount(id: String)
+
+    @Query("UPDATE sessions SET messageCount = 0, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun resetMessageCount(id: String, updatedAt: Long)
+
     @Query("SELECT * FROM sessions ORDER BY isPinned DESC, updatedAt DESC")
     suspend fun getAllSessionsOnce(): List<SessionEntity>
 

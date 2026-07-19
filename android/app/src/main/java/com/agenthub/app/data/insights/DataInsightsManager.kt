@@ -22,7 +22,7 @@ class DataInsightsManager(
         val avgResponseTime: Long = 0,          // ms
         val mostActiveHour: Int = 0,            // 0-23
         val topAgentType: String = "",
-        val messagesByDay: Map<String, Long> = emptyMap(),   // "MM/dd" -> count
+        val messagesByDay: Map<String, Long> = emptyMap(),   // "yyyy-MM-dd" -> count
         val messagesByAgent: Map<String, Long> = emptyMap(), // agent name -> count
         val avgMessageLength: Int = 0,
         val longestStreak: Int = 0,             // consecutive days
@@ -31,8 +31,8 @@ class DataInsightsManager(
         val assistantMessageCount: Long = 0
     )
 
-    private val dateFormat = SimpleDateFormat("MM/dd", Locale.US)
-    private val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    // Critical 4 修复：dateFormat/dayFormat 为死代码（各方法均使用局部 SimpleDateFormat），
+    // 且 SimpleDateFormat 非线程安全，作为共享成员存在并发隐患，已删除。
 
     suspend fun generateInsights(): Insights {
         val messages = messageDao.getAllMessages()
@@ -93,7 +93,9 @@ class DataInsightsManager(
     }
 
     private fun groupByDay(messages: List<MessageEntity>): Map<String, Long> {
-        val sdf = SimpleDateFormat("MM/dd", Locale.US)
+        // Critical 4 修复：格式含年份 "yyyy-MM-dd"，避免跨年（如 2023-12-31 与 2024-12-31）
+        // 被错误合并到同一组；使用局部 SimpleDateFormat 避免共享成员线程安全问题。
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         return messages.groupBy { sdf.format(Date(it.timestamp)) }
             .mapValues { it.value.size.toLong() }
             .toSortedMap()

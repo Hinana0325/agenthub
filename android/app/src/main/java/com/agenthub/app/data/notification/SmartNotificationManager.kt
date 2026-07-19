@@ -4,6 +4,7 @@ import com.agenthub.app.data.model.Message
 import com.agenthub.app.data.model.MessageRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * 智能通知 — 基于优先级过滤 Agent 消息
@@ -33,7 +34,11 @@ class SmartNotificationManager {
         val quietHoursEnd: Int = 8
     )
 
-    private val rules = mutableListOf(
+    // Critical 3 修复：rules 改为 CopyOnWriteArrayList，避免 shouldNotify 遍历时
+    // addRule/removeRule/toggleRule 并发修改抛 ConcurrentModificationException。
+    // CopyOnWriteArrayList 的 add/removeAll/indexed set 与 MutableList 接口兼容，
+    // addRule/removeRule/toggleRule 无需改动。
+    private val rules = CopyOnWriteArrayList(listOf(
         // High priority rules
         NotificationRule(
             name = "error",
@@ -61,7 +66,7 @@ class SmartNotificationManager {
             pattern = Regex("(?i)(ok|done|finished|completed|acknowledged)", RegexOption.IGNORE_CASE),
             priority = Priority.LOW
         )
-    )
+    ))
 
     private val _config = MutableStateFlow(NotificationConfig())
     val config: StateFlow<NotificationConfig> = _config

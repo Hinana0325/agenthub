@@ -133,6 +133,9 @@ class AgentConnectionService : Service() {
      * 仅保证进程存活期间服务器会话不因 Activity 销毁而中断。
      */
     private fun startConnectionMaintenance() {
+        // High 10 修复：onStartCommand 可能多次触发，检查与 transport 赋值非原子会
+        // 导致并发创建多个 transport。若已有连接监控协程在运行则直接返回，避免重复启动。
+        if (connectionMonitorJob?.isActive == true) return
         serviceScope.launch {
             try {
                 val savedConfig = repository.getAllConfigs().let { flow ->

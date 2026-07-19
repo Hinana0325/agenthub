@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.gson.Gson
@@ -47,8 +49,9 @@ class UpdateManager(
 
     /** Checks GitHub for a newer release. Returns [UpdateInfo] if one is available, null if up-to-date. */
     suspend fun checkForUpdates(currentVersion: String): Result<UpdateInfo?> = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
         try {
-            val connection = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
+            connection = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
                 setRequestProperty("Accept", "application/vnd.github+json")
                 connectTimeout = 10_000
                 readTimeout = 10_000
@@ -56,12 +59,10 @@ class UpdateManager(
 
             if (connection.responseCode == 403) {
                 // Rate-limited or blocked — gracefully report.
-                connection.disconnect()
                 return@withContext Result.failure(Exception("GitHub API rate-limited; try again later."))
             }
 
             val json = InputStreamReader(connection.inputStream).use { it.readText() }
-            connection.disconnect()
 
             val release = Gson().fromJson(json, GitHubRelease::class.java)
             val latestVersion = release.tagName.removePrefix("v")
@@ -87,6 +88,9 @@ class UpdateManager(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            // Critical 2 修复：无论成功还是异常都 disconnect，避免 HttpURLConnection 泄漏。
+            connection?.disconnect()
         }
     }
 
@@ -103,7 +107,11 @@ class UpdateManager(
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         dm.enqueue(request)
-        Toast.makeText(context, "Download started — check your notifications", Toast.LENGTH_SHORT).show()
+        // Critical 2 修复：downloadUpdate 可能从 IO 线程调用，Toast 必须在主线程执行，
+        // 否则抛 RuntimeException。用 Handler post 到主线程。
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(context, "Download started — check your notifications", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** Opens the downloaded APK directly via [FileProvider] (alternative to notification tap). */

@@ -368,7 +368,10 @@ class OpenAIHttpTransport(
     }
 
     override fun disconnect() {
-        try { client.close() } catch (_: Exception) { }
+        // 注意：此处不调用 client.close()。client 是字段单例，connect() 不会重建它，
+        // 一旦 close 之后再 connect()，probeEndpoint 会抛 IllegalStateException: HttpClient is closed。
+        // 与 WebSocketTransport 的做法一致，disconnect 只清理状态与历史，client 的
+        // 关闭留给 Transport 被销毁时（如进程退出 / shutdown hook）。
         _connectionState.value = AgentConnectionState()
         eventScope.launch {
             // 传输断开时清空全部对话历史，避免下次重连后把过期的上下文

@@ -212,12 +212,8 @@ class SettingsViewModel @Inject constructor(
                 val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
                 if (json != null) {
                     val backup = Gson().fromJson(json, ChatBackup::class.java)
-                    backup.sessions.forEach { session ->
-                        repository.insertSessionDirect(session)
-                    }
-                    backup.messages.forEach { message ->
-                        repository.insertMessageDirect(message)
-                    }
+                    // 用事务原子导入：任一插入失败则整体回滚，避免半导入状态。
+                    repository.importBackup(backup.sessions, backup.messages)
                     _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, backup.sessions.size, backup.messages.size)) }
                 }
             } catch (e: Exception) {

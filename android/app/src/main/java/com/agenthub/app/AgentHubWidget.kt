@@ -12,7 +12,6 @@ import com.agenthub.app.core.database.AppDatabase
 import com.agenthub.app.widget.WidgetInputActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
@@ -80,8 +79,17 @@ class AgentHubWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         widgetId: Int
     ) {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        scope.launch {
+        // Critical 5 修复：使用 goAsync() 延长广播处理时间，并在 finally 中 finish()。
+        // 不再使用 SupervisorJob 创建常驻 scope（原实现每次 onUpdate 都创建不取消的 scope，
+        // 导致协程泄漏）。此处 CoroutineScope 无 SupervisorJob，协程完成后 scope 自然结束可被 GC。
+        // updateAll 通过手动 new provider 调用 onUpdate 时不在广播上下文，goAsync() 会抛
+        // IllegalStateException，捕获后退化为普通异步（finish 跳过），scope 仍会自然结束。
+        val pendingResult: BroadcastReceiver.PendingResult? = try {
+            goAsync()
+        } catch (_: IllegalStateException) {
+            null
+        }
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val db = AppDatabase.getInstance(context)
                 val prefs = context.getSharedPreferences("agent_hub_prefs", Context.MODE_PRIVATE)
@@ -125,6 +133,8 @@ class AgentHubWidget : AppWidgetProvider() {
                 appWidgetManager.updateAppWidget(widgetId, views)
             } catch (_: Exception) {
                 // 静默失败，保持默认显示
+            } finally {
+                pendingResult?.finish()
             }
         }
     }

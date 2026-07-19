@@ -1,6 +1,7 @@
 package com.agenthub.app.runtime.workflow
 
 import com.agenthub.app.agent.model.AgentType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -171,6 +172,12 @@ class WorkflowEngine {
             )
 
             finalOutput
+        } catch (e: CancellationException) {
+            // 协程取消必须传播，绝不能被下面 catch (e: Exception) 吞掉，
+            // 否则 execute 会把取消当成业务错误返回 "Error: ..." 字符串，
+            // 破坏结构化并发（调用方永远等不到真正的取消信号）。
+            _executionState.value = _executionState.value.copy(isRunning = false)
+            throw e
         } catch (e: Exception) {
             _executionState.value = _executionState.value.copy(
                 isRunning = false,

@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -54,31 +56,36 @@ class VoiceChatManager(private val context: Context) {
     }
 
     private fun initTTS() {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                tts?.language = _state.value.ttsLanguage
-                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        _state.value = _state.value.copy(isSpeaking = true)
-                    }
-
-                    override fun onDone(utteranceId: String?) {
-                        _state.value = _state.value.copy(isSpeaking = false)
-                        // Auto-restart listening after speaking
-                        if (_state.value.isVoiceMode && autoRestartListening) {
-                            startListening()
+        // Critical 7 修复：TextToSpeech 构造必须在主线程调用，否则可能初始化失败或抛异常。
+        // init 可能在非主线程触发，用 Handler post 到主线程创建 TTS。
+        Handler(Looper.getMainLooper()).post {
+            tts = TextToSpeech(context) { status ->
+                if (status == TextToSpeech.SUCCESS) {
+                    tts?.language = _state.value.ttsLanguage
+                    tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                        override fun onStart(utteranceId: String?) {
+                            _state.value = _state.value.copy(isSpeaking = true)
                         }
-                    }
 
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        _state.value = _state.value.copy(isSpeaking = false)
-                        if (_state.value.isVoiceMode && autoRestartListening) {
-                            startListening()
+                        override fun onDone(utteranceId: String?) {
+                            _state.value = _state.value.copy(isSpeaking = false)
+                            // Auto-restart listening after speaking.
+                            // startListening 内部已 post 到主线程，此处直接调用即可。
+                            if (_state.value.isVoiceMode && autoRestartListening) {
+                                startListening()
+                            }
                         }
-                    }
-                })
-                ttsReady = true
+
+                        @Deprecated("Deprecated in Java")
+                        override fun onError(utteranceId: String?) {
+                            _state.value = _state.value.copy(isSpeaking = false)
+                            if (_state.value.isVoiceMode && autoRestartListening) {
+                                startListening()
+                            }
+                        }
+                    })
+                    ttsReady = true
+                }
             }
         }
     }
@@ -152,79 +159,85 @@ class VoiceChatManager(private val context: Context) {
         stopListeningInternal()
         _state.value = _state.value.copy(isListening = true, error = null, partialText = "")
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    _state.value = _state.value.copy(isListening = true)
-                }
-
-                override fun onBeginningOfSpeech() {}
-
-                override fun onRmsChanged(rmsdB: Float) {}
-
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {
-                    _state.value = _state.value.copy(isListening = false)
-                }
-
-                override fun onError(error: Int) {
-                    val errorMsg = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected"
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
-                        SpeechRecognizer.ERROR_AUDIO -> "Audio error"
-                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                        SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
-                        else -> "Recognition error: $error"
+        // Critical 7 修复：SpeechRecognizer.createSpeechRecognizer 必须在主线程调用，
+        // 否则抛 RuntimeException。onDone/onError 等 binder 回调可能从非主线程触发
+        // startListening，故用 Handler post 到主线程执行创建与 startListening。
+        // 回调内部再次调用 startListening 时无需额外切线程（此处已 post）。
+        Handler(Looper.getMainLooper()).post {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        _state.value = _state.value.copy(isListening = true)
                     }
-                    _state.value = _state.value.copy(
-                        isListening = false,
-                        error = errorMsg
-                    )
-                    // Auto-retry listening in voice mode for certain errors
-                    if (_state.value.isVoiceMode &&
-                        error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
-                        error != SpeechRecognizer.ERROR_CLIENT
-                    ) {
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            if (_state.value.isVoiceMode) startListening()
-                        }, 1500)
+
+                    override fun onBeginningOfSpeech() {}
+
+                    override fun onRmsChanged(rmsdB: Float) {}
+
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+
+                    override fun onEndOfSpeech() {
+                        _state.value = _state.value.copy(isListening = false)
                     }
-                }
 
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val text = matches?.firstOrNull() ?: ""
-                    _state.value = _state.value.copy(
-                        isListening = false,
-                        recognizedText = text,
-                        partialText = ""
-                    )
-                    if (text.isNotEmpty()) {
-                        onSpeechResult?.invoke(text)
+                    override fun onError(error: Int) {
+                        val errorMsg = when (error) {
+                            SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected"
+                            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                            SpeechRecognizer.ERROR_AUDIO -> "Audio error"
+                            SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                            SpeechRecognizer.ERROR_CLIENT -> "Client error"
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
+                            else -> "Recognition error: $error"
+                        }
+                        _state.value = _state.value.copy(
+                            isListening = false,
+                            error = errorMsg
+                        )
+                        // Auto-retry listening in voice mode for certain errors
+                        if (_state.value.isVoiceMode &&
+                            error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
+                            error != SpeechRecognizer.ERROR_CLIENT
+                        ) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (_state.value.isVoiceMode) startListening()
+                            }, 1500)
+                        }
                     }
-                }
 
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val text = matches?.firstOrNull() ?: ""
-                    _state.value = _state.value.copy(partialText = text)
-                }
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: ""
+                        _state.value = _state.value.copy(
+                            isListening = false,
+                            recognizedText = text,
+                            partialText = ""
+                        )
+                        if (text.isNotEmpty()) {
+                            onSpeechResult?.invoke(text)
+                        }
+                    }
 
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: ""
+                        _state.value = _state.value.copy(partialText = text)
+                    }
+
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
+
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, _state.value.ttsLanguage.toString())
+            }
+            speechRecognizer?.startListening(intent)
         }
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, _state.value.ttsLanguage.toString())
-        }
-        speechRecognizer?.startListening(intent)
     }
 
     /**

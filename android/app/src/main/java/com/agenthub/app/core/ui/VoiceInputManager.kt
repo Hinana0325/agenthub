@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -34,35 +36,39 @@ class VoiceInputManager(private val context: Context) {
             return
         }
 
-        // Destroy any previous recognizer before creating a new one to avoid leaking it
-        speechRecognizer?.destroy()
+        // Critical 6 修复：SpeechRecognizer.createSpeechRecognizer 必须在主线程调用，
+        // 否则抛 RuntimeException。用 Handler post 到主线程执行创建与 startListening。
+        Handler(Looper.getMainLooper()).post {
+            // Destroy any previous recognizer before creating a new one to avoid leaking it
+            speechRecognizer?.destroy()
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    _recognizedText.value = matches?.firstOrNull() ?: ""
-                    _isListening.value = false
-                }
-                override fun onError(error: Int) {
-                    _error.value = "Speech recognition error: $error"
-                    _isListening.value = false
-                }
-                override fun onReadyForSpeech(params: Bundle?) { _isListening.value = true }
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-                override fun onPartialResults(partialResults: Bundle?) {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-        }
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        _recognizedText.value = matches?.firstOrNull() ?: ""
+                        _isListening.value = false
+                    }
+                    override fun onError(error: Int) {
+                        _error.value = "Speech recognition error: $error"
+                        _isListening.value = false
+                    }
+                    override fun onReadyForSpeech(params: Bundle?) { _isListening.value = true }
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
 
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            }
+            speechRecognizer?.startListening(intent)
         }
-        speechRecognizer?.startListening(intent)
     }
 
     fun stopListening() {

@@ -3,6 +3,8 @@ package com.agenthub.app.runtime.session
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,11 +32,13 @@ class SessionManager @Inject constructor() {
     val activeSessionId: StateFlow<String?> = _activeSessionId.asStateFlow()
 
     fun createSession(agentId: String): Session {
+        // 使用 UUID 而非 currentTimeMillis()，避免同一毫秒创建多个 session 时 ID 碰撞。
         val session = Session(
-            id = "session_${System.currentTimeMillis()}",
+            id = "session_${UUID.randomUUID()}",
             agentId = agentId
         )
-        _sessions.value = _sessions.value + (session.id to session)
+        // 原子更新：使用 update { } 而非 value = value + x，避免「读-改-写」竞争丢失并发更新。
+        _sessions.update { it + (session.id to session) }
         _activeSessionId.value = session.id
         return session
     }
@@ -44,11 +48,11 @@ class SessionManager @Inject constructor() {
     }
 
     fun closeSession(sessionId: String) {
-        val current = _sessions.value.toMutableMap()
-        current[sessionId]?.let { session ->
-            current[sessionId] = session.copy(isActive = false)
+        _sessions.update { current ->
+            current[sessionId]?.let { session ->
+                current + (sessionId to session.copy(isActive = false))
+            } ?: current
         }
-        _sessions.value = current
         if (_activeSessionId.value == sessionId) {
             _activeSessionId.value = null
         }
@@ -59,10 +63,10 @@ class SessionManager @Inject constructor() {
     }
 
     fun incrementMessageCount(sessionId: String) {
-        val current = _sessions.value.toMutableMap()
-        current[sessionId]?.let { session ->
-            current[sessionId] = session.copy(messageCount = session.messageCount + 1)
-            _sessions.value = current
+        _sessions.update { current ->
+            current[sessionId]?.let { session ->
+                current + (sessionId to session.copy(messageCount = session.messageCount + 1))
+            } ?: current
         }
     }
 }

@@ -158,21 +158,27 @@ class LocalModelManager {
 
     private fun fetchOllamaModels(endpoint: String): List<LocalModel> {
         val conn = openConnection("$endpoint/api/tags")
-        conn.requestMethod = "GET"
-        if (conn.responseCode != 200) return emptyList()
+        try {
+            conn.requestMethod = "GET"
+            if (conn.responseCode != 200) return emptyList()
 
-        val body = readResponse(conn)
-        val json = JSONObject(body)
-        val modelsArray = json.getJSONArray("models")
-        return (0 until modelsArray.length()).map { i ->
-            val obj = modelsArray.getJSONObject(i)
-            LocalModel(
-                id = obj.getString("name"),
-                name = obj.getString("name"),
-                size = formatSize(obj.optLong("size", 0)),
-                endpoint = endpoint,
-                provider = LocalProvider.OLLAMA
-            )
+            val body = readResponse(conn)
+            val json = JSONObject(body)
+            val modelsArray = json.getJSONArray("models")
+            return (0 until modelsArray.length()).map { i ->
+                val obj = modelsArray.getJSONObject(i)
+                LocalModel(
+                    id = obj.getString("name"),
+                    name = obj.getString("name"),
+                    size = formatSize(obj.optLong("size", 0)),
+                    endpoint = endpoint,
+                    provider = LocalProvider.OLLAMA
+                )
+            }
+        } finally {
+            // 显式断开连接，释放底层 socket（即便 BufferedReader 关闭了 reader，
+            // keep-alive 连接仍可能驻留导致 socket 泄漏）。
+            conn.disconnect()
         }
     }
 
@@ -185,17 +191,21 @@ class LocalModelManager {
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        writeBody(conn, body.toString())
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            writeBody(conn, body.toString())
 
-        if (conn.responseCode != 200) {
-            throw RuntimeException("Ollama API error: ${conn.responseCode}")
+            if (conn.responseCode != 200) {
+                throw RuntimeException("Ollama API error: ${conn.responseCode}")
+            }
+
+            val resp = JSONObject(readResponse(conn))
+            return resp.getJSONObject("message").getString("content")
+        } finally {
+            conn.disconnect()
         }
-
-        val resp = JSONObject(readResponse(conn))
-        return resp.getJSONObject("message").getString("content")
     }
 
     private fun sendOllamaPromptStream(
@@ -212,69 +222,81 @@ class LocalModelManager {
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        writeBody(conn, body.toString())
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            writeBody(conn, body.toString())
 
-        if (conn.responseCode != 200) {
-            throw RuntimeException("Ollama API error: ${conn.responseCode}")
-        }
-
-        val fullResponse = StringBuilder()
-        BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                if (line.isNullOrBlank()) continue
-                try {
-                    val chunk = JSONObject(line!!)
-                    val content = chunk.getJSONObject("message").optString("content", "")
-                    if (content.isNotEmpty()) {
-                        fullResponse.append(content)
-                        onDelta(content)
-                    }
-                } catch (_: Exception) { }
+            if (conn.responseCode != 200) {
+                throw RuntimeException("Ollama API error: ${conn.responseCode}")
             }
+
+            val fullResponse = StringBuilder()
+            BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    if (line.isNullOrBlank()) continue
+                    try {
+                        val chunk = JSONObject(line!!)
+                        val content = chunk.getJSONObject("message").optString("content", "")
+                        if (content.isNotEmpty()) {
+                            fullResponse.append(content)
+                            onDelta(content)
+                        }
+                    } catch (_: Exception) { }
+                }
+            }
+            return fullResponse.toString()
+        } finally {
+            conn.disconnect()
         }
-        return fullResponse.toString()
     }
 
     // ── OpenAI-Compatible API (LM Studio, llama.cpp) ──
 
     private fun fetchOpenAICompatibleModels(endpoint: String, provider: LocalProvider): List<LocalModel> {
         val conn = openConnection("$endpoint/v1/models")
-        conn.requestMethod = "GET"
-        if (conn.responseCode != 200) return emptyList()
+        try {
+            conn.requestMethod = "GET"
+            if (conn.responseCode != 200) return emptyList()
 
-        val body = readResponse(conn)
-        val json = JSONObject(body)
-        val modelsArray = json.getJSONArray("data")
-        return (0 until modelsArray.length()).map { i ->
-            val obj = modelsArray.getJSONObject(i)
-            LocalModel(
-                id = obj.getString("id"),
-                name = obj.getString("id"),
-                endpoint = endpoint,
-                provider = provider
-            )
+            val body = readResponse(conn)
+            val json = JSONObject(body)
+            val modelsArray = json.getJSONArray("data")
+            return (0 until modelsArray.length()).map { i ->
+                val obj = modelsArray.getJSONObject(i)
+                LocalModel(
+                    id = obj.getString("id"),
+                    name = obj.getString("id"),
+                    endpoint = endpoint,
+                    provider = provider
+                )
+            }
+        } finally {
+            conn.disconnect()
         }
     }
 
     private fun fetchLlamaCppModels(endpoint: String): List<LocalModel> {
         // llama.cpp server may not have /v1/models, try health endpoint first
         val conn = openConnection("$endpoint/health")
-        conn.requestMethod = "GET"
-        if (conn.responseCode != 200) return emptyList()
+        try {
+            conn.requestMethod = "GET"
+            if (conn.responseCode != 200) return emptyList()
 
-        // Return a placeholder model since llama.cpp typically serves one model
-        return listOf(
-            LocalModel(
-                id = "llama-cpp-model",
-                name = "llama.cpp Model",
-                endpoint = endpoint,
-                provider = LocalProvider.LLAMA_CPP
+            // Return a placeholder model since llama.cpp typically serves one model
+            return listOf(
+                LocalModel(
+                    id = "llama-cpp-model",
+                    name = "llama.cpp Model",
+                    endpoint = endpoint,
+                    provider = LocalProvider.LLAMA_CPP
+                )
             )
-        )
+        } finally {
+            conn.disconnect()
+        }
     }
 
     private fun sendOpenAICompatiblePrompt(model: LocalModel, prompt: String, systemPrompt: String): String {
@@ -286,20 +308,24 @@ class LocalModelManager {
         }
 
         val conn = openConnection("${model.endpoint}/v1/chat/completions")
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        writeBody(conn, body.toString())
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            writeBody(conn, body.toString())
 
-        if (conn.responseCode != 200) {
-            throw RuntimeException("API error: ${conn.responseCode}")
+            if (conn.responseCode != 200) {
+                throw RuntimeException("API error: ${conn.responseCode}")
+            }
+
+            val resp = JSONObject(readResponse(conn))
+            return resp.getJSONArray("choices")
+                .getJSONObject(0)
+                .getJSONObject("message")
+                .getString("content")
+        } finally {
+            conn.disconnect()
         }
-
-        val resp = JSONObject(readResponse(conn))
-        return resp.getJSONArray("choices")
-            .getJSONObject(0)
-            .getJSONObject("message")
-            .getString("content")
     }
 
     private fun sendOpenAICompatiblePromptStream(
@@ -316,36 +342,40 @@ class LocalModelManager {
         }
 
         val conn = openConnection("${model.endpoint}/v1/chat/completions")
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        writeBody(conn, body.toString())
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            writeBody(conn, body.toString())
 
-        if (conn.responseCode != 200) {
-            throw RuntimeException("API error: ${conn.responseCode}")
-        }
-
-        val fullResponse = StringBuilder()
-        BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                if (line.isNullOrBlank() || line == "data: [DONE]") continue
-                val data = line!!.removePrefix("data: ").trim()
-                if (data.isEmpty()) continue
-                try {
-                    val chunk = JSONObject(data)
-                    val delta = chunk.getJSONArray("choices")
-                        .getJSONObject(0)
-                        .getJSONObject("delta")
-                    val content = delta.optString("content", "")
-                    if (content.isNotEmpty()) {
-                        fullResponse.append(content)
-                        onDelta(content)
-                    }
-                } catch (_: Exception) { }
+            if (conn.responseCode != 200) {
+                throw RuntimeException("API error: ${conn.responseCode}")
             }
+
+            val fullResponse = StringBuilder()
+            BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    if (line.isNullOrBlank() || line == "data: [DONE]") continue
+                    val data = line!!.removePrefix("data: ").trim()
+                    if (data.isEmpty()) continue
+                    try {
+                        val chunk = JSONObject(data)
+                        val delta = chunk.getJSONArray("choices")
+                            .getJSONObject(0)
+                            .getJSONObject("delta")
+                        val content = delta.optString("content", "")
+                        if (content.isNotEmpty()) {
+                            fullResponse.append(content)
+                            onDelta(content)
+                        }
+                    } catch (_: Exception) { }
+                }
+            }
+            return fullResponse.toString()
+        } finally {
+            conn.disconnect()
         }
-        return fullResponse.toString()
     }
 
     // ── Helpers ──

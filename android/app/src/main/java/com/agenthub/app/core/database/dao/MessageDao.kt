@@ -33,7 +33,7 @@ interface MessageDao {
     @Query("SELECT * FROM messages ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLastMessage(): MessageEntity?
 
-    @Query("SELECT * FROM messages WHERE content LIKE :query ORDER BY timestamp DESC LIMIT 50")
+    @Query("SELECT * FROM messages WHERE content LIKE :query ESCAPE '\\' ORDER BY timestamp DESC LIMIT 50")
     suspend fun searchMessages(query: String): List<MessageEntity>
 
     @Query("SELECT * FROM messages WHERE sessionId = :sessionId ORDER BY timestamp ASC")

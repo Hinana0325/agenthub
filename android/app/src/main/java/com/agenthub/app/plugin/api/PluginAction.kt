@@ -65,30 +65,41 @@ sealed class PluginAction {
             val json = gson.fromJson(config, JsonObject::class.java) ?: return null
             when (type) {
                 "http" -> HttpCall(
-                    url = json.get("url")?.asString ?: "",
-                    method = json.get("method")?.asString ?: "GET",
+                    url = json.stringOrNull("url") ?: "",
+                    method = json.stringOrNull("method") ?: "GET",
                     headers = runCatching {
                         gson.fromJson<Map<String, String>>(
-                            json.get("headers")?.asString ?: "{}",
+                            json.stringOrNull("headers") ?: "{}",
                             object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
                         )
                     }.getOrElse { emptyMap<String, String>() },
-                    bodyTemplate = json.get("bodyTemplate")?.asString
+                    bodyTemplate = json.stringOrNull("bodyTemplate")
                 )
                 "broadcast" -> Broadcast(
-                    action = json.get("action")?.asString ?: "",
+                    action = json.stringOrNull("action") ?: "",
                     extras = runCatching {
                         gson.fromJson<Map<String, String>>(
-                            json.get("extras")?.asString ?: "{}",
+                            json.stringOrNull("extras") ?: "{}",
                             object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
                         )
                     }.getOrElse { emptyMap<String, String>() }
                 )
                 "workflow" -> Workflow(
-                    promptTemplate = json.get("promptTemplate")?.asString ?: ""
+                    promptTemplate = json.stringOrNull("promptTemplate") ?: ""
                 )
                 else -> null
             }
         }.getOrNull()
+
+        /**
+         * 安全地从 [JsonObject] 读取一个可选字符串字段。
+         *
+         * Gson 的 `JsonObject.get(key)` 在 key 存在但值为 `JsonNull` 时返回 `JsonNull`
+         * 实例而非 Kotlin `null`，因此 `?.asString` 不会短路——对 `JsonNull` 调用
+         * `asString` 会抛 `UnsupportedOperationException`。这里显式检查 `isJsonNull`
+         * 并返回 Kotlin `null`，从而正确短路后续的 `?: ""` / `?: "GET"` 等回退逻辑。
+         */
+        private fun JsonObject.stringOrNull(key: String): String? =
+            get(key)?.let { if (it.isJsonNull) null else it.asString }
     }
 }

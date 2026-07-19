@@ -3,6 +3,8 @@ package com.agenthub.app.runtime.task
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,27 +43,31 @@ class TaskManager @Inject constructor() {
     val tasks: StateFlow<List<AgentTask>> = _tasks.asStateFlow()
 
     fun submitTask(agentId: String, type: TaskType, input: String, sessionId: String? = null): AgentTask {
+        // 使用 UUID 而非 currentTimeMillis()，避免同一毫秒提交多个 task 时 ID 碰撞。
         val task = AgentTask(
-            id = "task_${System.currentTimeMillis()}",
+            id = "task_${UUID.randomUUID()}",
             agentId = agentId,
             sessionId = sessionId,
             type = type,
             input = input
         )
-        _tasks.value = _tasks.value + task
+        // 原子更新：使用 update { } 而非 value = value + x，避免「读-改-写」竞争丢失并发更新。
+        _tasks.update { it + task }
         return task
     }
 
     fun updateTaskStatus(taskId: String, status: TaskStatus, result: String? = null, error: String? = null) {
-        _tasks.value = _tasks.value.map { task ->
-            if (task.id == taskId) {
-                task.copy(
-                    status = status,
-                    result = result ?: task.result,
-                    error = error ?: task.error,
-                    completedAt = if (status == TaskStatus.Completed || status == TaskStatus.Failed) System.currentTimeMillis() else task.completedAt
-                )
-            } else task
+        _tasks.update { list ->
+            list.map { task ->
+                if (task.id == taskId) {
+                    task.copy(
+                        status = status,
+                        result = result ?: task.result,
+                        error = error ?: task.error,
+                        completedAt = if (status == TaskStatus.Completed || status == TaskStatus.Failed) System.currentTimeMillis() else task.completedAt
+                    )
+                } else task
+            }
         }
     }
 
