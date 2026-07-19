@@ -79,11 +79,17 @@
         </receiver>
 
         <!--
-            注：原 WidgetSendReceiver / WidgetVoiceReceiver 声明已移除。
-            这两个 BroadcastReceiver 类从未实现，导致清单引用了不存在的类。
-            Widget 将改用 TextView + PendingIntent 的方式重新设计，
-            避免依赖不存在的接收器组件。
+            Widget 语音按钮接收器：处理 Widget 上的语音按钮点击。
+            Critical 2 修复：此前该类已实现（见 AgentHubWidget.kt）但未在
+            Manifest 注册，导致 Widget 语音按钮点击无反应。
         -->
+        <receiver
+            android:name=".WidgetVoiceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.agenthub.app.WIDGET_VOICE" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

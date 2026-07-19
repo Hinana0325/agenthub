@@ -87,8 +87,23 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val adaptive = currentAdaptiveConfig()
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
+    // 判断用户是否在列表底部附近：当用户主动向上滚动阅读历史消息时，
+    // 不应强制把视图拉回底部。以「最后可见 item 接近末尾」作为底部判定。
+    val atBottom by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems == 0) return@derivedStateOf true
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            lastVisibleIndex >= totalItems - 2
+        }
+    }
+
+    // 流式响应时 messages.size 不变，但最后一条消息的 content 会随 delta 增长，
+    // 因此同时依赖 size 与最后一条消息 content 作为滚动触发器；且仅在用户
+    // 处于底部（atBottom）时自动滚动，避免打断阅读历史消息。
+    LaunchedEffect(uiState.messages.size, uiState.messages.lastOrNull()?.content) {
+        if (uiState.messages.isNotEmpty() && atBottom) {
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
     }
@@ -227,6 +242,7 @@ private fun PhoneChatLayout(
                     isStreaming = uiState.isStreaming,
                     onInputChange = { viewModel.updateInput(it) },
                     onSend = { viewModel.sendMessage() },
+                    onStop = { viewModel.stopStreaming() },
                     adaptive = adaptive,
                     isVoiceListening = uiState.isVoiceListening,
                     onVoiceToggle = { viewModel.toggleVoiceInput() },
@@ -406,6 +422,7 @@ private fun TabletChatLayout(
                         isStreaming = uiState.isStreaming,
                         onInputChange = { viewModel.updateInput(it) },
                         onSend = { viewModel.sendMessage() },
+                        onStop = { viewModel.stopStreaming() },
                         adaptive = adaptive,
                         isVoiceListening = uiState.isVoiceListening,
                         onVoiceToggle = { viewModel.toggleVoiceInput() },
@@ -440,6 +457,8 @@ private fun ChatTopBar(
     viewModel: ChatViewModel,
     onNavigateToSettings: () -> Unit
 ) {
+    var showClearDialog by remember { mutableStateOf(false) }
+
     GlassTopAppBar(
         title = {
             Column {
@@ -513,7 +532,7 @@ private fun ChatTopBar(
             IconButton(onClick = { viewModel.enterVoiceChatMode() }) {
                 Icon(Icons.Default.Headset, contentDescription = stringResource(R.string.voice_mode))
             }
-            IconButton(onClick = { viewModel.clearMessages() }) {
+            IconButton(onClick = { showClearDialog = true }) {
                 Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.action_clear))
             }
             IconButton(onClick = onNavigateToSettings) {
@@ -521,6 +540,27 @@ private fun ChatTopBar(
             }
         },
     )
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text(stringResource(R.string.action_clear)) },
+            text = { Text(stringResource(R.string.clear_messages_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearMessages()
+                    showClearDialog = false
+                }) {
+                    Text(stringResource(R.string.action_clear))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
 }
 
 
@@ -611,6 +651,7 @@ fun ChatInputBar(
     isStreaming: Boolean,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
+    onStop: () -> Unit = {},
     adaptive: AdaptiveConfig,
     isVoiceListening: Boolean = false,
     onVoiceToggle: () -> Unit = {},
@@ -868,7 +909,9 @@ fun ChatInputBar(
                     FilledIconButton(
                         onClick = {
                             HapticFeedback.light(context)
-                            onSend()
+                            // 流式响应中点击发送按钮（变身为 Stop）应取消流式，
+                            // 而不是再次调用 sendMessage()（后者会因 isStreaming 直接 return）。
+                            if (isStreaming) onStop() else onSend()
                         },
                         enabled = buttonEnabled,
                         modifier = Modifier

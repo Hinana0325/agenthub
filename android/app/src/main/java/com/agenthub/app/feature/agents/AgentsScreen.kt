@@ -70,12 +70,19 @@ fun AgentsScreen(
         }
     }
 
-    if (uiState.showForm) {
-        AgentFormDialog(
-            agent = uiState.editingAgent ?: return,
-            onSave = { agentsViewModel.saveAgent(it) },
-            onDismiss = { agentsViewModel.dismissForm() }
-        )
+    // Render the form dialog only when an agent is actually being edited.
+    // Do NOT use an early `return` here: that would skip the entire Scaffold
+    // and render a blank screen whenever showForm is true but editingAgent is
+    // momentarily null (e.g. during a transient state update). Instead we
+    // conditionally render the dialog on top of the normal list UI.
+    uiState.editingAgent?.let { agent ->
+        if (uiState.showForm) {
+            AgentFormDialog(
+                agent = agent,
+                onSave = { agentsViewModel.saveAgent(it) },
+                onDismiss = { agentsViewModel.dismissForm() }
+            )
+        }
     }
 
     Scaffold(
@@ -310,7 +317,7 @@ private fun AgentGridCard(
         )
         GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
-            onClick = { showContextMenu = false; onDelete() },
+            onClick = { showContextMenu = false; showDeleteConfirm = true },
             leadingIcon = {
                 Icon(
                     Icons.Default.Delete,
@@ -425,7 +432,7 @@ private fun AgentCard(
         )
         GlassDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
-            onClick = { showContextMenu = false; onDelete() },
+            onClick = { showContextMenu = false; showDeleteConfirm = true },
             leadingIcon = {
                 Icon(
                     Icons.Default.Delete,

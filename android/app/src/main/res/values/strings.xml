@@ -44,6 +44,7 @@
     <string name="action_send">Send</string>
     <string name="action_stop">Stop</string>
     <string name="action_clear">Clear</string>
+    <string name="clear_messages_confirm">Are you sure you want to clear all messages in this chat? This action cannot be undone.</string>
     <string name="streaming">Streaming…</string>
     <string name="empty_chat_title">Start a conversation</string>
     <string name="empty_chat_subtitle">Connect to an agent server to get started</string>

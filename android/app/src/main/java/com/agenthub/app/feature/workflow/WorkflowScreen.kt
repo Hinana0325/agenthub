@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.agent.model.AgentType
 import com.agenthub.app.runtime.workflow.*
@@ -42,17 +43,19 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkflowScreen(
+    viewModel: WorkflowViewModel = hiltViewModel(),
     onBack: () -> Unit = {}
 ) {
     var selectedWorkflow by remember { mutableStateOf<Workflow?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
-    val engine = remember { WorkflowEngine() }
-    val executionState by engine.executionState.collectAsState()
+    // The engine is owned by the ViewModel so execution state survives navigation
+    // away and back (previously `remember { WorkflowEngine() }` reset it on leave).
+    val executionState by viewModel.executionState.collectAsState()
 
     if (selectedWorkflow != null) {
         WorkflowDetailScreen(
             workflow = selectedWorkflow!!,
-            engine = engine,
+            viewModel = viewModel,
             executionState = executionState,
             onBack = { selectedWorkflow = null }
         )
@@ -229,7 +232,7 @@ private fun WorkflowBadge(icon: androidx.compose.ui.graphics.vector.ImageVector,
 @Composable
 private fun WorkflowDetailScreen(
     workflow: Workflow,
-    engine: WorkflowEngine,
+    viewModel: WorkflowViewModel,
     executionState: WorkflowExecutionState,
     onBack: () -> Unit
 ) {
@@ -356,7 +359,7 @@ private fun WorkflowDetailScreen(
                     onClick = {
                         showRunDialog = false
                         coroutineScope.launch {
-                            engine.execute(workflow, inputText)
+                            viewModel.execute(workflow, inputText)
                         }
                     },
                     enabled = inputText.isNotBlank() && !executionState.isRunning

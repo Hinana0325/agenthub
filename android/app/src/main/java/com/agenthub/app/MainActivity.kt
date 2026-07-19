@@ -15,6 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -47,6 +49,15 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private var shareHandled = false
+
+    /**
+     * Critical 1 修复：通知内联回复的待处理文本。
+     *
+     * 使用 [mutableStateOf] 以便在 onCreate/onNewIntent 中赋值后，
+     * Compose 侧的 LaunchedEffect 能感知到变化并触发消费，
+     * 保证回复文本被转发到 ChatViewModel 发送（而非被永久丢弃）。
+     */
+    private var pendingReplyText by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 安装 Splash Screen（必须在 super.onCreate 之前）
@@ -104,6 +115,14 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(intent) {
                 handleShareIntent(intent, chatViewModel)
             }
+
+            // Critical 1 修复：消费通知内联回复文本，转发给 ChatViewModel 发送。
+            // pendingReplyText 由 handleReplyIntent 在 onCreate/onNewIntent 中写入。
+            LaunchedEffect(pendingReplyText) {
+                val replyText = pendingReplyText ?: return@LaunchedEffect
+                chatViewModel.handleNotificationReply(replyText)
+                pendingReplyText = null
+            }
         }
 
         // 启动前台服务保持后台连接
@@ -143,12 +162,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** 处理通知内联回复 */
+    /**
+     * 处理通知内联回复。
+     *
+     * Critical 1 修复：此前本方法仅读取 EXTRA_REPLY_TEXT 后立即 removeExtra，
+     * 而 ChatViewModel 从未读取该文本，导致回复被永久丢弃。
+     *
+     * 现改为：将回复文本暂存到 Compose 可观察的 [pendingReplyText] State，
+     * 由 setContent 中的 LaunchedEffect 转发给 [com.agenthub.app.feature.chat.ChatViewModel.handleNotificationReply]，
+     * 随后清除 extra 以避免重复处理。
+     */
     private fun handleReplyIntent(intent: Intent?) {
         val replyText = intent?.getStringExtra(AgentConnectionService.EXTRA_REPLY_TEXT)
         if (!replyText.isNullOrBlank()) {
-            // Reply text will be consumed by ChatViewModel via intent extra
-            // Clear the extra to avoid re-processing
+            pendingReplyText = replyText
             intent?.removeExtra(AgentConnectionService.EXTRA_REPLY_TEXT)
         }
     }

@@ -82,7 +82,10 @@ class CompareViewModel @Inject constructor(
             } catch (e: Exception) {
                 _transportA.value?.disconnect()
                 _transportA.value = null
-                _uiState.update { it.copy(isAComplete = true, error = "Agent A: ${e.message}") }
+                // A failed to start: mark A complete and only stop comparing if B is done.
+                _uiState.update {
+                    it.copy(isAComplete = true, isComparing = !it.isBComplete, error = "Agent A: ${e.message}")
+                }
             }
         }
 
@@ -94,7 +97,10 @@ class CompareViewModel @Inject constructor(
             } catch (e: Exception) {
                 _transportB.value?.disconnect()
                 _transportB.value = null
-                _uiState.update { it.copy(isBComplete = true, error = "Agent B: ${e.message}") }
+                // B failed to start: mark B complete and only stop comparing if A is done.
+                _uiState.update {
+                    it.copy(isBComplete = true, isComparing = !it.isAComplete, error = "Agent B: ${e.message}")
+                }
             }
         }
 
@@ -131,16 +137,31 @@ class CompareViewModel @Inject constructor(
                 if (event.isDelta) {
                     _uiState.update { it.copy(agentAResponse = it.agentAResponse + event.content) }
                 } else {
+                    // Mark A complete, but only stop comparing once B is also complete.
+                    // Previously this set isComparing = false as soon as A finished, which
+                    // made the UI show a "done" state while B was still streaming.
                     _uiState.update {
-                        it.copy(agentAResponse = event.content, isAComplete = true, isComparing = false)
+                        it.copy(
+                            agentAResponse = event.content,
+                            isAComplete = true,
+                            isComparing = !it.isBComplete
+                        )
                     }
                 }
             }
             is AgentEvent.Error -> {
-                _uiState.update { it.copy(isAComplete = true, isComparing = false, error = "Agent A: ${event.message}") }
+                _uiState.update {
+                    it.copy(
+                        isAComplete = true,
+                        isComparing = !it.isBComplete,
+                        error = "Agent A: ${event.message}"
+                    )
+                }
             }
             is AgentEvent.Disconnected -> {
-                _uiState.update { it.copy(isAComplete = true, isComparing = false) }
+                _uiState.update {
+                    it.copy(isAComplete = true, isComparing = !it.isBComplete)
+                }
             }
             is AgentEvent.Connected -> { /* connected */ }
             is AgentEvent.Reconnecting -> { /* reconnecting */ }
@@ -154,16 +175,31 @@ class CompareViewModel @Inject constructor(
                 if (event.isDelta) {
                     _uiState.update { it.copy(agentBResponse = it.agentBResponse + event.content) }
                 } else {
+                    // Mark B complete, but only stop comparing once A is also complete.
+                    // Previously this set isComparing = false as soon as B finished, which
+                    // made the UI show a "done" state while A was still streaming.
                     _uiState.update {
-                        it.copy(agentBResponse = event.content, isBComplete = true, isComparing = false)
+                        it.copy(
+                            agentBResponse = event.content,
+                            isBComplete = true,
+                            isComparing = !it.isAComplete
+                        )
                     }
                 }
             }
             is AgentEvent.Error -> {
-                _uiState.update { it.copy(isBComplete = true, isComparing = false, error = "Agent B: ${event.message}") }
+                _uiState.update {
+                    it.copy(
+                        isBComplete = true,
+                        isComparing = !it.isAComplete,
+                        error = "Agent B: ${event.message}"
+                    )
+                }
             }
             is AgentEvent.Disconnected -> {
-                _uiState.update { it.copy(isBComplete = true, isComparing = false) }
+                _uiState.update {
+                    it.copy(isBComplete = true, isComparing = !it.isAComplete)
+                }
             }
             is AgentEvent.Connected -> { /* connected */ }
             is AgentEvent.Reconnecting -> { /* reconnecting */ }

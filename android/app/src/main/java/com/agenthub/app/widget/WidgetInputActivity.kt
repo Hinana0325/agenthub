@@ -146,8 +146,17 @@ class WidgetInputActivity : Activity() {
      * 发送广播给 ChatViewModel。
      *  - setPackage 限定在应用包内，避免泄露到其他应用
      *  - 接收端用 RECEIVER_NOT_EXPORTED 注册，仅接收同应用发出的广播
+     *
+     * Critical 3 修复：除发广播外，额外通过 [WidgetDataProvider.setPendingInput]
+     * 持久化待发送消息。当 App 进程被冷启动回收、ChatViewModel 的广播接收器
+     * 尚未注册时，广播会丢失；持久化的消息会在 ChatViewModel 初始化时通过
+     * [WidgetDataProvider.consumePendingInput] 被消费并发送，作为补偿通道。
      */
     private fun sendWidgetMessage(text: String) {
+        // 持久化待发送消息，确保冷启动时消息不丢失
+        WidgetDataProvider.setPendingInput(this, text)
+
+        // 同时发送广播，App 在前台时 ChatViewModel 可即时接收
         val intent = Intent(ACTION_WIDGET_SEND_MESSAGE).apply {
             setPackage(packageName)
             putExtra(EXTRA_MESSAGE, text)

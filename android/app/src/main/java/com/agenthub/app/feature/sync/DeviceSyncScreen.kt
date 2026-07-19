@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agenthub.app.R
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
@@ -26,11 +27,11 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceSyncScreen(
-    syncManager: DeviceSyncManager = remember { DeviceSyncManager() },
+    viewModel: DeviceSyncViewModel = hiltViewModel(),
     onBack: () -> Unit = {}
 ) {
-    val pairedDevices by syncManager.pairedDevices.collectAsState()
-    val syncState by syncManager.syncState.collectAsState()
+    val pairedDevices by viewModel.pairedDevices.collectAsState()
+    val syncState by viewModel.syncState.collectAsState()
     var showDiscoverDialog by remember { mutableStateOf(false) }
     var discoveredDevices by remember { mutableStateOf<List<DeviceSyncManager.DiscoveredDevice>>(emptyList()) }
     var isDiscovering by remember { mutableStateOf(false) }
@@ -60,9 +61,9 @@ fun DeviceSyncScreen(
                 SyncToggleCard(
                     isEnabled = syncState.isSyncEnabled,
                     isSyncing = syncState.isSyncing,
-                    onToggle = { syncManager.toggleSync(it) },
+                    onToggle = { viewModel.toggleSync(it) },
                     onSyncNow = {
-                        scope.launch { syncManager.syncAll() }
+                        scope.launch { viewModel.syncAll() }
                     }
                 )
             }
@@ -89,7 +90,7 @@ fun DeviceSyncScreen(
                             showDiscoverDialog = true
                             isDiscovering = true
                             scope.launch {
-                                discoveredDevices = syncManager.discoverDevices()
+                                discoveredDevices = viewModel.discoverDevices()
                                 isDiscovering = false
                             }
                         }
@@ -110,7 +111,7 @@ fun DeviceSyncScreen(
                 items(pairedDevices, key = { it.id }) { device ->
                     PairedDeviceCard(
                         device = device,
-                        onRemove = { syncManager.removeDevice(device.id) }
+                        onRemove = { viewModel.removeDevice(device.id) }
                     )
                 }
             }
@@ -124,7 +125,7 @@ fun DeviceSyncScreen(
             isDiscovering = isDiscovering,
             onPair = { device ->
                 scope.launch {
-                    syncManager.pairDevice(device.id, device.name)
+                    viewModel.pairDevice(device.id, device.name)
                     discoveredDevices = discoveredDevices.filter { it.id != device.id }
                 }
             },

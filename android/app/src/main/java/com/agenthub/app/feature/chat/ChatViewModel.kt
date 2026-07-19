@@ -38,9 +38,11 @@ import com.agenthub.app.AgentHubWidget
 import com.agenthub.app.core.common.PerformanceMonitor
 import com.agenthub.app.core.ui.VoiceInputManager
 import com.agenthub.app.widget.WidgetInputActivity
+import com.agenthub.app.widget.WidgetDataProvider
 import javax.inject.Inject
 import com.agenthub.app.core.ui.VoiceChatManager
 import com.agenthub.app.localmodel.LocalModelManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -104,6 +106,12 @@ class ChatViewModel @Inject constructor(
 
     private val _currentSessionId = MutableStateFlow<String?>(null)
 
+    /**
+     * 当前流式请求对应的 Coroutine Job，用于在用户点击 Stop 按钮时取消流式响应。
+     * 在 [sendMessage] 开始流式时赋值，在流式完成/失败/取消时置 null。
+     */
+    private var streamingJob: Job? = null
+
     init {
         viewModelScope.launch {
             repository.getAllSessions().collect { sessions ->
@@ -160,6 +168,17 @@ class ChatViewModel @Inject constructor(
 
         // Sprint 8: 注册 Widget 快捷输入广播，接收 WidgetInputActivity 发来的消息
         registerWidgetMessageReceiver()
+
+        // Critical 3 修复：消费冷启动时遗留的 Widget 待发送消息。
+        // 当 App 进程被系统回收后，用户从 Widget 快捷输入发送的消息无法通过广播送达
+        // （ChatViewModel 的接收器尚未注册）。WidgetInputActivity 已将消息持久化到
+        // WidgetDataProvider，这里在 ViewModel 初始化时消费并发送，作为补偿通道。
+        viewModelScope.launch {
+            val pendingText = WidgetDataProvider.consumePendingInput(getApplication())
+            if (!pendingText.isNullOrBlank()) {
+                handleWidgetMessage(pendingText)
+            }
+        }
     }
 
     // Track when user message was sent for latency measurement
@@ -312,7 +331,7 @@ class ChatViewModel @Inject constructor(
 
         lastUserMessageTime = System.currentTimeMillis()
 
-        viewModelScope.launch {
+        streamingJob = viewModelScope.launch {
             val sessionId = state.currentSessionId
                 ?: repository.createSession("New Chat").let { session ->
                     _currentSessionId.value = session.id
@@ -360,7 +379,23 @@ class ChatViewModel @Inject constructor(
             } else {
                 simulateResponse()
             }
+            // 流式请求已发起（或离线模拟已完成）。正常结束时释放 Job 引用；
+            // 若被 [stopStreaming] 取消则不会执行到此行，由其负责置空。
+            streamingJob = null
         }
+    }
+
+    /**
+     * 取消当前正在进行的流式响应。
+     *
+     * 由聊天界面的 Stop 按钮调用：当 [ChatUiState.isStreaming] 为 true 时，
+     * 发送按钮会变身为 Stop 按钮，点击后调用本方法取消 [sendMessage] 启动的
+     * Coroutine Job，并将 [ChatUiState.isStreaming] 置为 false，使输入栏恢复可用。
+     */
+    fun stopStreaming() {
+        streamingJob?.cancel()
+        streamingJob = null
+        _uiState.update { it.copy(isStreaming = false) }
     }
 
     private suspend fun simulateResponse() {
@@ -426,6 +461,8 @@ class ChatViewModel @Inject constructor(
     }
 
     fun clearMessages() {
+        // 先取消正在进行的流式响应，否则清空后新内容仍会继续追加到最后一条消息。
+        stopStreaming()
         viewModelScope.launch {
             _uiState.value.currentSessionId?.let { id ->
                 // 清空传输层中当前 session 的对话历史，确保下次发送的消息
@@ -486,8 +523,23 @@ class ChatViewModel @Inject constructor(
     }
 
     fun switchToSession(sessionId: String) {
+        // 切换会话前清除上一个会话的残留状态，避免编辑/回复/附件/流式等
+        // 状态泄漏到新会话。先取消流式 Job，再重置 UI 状态。
+        stopStreaming()
         _currentSessionId.value = sessionId
-        _uiState.update { it.copy(currentSessionId = sessionId) }
+        _uiState.update {
+            it.copy(
+                currentSessionId = sessionId,
+                isStreaming = false,
+                editingMessageId = null,
+                replyingToMessageId = null,
+                replyingToMessageContent = null,
+                pendingAttachmentType = null,
+                pendingAttachmentData = null,
+                pendingAttachmentName = null,
+                inputText = ""
+            )
+        }
     }
 
     fun deleteSession(sessionId: String) {
@@ -545,8 +597,8 @@ class ChatViewModel @Inject constructor(
     /**
      * Refresh sessions list from repository.
      */
-    fun refreshSessions() {
-        viewModelScope.launch {
+    fun refreshSessions(): Job {
+        return viewModelScope.launch {
             // Force re-read from Room to trigger the Flow emission
             val sessions = repository.getAllSessionsList()
             _uiState.update { it.copy(sessions = sessions) }
@@ -769,6 +821,44 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Critical 1 修复：处理来自通知内联回复的消息。
+     *
+     * 此前 MainActivity.handleReplyIntent 读取 EXTRA_REPLY_TEXT 后立即 removeExtra，
+     * 但 ChatViewModel 从未读取该文本，导致回复被永久丢弃。现 MainActivity 将回复文本
+     * 转发到本方法，行为与 [handleWidgetMessage] 一致：创建/复用 session、持久化 user 消息、
+     * 通过 transport 发送或离线模拟回复。
+     */
+    fun handleNotificationReply(text: String) {
+        viewModelScope.launch {
+            val sessionId = _uiState.value.currentSessionId
+                ?: repository.createSession("Notification Reply").let { session ->
+                    _currentSessionId.value = session.id
+                    _uiState.update { it.copy(currentSessionId = session.id) }
+                    session.id
+                }
+            val userMsg = repository.sendMessage(sessionId, text, MessageRole.User)
+            repository.logActivity("notification", "Message sent from notification reply", text.take(80))
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages + Message(
+                        id = userMsg.id,
+                        sessionId = userMsg.sessionId,
+                        role = MessageRole.User,
+                        content = text,
+                        status = MessageStatus.Sent
+                    ),
+                    isStreaming = true
+                )
+            }
+            if (_uiState.value.connectionState.isConnected) {
+                _transport.value?.sendMessage(sessionId, text)
+            } else {
+                simulateResponse()
+            }
+        }
+    }
+
     // ── Voice Input ──
 
     fun initVoiceInput(context: Context) {
@@ -877,10 +967,10 @@ class ChatViewModel @Inject constructor(
         if (voiceChatManager == null) {
             voiceChatManager = VoiceChatManager(context).apply {
                 onSpeechResult = { text ->
+                    // 仅记录最近一次识别结果用于界面展示；实际发送统一由
+                    // VoiceChatOverlay 的 LaunchedEffect(state.recognizedText)
+                    // → onSendMessage 触发，避免此处再调 sendMessage() 造成双发。
                     _uiState.update { it.copy(voiceChatLastUserText = text) }
-                    // Send the recognized text as a message
-                    _uiState.update { it.copy(inputText = text) }
-                    sendMessage()
                 }
             }
         }

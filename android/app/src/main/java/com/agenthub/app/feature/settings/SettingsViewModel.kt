@@ -3,9 +3,12 @@ package com.agenthub.app.feature.settings
 import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -92,8 +96,16 @@ class SettingsViewModel @Inject constructor(
     fun toggleE2E(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.setE2eEnabled(enabled)
-            if (enabled && _uiState.value.e2eKey.isEmpty()) {
-                regenerateKey()
+            if (enabled) {
+                // Read the actual key directly from DataStore instead of relying on
+                // _uiState.value.e2eKey. The UI state is updated asynchronously from
+                // dataStore.e2eKey and may still hold a stale (empty) value right after
+                // the user enables E2E, which previously caused an existing key to be
+                // regenerated and overwritten.
+                val currentKey = dataStore.e2eKey.first()
+                if (currentKey.isEmpty()) {
+                    regenerateKey()
+                }
             }
         }
     }
@@ -147,13 +159,50 @@ class SettingsViewModel @Inject constructor(
                     messages = allMessages
                 )
                 val json = Gson().toJson(backup)
-                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloads, "agenthub-backup-${System.currentTimeMillis()}.json")
-                file.writeText(json)
-                _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_saved, file.name)) }
+                val fileName = "agenthub-backup-${System.currentTimeMillis()}.json"
+                val saved = writeJsonToDownloads(context, fileName, json)
+                _uiState.update {
+                    it.copy(
+                        backupMessage = if (saved) context.getString(R.string.backup_saved, fileName)
+                        else context.getString(R.string.backup_export_failed, "Failed to write file")
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_export_failed, e.message ?: "")) }
             }
+        }
+    }
+
+    /**
+     * Write a JSON payload into the public Downloads directory.
+     *
+     * On Android 10+ (API 29+) this uses the MediaStore.Downloads API via
+     * ContentResolver.insert, which does not require any storage permissions.
+     * On older API levels it falls back to the legacy
+     * Environment.getExternalStoragePublicDirectory path (the WRITE_EXTERNAL_STORAGE
+     * permission must be declared in the manifest for those versions).
+     */
+    private fun writeJsonToDownloads(context: Context, fileName: String, json: String): Boolean {
+        val resolver = context.contentResolver
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            uri?.let {
+                resolver.openOutputStream(it)?.use { os ->
+                    os.write(json.toByteArray())
+                }
+            }
+            uri != null
+        } else {
+            @Suppress("DEPRECATION")
+            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloads, fileName)
+            file.writeText(json)
+            true
         }
     }
 

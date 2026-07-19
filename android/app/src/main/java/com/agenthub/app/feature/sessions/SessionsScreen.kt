@@ -80,6 +80,7 @@ private fun SessionsDualPaneLayout(
     val sidebarWidth = adaptive.panelConfig.sidebarWidth
     val uiState by chatViewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val refreshScope = rememberCoroutineScope()
 
     var isRefreshing by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -111,9 +112,15 @@ private fun SessionsDualPaneLayout(
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = {
-                        isRefreshing = true
-                        chatViewModel.refreshSessions()
-                        isRefreshing = false
+                        // refreshSessions() launches a suspend coroutine and returns its
+                        // Job. Wait for it to complete before clearing the refreshing
+                        // indicator — otherwise the spinner disappears while the refresh
+                        // is still running.
+                        refreshScope.launch {
+                            isRefreshing = true
+                            chatViewModel.refreshSessions().join()
+                            isRefreshing = false
+                        }
                     }
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -315,6 +322,7 @@ private fun SessionsSinglePaneLayout(
 ) {
     val maxContentWidth = if (adaptive.isTablet) 720.dp else 600.dp
     val context = LocalContext.current
+    val refreshScope = rememberCoroutineScope()
 
     var isRefreshing by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -341,9 +349,13 @@ private fun SessionsSinglePaneLayout(
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = {
-                        isRefreshing = true
-                        chatViewModel?.refreshSessions()
-                        isRefreshing = false
+                        // Wait for the async refresh to finish before clearing the
+                        // refreshing indicator (see dual-pane variant for details).
+                        refreshScope.launch {
+                            isRefreshing = true
+                            chatViewModel?.refreshSessions()?.join()
+                            isRefreshing = false
+                        }
                     }
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {

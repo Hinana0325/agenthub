@@ -1,9 +1,12 @@
 package com.agenthub.app.feature.agents
 
 import android.app.Application
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agenthub.app.agent.model.AgentConfig
@@ -80,13 +83,49 @@ class AgentsViewModel @Inject constructor(
             try {
                 val configs = repository.getAllConfigsList()
                 val json = Gson().toJson(configs)
-                val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloads, "agenthub-configs-${System.currentTimeMillis()}.json")
-                file.writeText(json)
-                _uiState.update { it.copy(exportMessage = "Exported to ${file.name}") }
+                val fileName = "agenthub-configs-${System.currentTimeMillis()}.json"
+                val saved = writeJsonToDownloads(context, fileName, json)
+                _uiState.update {
+                    it.copy(
+                        exportMessage = if (saved) "Exported to $fileName" else "Export failed"
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }
+        }
+    }
+
+    /**
+     * Write a JSON payload into the public Downloads directory.
+     *
+     * On Android 10+ (API 29+) this uses the MediaStore.Downloads API via
+     * ContentResolver.insert, which does not require any storage permissions.
+     * On older API levels it falls back to the legacy
+     * Environment.getExternalStoragePublicDirectory path (the WRITE_EXTERNAL_STORAGE
+     * permission must be declared in the manifest for those versions).
+     */
+    private fun writeJsonToDownloads(context: Context, fileName: String, json: String): Boolean {
+        val resolver = context.contentResolver
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            uri?.let {
+                resolver.openOutputStream(it)?.use { os ->
+                    os.write(json.toByteArray())
+                }
+            }
+            uri != null
+        } else {
+            @Suppress("DEPRECATION")
+            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloads, fileName)
+            file.writeText(json)
+            true
         }
     }
 
