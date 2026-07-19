@@ -8,6 +8,7 @@ import com.agenthub.app.data.model.AgentConfig
 import com.agenthub.app.provider.AgentEvent
 import com.agenthub.app.provider.AgentTransport
 import com.agenthub.app.provider.TransportFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,8 @@ data class CompareUiState(
     val isComparing: Boolean = false,
     val isAComplete: Boolean = false,
     val isBComplete: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isCancelled: Boolean = false
 )
 
 class CompareViewModel(application: Application) : AndroidViewModel(application) {
@@ -60,37 +62,49 @@ class CompareViewModel(application: Application) : AndroidViewModel(application)
                 isComparing = true,
                 isAComplete = false,
                 isBComplete = false,
-                error = null
+                error = null,
+                isCancelled = false
             )
         }
-        viewModelScope.launch { repository.logActivity("compare", "Starting compare between ${configA.name} and ${configB.name}") }
+        val sessionId = "compare_${System.currentTimeMillis()}"
+        viewModelScope.launch { repository.logActivity("compare", "Starting compare: ${configA.name} vs ${configB.name}") }
 
         viewModelScope.launch {
             try {
-                val transportA = TransportFactory.create(configA.type).also {
-                    _transportA.value = it
-                }
+                val transportA = TransportFactory.create(configA.type).also { _transportA.value = it }
                 transportA.connect(configA)
-                transportA.sendMessage("compare_session_a", prompt)
+                transportA.sendMessage("${sessionId}_a", prompt)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isAComplete = true, error = "Agent A error: ${e.message}") }
+                _transportA.value?.disconnect()
+                _transportA.value = null
+                _uiState.update { it.copy(isAComplete = true, error = "Agent A: ${e.message}") }
             }
         }
 
         viewModelScope.launch {
             try {
-                val transportB = TransportFactory.create(configB.type).also {
-                    _transportB.value = it
-                }
+                val transportB = TransportFactory.create(configB.type).also { _transportB.value = it }
                 transportB.connect(configB)
-                transportB.sendMessage("compare_session_b", prompt)
+                transportB.sendMessage("${sessionId}_b", prompt)
             } catch (e: Exception) {
-                _uiState.update { it.copy(isBComplete = true, error = "Agent B error: ${e.message}") }
+                _transportB.value?.disconnect()
+                _transportB.value = null
+                _uiState.update { it.copy(isBComplete = true, error = "Agent B: ${e.message}") }
+            }
+        }
+
+        // Timeout: cancel after 60 seconds if neither agent responded
+        viewModelScope.launch {
+            delay(60_000)
+            if (_uiState.value.isComparing && !_uiState.value.isAComplete && !_uiState.value.isBComplete) {
+                cancelCompare()
+                _uiState.update { it.copy(error = "Compare timed out (60s)") }
             }
         }
     }
 
     fun cancelCompare() {
+        _uiState.update { it.copy(isCancelled = true) }
         viewModelScope.launch { repository.logActivity("compare", "Compare cancelled") }
         _transportA.value?.disconnect()
         _transportB.value?.disconnect()
@@ -106,6 +120,7 @@ class CompareViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private suspend fun handleAgentAEvent(event: AgentEvent) {
+        if (_uiState.value.isCancelled) return
         when (event) {
             is AgentEvent.MessageReceived -> {
                 if (event.isDelta) {
@@ -128,6 +143,7 @@ class CompareViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private suspend fun handleAgentBEvent(event: AgentEvent) {
+        if (_uiState.value.isCancelled) return
         when (event) {
             is AgentEvent.MessageReceived -> {
                 if (event.isDelta) {
