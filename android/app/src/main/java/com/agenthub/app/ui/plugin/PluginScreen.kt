@@ -42,7 +42,7 @@ fun PluginScreen(
     }
     val executor = remember { PluginExecutor(context) }
     val scope = rememberCoroutineScope()
-    val plugins by pluginManager.plugins.collectAsStateWithLifecycle()
+    val plugins: List<Plugin> by pluginManager.plugins.collectAsStateWithLifecycle()
     var selectedPlugin by remember { mutableStateOf<Plugin?>(null) }
     var showDetailDialog by remember { mutableStateOf(false) }
     var runInput by remember { mutableStateOf("") }
