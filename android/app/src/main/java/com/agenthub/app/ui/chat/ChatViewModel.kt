@@ -189,9 +189,9 @@ class ChatViewModel @Inject constructor(
         val filter = IntentFilter(WidgetInputActivity.ACTION_WIDGET_SEND_MESSAGE)
         // Android 13+ 要求显式声明 RECEIVER_NOT_EXPORTED 以接收同应用广播
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            application.registerReceiver(widgetMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            getApplication<Application>().registerReceiver(widgetMessageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
-            application.registerReceiver(widgetMessageReceiver, filter)
+            getApplication<Application>().registerReceiver(widgetMessageReceiver, filter)
         }
     }
 
@@ -765,7 +765,7 @@ class ChatViewModel @Inject constructor(
                 simulateResponse()
             }
             // 刷新所有 Widget 实例，使其显示最新发送的消息
-            AgentHubWidget.updateAll(application)
+            AgentHubWidget.updateAll(getApplication())
         }
     }
 
@@ -967,7 +967,7 @@ class ChatViewModel @Inject constructor(
         super.onCleared()
         // Sprint 8: 注销 Widget 快捷输入广播接收器，避免内存泄漏
         try {
-            application.unregisterReceiver(widgetMessageReceiver)
+            getApplication<Application>().unregisterReceiver(widgetMessageReceiver)
         } catch (_: Exception) {
             // 接收器可能因异常路径未注册成功，忽略注销失败
         }

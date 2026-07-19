@@ -23,7 +23,7 @@ import com.agenthub.app.data.plugin.PluginExecutor
 import com.agenthub.app.data.plugin.PluginManager
 import com.agenthub.app.ui.theme.GlassCard
 import com.agenthub.app.ui.theme.GlassTopAppBar
-import dagger.hilt.EntryPointAccessors
+import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
