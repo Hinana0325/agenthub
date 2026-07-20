@@ -545,4 +545,44 @@
     <string name="shortcut_new_chat">New Chat</string>
     <string name="shortcut_new_agent">New Agent</string>
     <string name="shortcut_settings">Settings</string>
+
+    <!-- AgentsScreen form validation -->
+    <string name="error_name_required">Please enter a name</string>
+    <string name="error_server_url_required">Please enter a server address</string>
+    <string name="error_server_url_invalid_scheme">Address must start with http:// or https://</string>
+    <string name="error_api_key_too_short">API Key seems too short</string>
+
+    <!-- ChatViewModel messages -->
+    <string name="error_send_failed">Send failed: %1$s</string>
+    <string name="error_retry_failed">Retry failed: %1$s</string>
+    <string name="error_unknown">Unknown error</string>
+    <string name="chat_cleared">Chat cleared</string>
+    <string name="message_deleted">Message deleted</string>
+
+    <!-- SessionsScreen -->
+    <string name="cd_session_item">Session: %1$s, %2$d messages</string>
+    <string name="untitled_session">Untitled</string>
+
+    <!-- OpenAIHttpTransport -->
+    <string name="error_cannot_connect">Cannot connect to %1$s (please confirm the service is running and the address/port is correct)</string>
+
+    <!-- ErrorStateView -->
+    <string name="error_state_default_title">Something went wrong</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_welcome_title">Welcome to Agent Control Center</string>
+    <string name="onboarding_welcome_desc">Unified management of local and remote AI agents</string>
+    <string name="onboarding_devices_title">Multi-device collaboration</string>
+    <string name="onboarding_devices_desc">Cross-platform support for Android and iOS</string>
+    <string name="onboarding_security_title">Security and privacy</string>
+    <string name="onboarding_security_desc">API Keys encrypted via Android Keystore</string>
+    <string name="btn_get_started">Get started</string>
+    <string name="btn_next">Next</string>
+
+    <!-- Accessibility -->
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+
+    <!-- ChatScreen -->
+    <string name="cd_retry_send">Retry send</string>
 </resources>

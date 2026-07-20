@@ -529,10 +529,13 @@ private fun SwipeableSessionListItem(
         }
     )
 
+    val untitled = stringResource(R.string.untitled_session)
+    val sessionContentDescription = stringResource(R.string.cd_session_item, session.title.ifEmpty { untitled }, session.messageCount)
+
     SwipeToDismissBox(
         state = dismissState,
         modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "会话: ${session.title.ifEmpty { "未命名" }}, ${session.messageCount} 条消息"
+            contentDescription = sessionContentDescription
         },
         backgroundContent = {
             val direction = dismissState.dismissDirection
@@ -615,10 +618,13 @@ private fun SwipeableSessionCard(
         }
     )
 
+    val untitled = stringResource(R.string.untitled_session)
+    val sessionContentDescription = stringResource(R.string.cd_session_item, session.title.ifEmpty { untitled }, session.messageCount)
+
     SwipeToDismissBox(
         state = dismissState,
         modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "会话: ${session.title.ifEmpty { "未命名" }}, ${session.messageCount} 条消息"
+            contentDescription = sessionContentDescription
         },
         backgroundContent = {
             val direction = dismissState.dismissDirection

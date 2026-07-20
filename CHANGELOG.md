@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-07-20
+
+### Fixed — 国际化硬编码中文修复
+
+修复 9 个 .kt 文件中的硬编码中文字符串，迁移到 string resources。英文用户不再看到中文 UI 文本。
+
+- **ErrorStateView.kt**: "出错了" → `stringResource(R.string.error_state_default_title)`，"重试" → `stringResource(R.string.btn_retry)`
+- **OnboardingScreen.kt**: 9 处硬编码（欢迎标题/描述、多设备、安全隐私、跳过/开始使用/下一步）全部迁移
+- **AccessibilityModifiers.kt**: "已开启"/"已关闭" → `context.getString(R.string.state_on/state_off)`，新增 `context` 参数
+- **ChatScreen.kt**: "重试发送" → `stringResource(R.string.cd_retry_send)`
+- **AgentsScreen.kt**: 4 处表单验证提示迁移到 `stringResource`
+- **ChatViewModel.kt**: 5 处 lastAction/错误消息迁移到 `getApplication<Application>().getString(R.string.xxx)`
+- **SessionsScreen.kt**: 2 处无障碍 contentDescription 迁移，支持格式化占位符
+- **OpenAIHttpTransport.kt**: 连接错误消息迁移，通过 Hilt 注入 `@ApplicationContext context`
+- **TransportFactory.kt**: 传递 context 到 OpenAIHttpTransport
+
+新增 26 个 string resources（en + zh 各 13 个）。
+
+### Changed — SettingsScreen 拆分
+
+- **SettingsScreen.kt**: 从 1198 行缩减到 659 行（减少 45%），提取 4 个独立文件：
+  - `SettingsComponents.kt`（205 行）：`CategoryItem`、`SettingsHeader`、`SettingsItem`、`SettingsToggleItem`、`PerformanceMetricItem`
+  - `SettingsAppearance.kt`（112 行）：`ThemePickerDialog`、`FontSizePickerDialog`、`themeLabel`、`fontSizeLabel`
+  - `SettingsSecurity.kt`（208 行）：`E2EPasswordDialog`
+  - `SettingsAbout.kt`（173 行）：`VersionSettingsItem`、`UpdateCheckResult`、`UpdateCheckDialog`
+- 所有提取函数从 `private` 改为 `internal` 可见性
+
+### Changed
+
+- **版本号**: Android versionCode 33 → 34 / versionName 4.3.0 → 4.4.0；iOS 同步。
+
 ## [4.3.0] - 2026-07-20
 
 ### Added — UI 结构优化 + 功能增强

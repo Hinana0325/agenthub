@@ -33,6 +33,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.util.Base64
 import com.agentcontrolcenter.app.AgentControlCenterWidget
+import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.core.common.PerformanceMonitor
 import com.agentcontrolcenter.app.core.ui.VoiceInputManager
 import com.agentcontrolcenter.app.widget.WidgetInputActivity
@@ -425,13 +426,14 @@ class ChatViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     // 发送失败，更新状态为 Failed，供用户点击重试
+                    val app = getApplication<Application>()
                     _uiState.update { s ->
                         s.copy(
                             messages = s.messages.map {
                                 if (it.id == userMsg.id) it.copy(status = MessageStatus.Failed) else it
                             },
                             isStreaming = false,
-                            errorMessage = "发送失败：${e.message ?: "未知错误"}"
+                            errorMessage = app.getString(R.string.error_send_failed, e.message ?: app.getString(R.string.error_unknown))
                         )
                     }
                 }
@@ -487,12 +489,13 @@ class ChatViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 // 重试仍失败，置回 Failed 并提示错误
+                val app = getApplication<Application>()
                 _uiState.update { state ->
                     state.copy(
                         messages = state.messages.map {
                             if (it.id == messageId) it.copy(status = MessageStatus.Failed) else it
                         },
-                        errorMessage = "重试失败：${e.message ?: "未知错误"}"
+                        errorMessage = app.getString(R.string.error_retry_failed, e.message ?: app.getString(R.string.error_unknown))
                     )
                 }
             }
@@ -576,7 +579,7 @@ class ChatViewModel @Inject constructor(
             it.copy(
                 messages = emptyList(),
                 errorMessage = null,
-                lastAction = "聊天已清空"
+                lastAction = getApplication<Application>().getString(R.string.chat_cleared)
             )
         }
     }
@@ -684,7 +687,7 @@ class ChatViewModel @Inject constructor(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Agent Control Center Message", text)
         clipboard.setPrimaryClip(clip)
-        _uiState.update { it.copy(lastAction = "已复制到剪贴板") }
+        _uiState.update { it.copy(lastAction = getApplication<Application>().getString(R.string.copied_to_clipboard)) }
     }
 
     /**
@@ -696,7 +699,7 @@ class ChatViewModel @Inject constructor(
             _uiState.update { state ->
                 state.copy(
                     messages = state.messages.filter { it.id != messageId },
-                    lastAction = "消息已删除"
+                    lastAction = getApplication<Application>().getString(R.string.message_deleted)
                 )
             }
         }

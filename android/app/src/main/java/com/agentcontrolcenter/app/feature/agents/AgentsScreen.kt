@@ -493,7 +493,7 @@ private fun AgentFormDialog(
                     singleLine = true,
                     isError = isNameError,
                     supportingText = if (isNameError) {
-                        { Text("请输入名称") }
+                        { Text(stringResource(R.string.error_name_required)) }
                     } else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -508,8 +508,8 @@ private fun AgentFormDialog(
                     supportingText = if (isServerUrlError) {
                         {
                             Text(
-                                if (serverUrl.isBlank()) "请输入服务器地址"
-                                else "地址必须以 http:// 或 https:// 开头"
+                                if (serverUrl.isBlank()) stringResource(R.string.error_server_url_required)
+                                else stringResource(R.string.error_server_url_invalid_scheme)
                             )
                         }
                     } else null
@@ -524,7 +524,7 @@ private fun AgentFormDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     isError = isApiKeyError,
                     supportingText = if (isApiKeyError) {
-                        { Text("API Key 似乎太短了") }
+                        { Text(stringResource(R.string.error_api_key_too_short)) }
                     } else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))

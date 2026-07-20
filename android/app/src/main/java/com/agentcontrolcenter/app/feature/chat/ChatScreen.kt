@@ -976,7 +976,7 @@ fun MessageStatusIndicator(
                 if (onRetry != null) {
                     Icon(
                         Icons.Default.Refresh,
-                        contentDescription = "重试发送",
+                        contentDescription = stringResource(R.string.cd_retry_send),
                         modifier = Modifier
                             .size(14.dp)
                             .clickable { onRetry() },

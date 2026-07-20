@@ -29,9 +29,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.agentcontrolcenter.app.R
 import kotlinx.coroutines.launch
 
 /**
@@ -51,18 +53,18 @@ fun OnboardingScreen(
     val pages = listOf(
         OnboardingPage(
             icon = Icons.Default.Memory,
-            title = "欢迎来到 Agent Control Center",
-            description = "统一管理本地与远程 AI Agent，支持 Ollama、LM Studio、OpenAI 等多种后端，在手机上实现端侧 AI 推理与控制。"
+            title = stringResource(R.string.onboarding_welcome_title),
+            description = stringResource(R.string.onboarding_welcome_desc)
         ),
         OnboardingPage(
             icon = Icons.Default.Devices,
-            title = "多设备协同",
-            description = "跨平台支持 Android 与 iOS，连接本地推理服务，管理多个 Agent 会话，实时查看推理性能与硬件状态。"
+            title = stringResource(R.string.onboarding_devices_title),
+            description = stringResource(R.string.onboarding_devices_desc)
         ),
         OnboardingPage(
             icon = Icons.Default.Security,
-            title = "安全与隐私",
-            description = "API Key 通过 Android Keystore 硬件级加密存储，端到端加密通信，数据本地优先，完全掌控你的 AI。"
+            title = stringResource(R.string.onboarding_security_title),
+            description = stringResource(R.string.onboarding_security_desc)
         )
     )
 
@@ -82,7 +84,7 @@ fun OnboardingScreen(
                 contentAlignment = Alignment.TopEnd
             ) {
                 TextButton(onClick = onComplete) {
-                    Text("跳过")
+                    Text(stringResource(R.string.btn_skip))
                 }
             }
         } else {
@@ -128,7 +130,7 @@ fun OnboardingScreen(
             ) {
                 Icon(Icons.Default.Check, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("开始使用")
+                Text(stringResource(R.string.btn_get_started))
             }
         } else {
             Button(
@@ -140,7 +142,7 @@ fun OnboardingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large
             ) {
-                Text("下一步")
+                Text(stringResource(R.string.btn_next))
             }
         }
 

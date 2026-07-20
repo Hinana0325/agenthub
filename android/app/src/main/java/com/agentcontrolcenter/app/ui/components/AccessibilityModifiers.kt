@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import com.agentcontrolcenter.app.R
 
 /**
  * 无障碍语义辅助修饰符。
@@ -31,11 +32,12 @@ fun Modifier.accessibleButton(
 /** 为开关添加无障碍语义。 */
 fun Modifier.accessibleSwitch(
     label: String,
-    isOn: Boolean
+    isOn: Boolean,
+    context: android.content.Context
 ): Modifier = this.semantics {
     role = Role.Switch
     contentDescription = label
-    stateDescription = if (isOn) "已开启" else "已关闭"
+    stateDescription = context.getString(if (isOn) R.string.state_on else R.string.state_off)
 }
 
 /** 为图片添加无障碍语义。 */

@@ -1,9 +1,11 @@
 package com.agentcontrolcenter.app.transport
 
+import android.content.Context
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.transport.http.OpenAIHttpTransport
 import com.agentcontrolcenter.app.transport.protocol.AgentTransport
 import com.agentcontrolcenter.app.transport.websocket.WebSocketTransport
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,7 +19,9 @@ import javax.inject.Singleton
  * 便于测试时替换为 mock 实现。
  */
 @Singleton
-class TransportFactory @Inject constructor() {
+class TransportFactory @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
     fun create(type: AgentType): AgentTransport = when (type) {
         AgentType.Hermes,
         AgentType.OpenClaw,
@@ -25,6 +29,6 @@ class TransportFactory @Inject constructor() {
 
         AgentType.OpenAI,
         AgentType.XiaomiMiMo,
-        AgentType.LocalModel -> OpenAIHttpTransport()
+        AgentType.LocalModel -> OpenAIHttpTransport(context)
     }
 }

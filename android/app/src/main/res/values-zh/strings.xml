@@ -438,4 +438,44 @@
     <string name="shortcut_new_chat">新对话</string>
     <string name="shortcut_new_agent">新 Agent</string>
     <string name="shortcut_settings">设置</string>
+
+    <!-- AgentsScreen form validation -->
+    <string name="error_name_required">请输入名称</string>
+    <string name="error_server_url_required">请输入服务器地址</string>
+    <string name="error_server_url_invalid_scheme">地址必须以 http:// 或 https:// 开头</string>
+    <string name="error_api_key_too_short">API Key 似乎太短了</string>
+
+    <!-- ChatViewModel messages -->
+    <string name="error_send_failed">发送失败：%1$s</string>
+    <string name="error_retry_failed">重试失败：%1$s</string>
+    <string name="error_unknown">未知错误</string>
+    <string name="chat_cleared">聊天已清空</string>
+    <string name="message_deleted">消息已删除</string>
+
+    <!-- SessionsScreen -->
+    <string name="cd_session_item">会话: %1$s, %2$d 条消息</string>
+    <string name="untitled_session">未命名</string>
+
+    <!-- OpenAIHttpTransport -->
+    <string name="error_cannot_connect">无法连接到 %1$s（请确认服务已启动、地址与端口正确）</string>
+
+    <!-- ErrorStateView -->
+    <string name="error_state_default_title">出错了</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_welcome_title">欢迎来到 Agent Control Center</string>
+    <string name="onboarding_welcome_desc">统一管理本地与远程 AI Agent</string>
+    <string name="onboarding_devices_title">多设备协同</string>
+    <string name="onboarding_devices_desc">跨平台支持 Android 与 iOS</string>
+    <string name="onboarding_security_title">安全与隐私</string>
+    <string name="onboarding_security_desc">API Key 通过 Android Keystore 加密存储</string>
+    <string name="btn_get_started">开始使用</string>
+    <string name="btn_next">下一步</string>
+
+    <!-- Accessibility -->
+    <string name="state_on">已开启</string>
+    <string name="state_off">已关闭</string>
+
+    <!-- ChatScreen -->
+    <string name="cd_retry_send">重试发送</string>
 </resources>

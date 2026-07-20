@@ -1,6 +1,8 @@
 package com.agentcontrolcenter.app.transport.http
 
+import android.content.Context
 import android.util.Log
+import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -48,6 +50,7 @@ import com.agentcontrolcenter.app.transport.protocol.AgentTransport
  * - HTTP 传输无持久连接：`connect()` 仅记录配置并标记就绪；`disconnect()` 才置为离线。
  */
 class OpenAIHttpTransport(
+    private val context: Context,
     private val gson: Gson = Gson()
 ) : AgentTransport {
 
@@ -129,7 +132,7 @@ class OpenAIHttpTransport(
                 _events.send(AgentEvent.Connected(config.serverUrl, config.type))
             } else {
                 _connectionState.value = _connectionState.value.copy(isConnected = false)
-                _events.send(AgentEvent.Error("无法连接到 ${config.serverUrl}（请确认服务已启动、地址与端口正确）"))
+                _events.send(AgentEvent.Error(context.getString(R.string.error_cannot_connect, config.serverUrl)))
             }
         }
     }

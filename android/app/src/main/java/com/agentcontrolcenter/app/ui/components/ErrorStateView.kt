@@ -8,8 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.agentcontrolcenter.app.R
 
 /**
  * 统一错误状态视图。
@@ -17,7 +19,7 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun ErrorStateView(
-    title: String = "出错了",
+    title: String = stringResource(R.string.error_state_default_title),
     message: String,
     onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -54,7 +56,7 @@ fun ErrorStateView(
                 onClick = onRetry,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("重试")
+                Text(stringResource(R.string.btn_retry))
             }
         }
     }
