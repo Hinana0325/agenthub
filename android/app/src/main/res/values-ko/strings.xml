@@ -237,6 +237,8 @@
     <string name="device_sync_remove">기기 제거</string>
     <string name="device_sync_remove_title">기기를 제거하시겠습니까?</string>
     <string name="device_sync_remove_desc">「%s」을(를) 페어링된 기기에서 제거하시겠습니까?</string>
+    <string name="device_sync_dev_banner_title">개발 중인 기능</string>
+    <string name="device_sync_dev_banner_desc">기기 동기화 기능이 개발 중이며, 기기 검색 및 동기화가 아직 작동하지 않을 수 있습니다.</string>
 
     <!-- Collaboration -->
     <string name="collab_title">협업</string>
@@ -365,4 +367,72 @@
     <string name="a11y_agent_item">Agent: %s, %s</string>
     <string name="a11y_offline_banner">Agent에 연결되지 않음</string>
     <string name="a11y_empty_chat">메시지가 없습니다. 메시지를 보내 대화를 시작하세요.</string>
+
+    <!-- Navigation -->
+    <string name="nav_workflow">워크플로우</string>
+    <string name="nav_tasks">작업</string>
+    <string name="nav_mcp">MCP</string>
+
+    <!-- Workflow -->
+    <string name="workflow_title">워크플로우</string>
+    <string name="workflow_create">워크플로우 생성</string>
+    <string name="workflow_templates">템플릿</string>
+    <string name="workflow_run">실행</string>
+    <string name="workflow_output">출력</string>
+    <string name="workflow_input_label">입력</string>
+    <string name="workflow_description">설명</string>
+    <string name="workflow_template">템플릿</string>
+
+    <!-- Commands -->
+    <string name="cmd_clear">채팅 지우기</string>
+    <string name="cmd_new">새 채팅</string>
+    <string name="cmd_model">모델 전환</string>
+    <string name="cmd_theme">테마 변경</string>
+    <string name="cmd_export">데이터 내보내기</string>
+    <string name="cmd_search">메시지 검색</string>
+    <string name="cmd_reconnect">재연결</string>
+    <string name="cmd_help">도움말 표시</string>
+    <string name="cmd_compare">모델 비교</string>
+    <string name="cmd_palette_title">명령</string>
+
+    <!-- Voice -->
+    <string name="voice_mode">음성 모드</string>
+    <string name="voice_speaking">말하는 중…</string>
+    <string name="voice_waiting">입력 대기</string>
+    <string name="voice_tap_to_start">눌러서 말하기 시작</string>
+
+    <!-- Custom Theme -->
+    <string name="custom_theme_title">사용자 정의 테마</string>
+    <string name="custom_theme_enable">사용자 정의 테마 활성화</string>
+    <string name="custom_theme_enable_desc">사용자 정의 색상으로 기본 테마 덮어쓰기</string>
+    <string name="custom_theme_preview">미리보기</string>
+    <string name="custom_theme_primary_color">주색</string>
+    <string name="custom_theme_bg_color">배경색</string>
+    <string name="custom_theme_corner_radius">모서리 반경</string>
+    <string name="custom_theme_hex_input">16진수 색상</string>
+    <string name="custom_theme_radius_none">없음</string>
+    <string name="custom_theme_radius_round">둥글게</string>
+
+    <!-- Font sizes -->
+    <string name="font_xlarge">최대</string>
+
+    <!-- Offline banner -->
+    <string name="offline_banner_title">AI 서비스에 연결되지 않음</string>
+    <string name="offline_banner_subtitle">「Agents」에서 모델 엔드포인트를 추가하고 연결하세요</string>
+    <string name="offline_banner_action">연결하기</string>
+
+    <!-- MCP -->
+    <string name="mcp_title">MCP 서버</string>
+    <string name="mcp_add_server">서버 추가</string>
+    <string name="mcp_no_servers">MCP 서버가 없습니다</string>
+    <string name="mcp_connected">연결됨</string>
+    <string name="mcp_disconnected">연결 끊김</string>
+
+    <!-- Hardware -->
+    <string name="hardware_info_title">하드웨어 정보</string>
+    <string name="vendor_qualcomm">Qualcomm</string>
+    <string name="vendor_mediatek">MediaTek</string>
+    <string name="vendor_samsung">Samsung</string>
+    <string name="vendor_google">Google</string>
+    <string name="vendor_apple">Apple</string>
 </resources>

@@ -1,0 +1,56 @@
+# SwiftLint configuration for Agent Control Center iOS
+# https://github.com/realm/SwiftLint
+
+included:
+  - ios/AgentControlCenter
+
+excluded:
+  - ios/AgentControlCenterTests
+  - ios/AgentControlCenterUITests
+
+# Rules configuration
+line_length:
+  warning: 140
+  error: 200
+
+type_body_length:
+  warning: 400
+  error: 600
+
+function_body_length:
+  warning: 80
+  error: 120
+
+file_length:
+  warning: 600
+  error: 1000
+
+type_name:
+  min_length: 2
+  max_length: 50
+
+identifier_name:
+  min_length: 1
+  max_length: 50
+  allowed_symbols: ["_"]
+
+# Disabled rules (too noisy for SwiftUI/SwiftData codebase)
+disabled_rules:
+  - trailing_whitespace
+  - todo  # TODOs are useful for tracking
+  - multiple_closures_with_trailing_whitespace
+
+# Opt-in rules
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - operator_usage_whitespace
+  - sorted_first_last
+  - vertical_whitespace_closing_braces
+
+# Analyzer rules (slower but more thorough)
+analyzer_rules:
+  - explicit_self
+  - unused_import

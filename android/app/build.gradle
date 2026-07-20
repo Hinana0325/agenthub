@@ -3,6 +3,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'dagger.hilt.android.plugin'
+apply plugin: 'io.gitlab.arturbosch.detekt'
 
 android {
     namespace "com.agentcontrolcenter.app"
@@ -118,6 +119,18 @@ android {
     packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+
+    // Detekt configuration
+    detekt {
+        config = files("${rootProject.projectDir}/config/detekt.yml")
+        buildUponDefaultConfig = true
+        parallel = true
+        reports {
+            html.required.set(true)
+            xml.required.set(false)
+            txt.required.set(false)
         }
     }
 }

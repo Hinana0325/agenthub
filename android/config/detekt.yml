@@ -1,0 +1,47 @@
+# Detekt configuration for Agent Control Center
+# https://detekt.dev/docs/introduction
+
+complexity:
+  active: true
+  LongMethod:
+    threshold: 80
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  ComplexCondition:
+    threshold: 5
+  CyclomaticComplexMethod:
+    threshold: 20
+  TooManyFunctions:
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+  LargeClass:
+    threshold: 200
+
+style:
+  active: true
+  WildcardImport:
+    active: false  # Compose heavily uses wildcard imports
+  ReturnCount:
+    active: false  # Early returns are idiomatic in Kotlin
+  MagicNumber:
+    active: false  # Too noisy for UI code
+  ForbiddenComment:
+    active: false  # TODO/FIXME are useful for tracking
+
+naming:
+  active: true
+  FunctionNaming:
+    functionPattern: '([a-z][a-zA-Z0-9]*)|(`.*`)'
+  VariableNaming:
+    variablePattern: '([a-z][a-zA-Z0-9]*)|(`.*`)'
+
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: false  # Overrides often need empty bodies
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: false  # Some intentional catch-all in transport layer

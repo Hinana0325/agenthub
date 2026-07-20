@@ -1,0 +1,56 @@
+# Obfuscation dictionary for R8
+# Replaces class/method names with these tokens to make decompiled
+# output harder to read. Not a security measure on its own, but raises
+# the cost of reverse engineering.
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+aa
+ab
+ac
+ad
+ae
+af
+ag
+ah
+ai
+aj
+ak
+al
+am
+an
+ao
+ap
+aq
+ar
+as
+at
+au
+av
+aw
+ax
+ay
+az

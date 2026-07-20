@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-07-20
+
+### Security
+
+- **MCP 数据加密**: `McpViewModel` 的服务器列表（含 URL 等敏感配置）现在通过 `KeystoreManager.encrypt()` AES-256-GCM 加密后存储到 SharedPreferences，`loadInitialState()` 使用 `decryptOrRaw()` 兼容旧版明文数据。
+- **Widget 数据加密**: `WidgetDataProvider` 的 `KEY_PENDING_INPUT`（用户输入）和 `KEY_AGENT_NAME`（Agent 名称）现在通过 KeystoreManager 加密存储，`consumePendingInput()` 和 `getAgentName()` 使用 `decryptOrRaw()` 兼容旧版明文数据。
+- **ProGuard 强化**: 新增 `-allowaccessmodification`、`-repackageclasses ''`、`-obfuscationdictionary` 等混淆强化规则，配合 `obfdict.txt` 词典文件，提升反编译难度。
+
+### Added
+
+- **Detekt 静态分析**: Android 项目集成 detekt 1.23.7（build.gradle classpath + plugin + config），配置文件 `config/detekt.yml` 针对项目特点定制规则（放宽 wildcard import、magic number 等噪声规则）。
+- **SwiftLint 配置**: 新增 `.swiftlint.yml`，配置 line_length、type_body_length 等规则阈值，启用 `empty_count`、`unused_import` 等 opt-in 规则。
+- **iOS BGTaskScheduler 注册**: `AgentControlCenterApp.swift` 新增 `registerBackgroundTasks()` 方法，注册 `app.refresh` 和 `app.processing` 两个后台任务，使 Info.plist 中的 `BGTaskSchedulerPermittedIdentifiers` 声明实际生效。
+- **韩文翻译补齐**: `values-ko/strings.xml` 新增 60+ 条缺失翻译（导航、工作流、命令、语音、自定义主题、MCP、硬件信息等）。
+
+### Changed
+
+- **版本号**: Android versionCode 25 → 26 / versionName 2.7.0 → 2.8.0；iOS 同步。
+
 ## [2.7.0] - 2026-07-20
 
 ### Added

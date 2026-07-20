@@ -4,6 +4,16 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
+# === Obfuscation hardening ===
+# Allow R8 to modify access modifiers for better obfuscation
+-allowaccessmodification
+# Repackage all non-kept classes into a single package
+-repackageclasses ''
+# Use obfuscation dictionary to make decompiled output harder to read
+-obfuscationdictionary obfdict.txt
+-classobfuscationdictionary obfdict.txt
+-packageobfuscationdictionary obfdict.txt
+
 # === Suppress warnings ===
 -dontwarn android.webkit.**
 

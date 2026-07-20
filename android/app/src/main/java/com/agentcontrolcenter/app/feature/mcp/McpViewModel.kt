@@ -8,6 +8,7 @@ import com.agentcontrolcenter.app.mcp.model.McpServer
 import com.agentcontrolcenter.app.mcp.model.McpServerCapabilities
 import com.agentcontrolcenter.app.mcp.model.McpTransportType
 import com.agentcontrolcenter.app.mcp.registry.McpRegistry
+import com.agentcontrolcenter.app.core.security.KeystoreManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -216,27 +217,32 @@ class McpViewModel @Inject constructor(
     // ── Persistence ──
 
     /**
-     * 将 servers 列表 JSON 编码后写入 SharedPreferences。
+     * 将 servers 列表 JSON 编码后加密并写入 SharedPreferences。
+     * 使用 KeystoreManager AES-256-GCM 加密，保护服务器 URL 等敏感配置。
      */
     private fun copyAndPersist(state: McpUiState): McpUiState {
         val json = gson.toJson(state.servers)
-        prefs.edit().putString(MCP_SERVERS_KEY, json).apply()
+        val encrypted = KeystoreManager.encrypt(json)
+        prefs.edit().putString(MCP_SERVERS_KEY, encrypted).apply()
         return state
     }
 
     /**
      * 从 SharedPreferences 加载已保存的 servers 列表。
+     * 使用 KeystoreManager.decryptOrRaw 解密，兼容旧版明文存储。
      *
      * 注意：Gson 对没有无参构造函数的 Kotlin data class 会使用 Unsafe 分配，
      * 这会让带默认值的字段（transportType / capabilities）变为 null。
      * 这里在反序列化后显式恢复 Kotlin 默认值，保证非空契约。
      */
     private fun loadInitialState(): McpUiState {
-        val json = prefs.getString(MCP_SERVERS_KEY, null) ?: return McpUiState()
+        val raw = prefs.getString(MCP_SERVERS_KEY, null) ?: return McpUiState()
+        // decryptOrRaw 兼容旧版明文数据（无 AKS: 前缀时直接返回原文）
+        val json = KeystoreManager.decryptOrRaw(raw)
         return try {
             val type = object : TypeToken<List<McpServer>>() {}.type
-            val raw: List<McpServer>? = gson.fromJson(json, type)
-            val servers = raw?.map { server ->
+            val rawList: List<McpServer>? = gson.fromJson(json, type)
+            val servers = rawList?.map { server ->
                 server.copy(
                     transportType = server.transportType ?: McpTransportType.SSE,
                     capabilities = server.capabilities ?: McpServerCapabilities()
