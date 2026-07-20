@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agenthub.dev/protocol/schemas/plugin-schema.json",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/plugin-schema.json",
   "title": "Agent Control Center Plugin Schema",
   "description": "插件协议永久统一契约。基于 Android (Kotlin) 实际实现，Android (Kotlin) 与 iOS (Swift) 共享此定义。Plugin 描述一个可由用户触发的快捷动作，其 action 决定执行方式（HTTP 调用、Android Intent 广播、工作流提示词）。所有模板字段支持 {query} 占位符，运行时被用户输入替换。",
   "type": "object",
@@ -55,7 +55,7 @@
         "type": { "type": "string", "const": "broadcast" },
         "action": {
           "type": "string",
-          "description": "Android Intent action 字符串，如 'com.agenthub.action.SEARCH'"
+          "description": "Android Intent action 字符串，如 'com.agentcontrolcenter.action.SEARCH'"
         },
         "extras": {
           "$ref": "#/definitions/StringMap",

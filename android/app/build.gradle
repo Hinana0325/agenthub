@@ -5,7 +5,7 @@ apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'dagger.hilt.android.plugin'
 
 android {
-    namespace "com.agenthub.app"
+    namespace "com.agentcontrolcenter.app"
     compileSdk rootProject.ext.compileSdkVersion
     buildToolsVersion '36.0.0'
 
@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.agenthub.app"
+        applicationId "com.agentcontrolcenter.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 18
@@ -40,11 +40,11 @@ android {
         //   2. 环境变量 KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD（CI）
         //   3. 都没有 → release 回退到 debug 签名（见 buildTypes.release）
         release {
-            def keystoreFile = rootProject.file('agenthub.keystore')
+            def keystoreFile = rootProject.file('agentcontrolcenter.keystore')
             def propsFile = rootProject.file('keystore.properties')
 
             def storePass = System.getenv('KEYSTORE_PASSWORD')
-            def keyAlias = System.getenv('KEY_ALIAS') ?: 'agenthub'
+            def keyAlias = System.getenv('KEY_ALIAS') ?: 'agentcontrolcenter'
             def keyPass = System.getenv('KEY_PASSWORD')
 
             // 本地开发：从 keystore.properties 读取

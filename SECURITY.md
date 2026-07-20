@@ -1,59 +1,238 @@
-# Security Policy
+# 安全策略 · Agent Control Center
 
-## Supported Versions
+本文件描述 Agent Control Center（双原生：Android Kotlin + iOS Swift）的安全机制、漏洞报告流程与已知限制。加密方案的完整契约见 [`protocol/transport/auth.md`](protocol/transport/auth.md)。
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.0.x   | ✅ Active support  |
-| 1.0.x   | ❌ End of life     |
+---
 
-## Reporting a Vulnerability
+## 1. 支持版本
 
-If you discover a security vulnerability, please report it responsibly:
-
-1. **Do NOT** open a public GitHub issue
-2. Email the maintainer directly or use GitHub's private vulnerability reporting
-3. Include:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
-
-## Response Timeline
-
-- **Acknowledgment**: within 48 hours
-- **Initial assessment**: within 1 week
-- **Fix release**: depends on severity
-
-## Security Features
-
-### Data-at-Rest Protection
-- **Android Keystore (AES-256-GCM)**: API keys (`apiKey`) and E2E encryption keys (`e2eKey`) are encrypted using hardware-backed keys stored in the Android Keystore. Keys never leave the secure hardware (TEE/StrongBox).
-- **Room Database**: Session and message data are stored locally. Sensitive fields (API keys) are encrypted before persistence.
-- **Migration**: Legacy plaintext data is automatically re-encrypted on first read (`decryptOrRaw` pattern).
-
-### Data-in-Transit Protection
-- **TLS by default**: All network connections require HTTPS. Cleartext HTTP is only permitted for local model endpoints (`127.0.0.1`, `10.0.2.2`, `192.168.*`).
-- **E2E Encryption (AES-256-GCM)**: Message content can be end-to-end encrypted between AgentHub instances using PBKDF2-derived keys with random salt/IV per message.
-- **WebSocket + HTTP/SSE**: Transport layer supports both WebSocket and HTTP with Server-Sent Events for real-time streaming.
-
-### Application Security
-- **XSS protection**: `escapeHtml()` on all user-generated content
-- **Protocol filtering**: blocks `javascript:`, `data:`, `vbscript:` URIs
-- **No CSP violations**: pure local storage, no external data leaks
-- **Network security config**: Restricts cleartext traffic, trusts only system CA certificates in release builds
-
-### Permissions
-| Permission | Purpose |
+| 版本 | 状态 |
 |:---|:---|
-| `INTERNET` | Network access for agent connections |
-| `POST_NOTIFICATIONS` | Chat messages and connection status |
-| `FOREGROUND_SERVICE` | Maintain persistent agent connections |
-| `RECORD_AUDIO` | Voice input / voice chat mode |
-| `READ_MEDIA_IMAGES` | Attach images to messages |
-| `REQUEST_INSTALL_PACKAGES` | Self-update via GitHub Releases (optional) |
+| 2.x.x | 主动维护 |
+| 1.x.x | 已停止支持（EOL） |
 
-### Known Limitations
-- `usesCleartextTraffic` is fully controlled via `network_security_config.xml` (default: denied)
-- `REQUEST_INSTALL_PACKAGES` is only needed for self-update; remove if distributing via app stores
-- User CA certificates are only trusted in debug builds for development/testing
+---
+
+## 2. 漏洞报告
+
+若发现安全漏洞，请负责任地披露：
+
+1. **切勿**公开提交 GitHub Issue
+2. 通过 GitHub 私密漏洞报告渠道或直接邮件联系维护者
+3. 报告内容应包含：
+   - 漏洞描述
+   - 复现步骤
+   - 潜在影响
+   - 修复建议（如有）
+
+### 响应时限
+
+- **确认收到**：48 小时内
+- **初步评估**：1 周内
+- **修复发布**：视严重程度而定
+
+---
+
+## 3. 加密体系总览
+
+Agent Control Center 采用两套独立加密体系，二者前缀、密钥来源、使用场景均不同，双端格式严格一致：
+
+| 维度 | 静态凭据存储 | E2E 传输加密 |
+|:---|:---|:---|
+| 密文前缀 | `AKS:` | `AH1:` |
+| 算法 | AES-256-GCM | AES-256-GCM |
+| 密钥来源 | 硬件密钥库生成，设备绑定 | passphrase 经 PBKDF2 派生 |
+| 密钥派生 | 无（直接使用硬件密钥） | PBKDF2WithHmacSHA256，600000 迭代 |
+| 密文结构 | `IV ‖ ciphertext` | `IV ‖ salt ‖ ciphertext` |
+| 硬件 backed | 是（TEE/StrongBox/Secure Enclave） | 否（纯软件） |
+| 使用场景 | 本地存储 / 读取 apiKey | WebSocket 消息内容加密 |
+| 跨设备 | 不可（密钥绑定设备） | 可（只要 passphrase 相同） |
+
+---
+
+## 4. 静态数据保护（Data-at-Rest）
+
+### 4.1 `AKS:` 加密格式
+
+API Key 等敏感凭据在本地持久化时使用统一的 `AKS:` 前缀格式：
+
+```
+AKS:<Base64(IV[12] ‖ ciphertext)>
+```
+
+- **前缀**：固定字符串 `AKS:`，标识 Agent Control Center Keystore 加密方案
+- **IV**：12 字节初始化向量，每次加密随机生成
+- **ciphertext**：AES-256-GCM 密文（含 16 字节 GCM 认证标签）
+- **无 passphrase**：主密钥由硬件密钥库保护，无需用户输入密码派生
+
+### 4.2 Android 实现（KeystoreManager）
+
+- **密钥库**：AndroidKeyStore
+- **密钥别名**：`agentcontrolcenter_master_key`
+- **硬件支持**：硬件 backed（TEE / StrongBox，设备支持时自动启用）
+- **算法**：`Cipher.getInstance("AES/GCM/NoPadding")`
+- **密钥不可导出**：通过 `KeyGenerator` 在 AndroidKeyStore 中生成 AES-256 密钥，绑定设备
+
+### 4.3 iOS 实现（KeychainManager）
+
+- **密钥库**：iOS Keychain
+- **密钥标签**：`com.agentcontrolcenter.app.master-key`
+- **访问控制**：`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`，绑定设备
+- **算法**：CryptoKit `AES.GCM`（`AES.GCM.seal` / `AES.GCM.open`）
+- **密钥生成**：`SymmetricKey(size: .bits256)`，存储于 Keychain
+
+### 4.4 decryptOrRaw 向后兼容
+
+统一的解密入口 `decryptOrRaw(value)` 处理三种情形：
+
+| 输入情形 | 判定条件 | 返回值 |
+|:---|:---|:---|
+| 已加密且解密成功 | 前缀为 `AKS:` 且 GCM 认证通过 | 解密后的明文 |
+| 已加密但解密失败 | 前缀为 `AKS:` 但认证失败或密钥不存在 | 空字符串 `""` |
+| 未加密（明文，旧版兼容） | 无 `AKS:` 前缀 | 原始输入值 |
+
+> 设计要点：解密失败时返回空串而非抛异常或回退原文，避免将密文误当明文使用导致鉴权失败难以定位。
+
+### 4.5 数据库加密
+
+- **Android**：Room 数据库存储会话与消息，敏感字段（apiKey）在写入前经 `AKS:` 加密
+- **iOS**：SwiftData 存储 5 个实体，敏感字段同样经 `AKS:` 加密后持久化
+- **迁移**：旧版明文数据在首次读取时通过 `decryptOrRaw` 自动识别并保留，后续写入时自动转为加密格式
+
+---
+
+## 5. 传输数据保护（Data-in-Transit）
+
+### 5.1 TLS 强制
+
+- 所有网络连接默认要求 HTTPS
+- 明文 HTTP 仅允许用于本地模型端点（`127.0.0.1`、`10.0.2.2`、`192.168.*`）
+- **Android**：通过 `network_security_config.xml` 控制，Release 构建仅信任系统 CA
+- **iOS**：App Transport Security（ATS）允许任意加载（本地 Agent 连接需要），生产环境建议收紧
+
+### 5.2 `AH1:` E2E 加密格式
+
+WebSocket 等 P2P / 中继传输场景下的消息内容端到端加密：
+
+```
+AH1:<Base64(IV[12] ‖ salt[16] ‖ ciphertext)>
+```
+
+- **前缀**：固定字符串 `AH1:`，标识 Agent Control Center E2E 加密方案版本 1
+- **IV**：12 字节，每消息随机生成
+- **salt**：16 字节，每消息随机生成
+- **ciphertext**：AES-256-GCM 密文（含 16 字节 GCM 认证标签）
+
+### 5.3 加密参数
+
+| 参数 | 值 |
+|:---|:---|
+| 算法 | AES-256-GCM |
+| 密钥派生 | PBKDF2WithHmacSHA256 |
+| 迭代次数 | 600000（OWASP 2023 推荐） |
+| 盐长度 | 16 字节 |
+| IV 长度 | 12 字节 |
+| 密钥长度 | 256 位（32 字节） |
+| 认证标签 | GCM 内置，16 字节 |
+
+### 5.4 双端实现映射
+
+| 维度 | Android（Kotlin） | iOS（Swift） |
+|:---|:---|:---|
+| 凭据密钥库 | AndroidKeyStore | Keychain |
+| 凭据加密算法 | `AES/GCM/NoPadding` | CryptoKit `AES.GCM` |
+| E2E 密钥派生 | `SecretKeyFactory` PBKDF2 | `HKDF<SHA256>` / `CCKeyDerivationPBKDF` |
+| 硬件 backed | TEE / StrongBox | Secure Enclave（设备支持时） |
+
+### 5.5 使用约束
+
+- **双端共享 passphrase**：通信双方必须使用相同的 `e2eKey`，否则解密失败
+- **每消息独立 salt/IV**：保证语义安全，IV 不可复用
+- **应用场景**：仅用于 WebSocket 传输的消息 `content` 字段加密；HTTP/SSE 依赖 TLS，不使用 `AH1:`
+- **传输层支持**：WebSocket（鉴权帧 + 自动重连）与 HTTP + SSE（流式）
+
+---
+
+## 6. 应用安全
+
+| 维度 | 说明 |
+|:---|:---|
+| XSS 防护 | 所有用户生成内容经 `escapeHtml()` 处理 |
+| 协议过滤 | 阻断 `javascript:`、`data:`、`vbscript:` URI |
+| 无 CSP 违规 | 纯本地存储，无外部数据泄露 |
+| 网络配置 | Android 限制明文流量，Release 仅信任系统 CA |
+| 日志脱敏 | 任何日志不得包含 apiKey 明文、`AH1:` 密文、passphrase；`Authorization` 头与 WebSocket auth 帧必须脱敏 |
+| 内存最小化 | 解密后的明文 apiKey 仅在发送请求时短暂驻留，不长期保存在内存 |
+
+---
+
+## 7. 权限
+
+### Android
+
+| 权限 | 用途 |
+|:---|:---|
+| `INTERNET` | Agent 连接的网络访问 |
+| `POST_NOTIFICATIONS` | 聊天消息与连接状态通知 |
+| `FOREGROUND_SERVICE` | 维持持久 Agent 连接 |
+| `RECORD_AUDIO` | 语音输入 / 语音对话模式 |
+| `READ_MEDIA_IMAGES` | 附加图片到消息 |
+| `REQUEST_INSTALL_PACKAGES` | 通过 GitHub Releases 自更新（可选） |
+
+### iOS
+
+| 权限 | 用途 |
+|:---|:---|
+| 网络访问 | Info.plist `NSAppTransportSecurity`（本地 Agent 需要） |
+| 后台模式 | `fetch` / `remote-notification` / `processing`，与 Android 对齐 |
+| 麦克风 | 语音输入（运行时申请） |
+| 照片库 | 附加图片到消息（运行时申请） |
+| APNs | 远程推送通知 |
+
+---
+
+## 8. 已知限制
+
+- `usesCleartextTraffic` 由 `network_security_config.xml` 完全控制（默认拒绝）；iOS 通过 ATS 控制
+- `REQUEST_INSTALL_PACKAGES` 仅自更新需要，通过应用商店分发时可移除
+- 用户 CA 证书仅在 Debug 构建中受信任，用于开发与测试
+- `AKS:` 密文绑定设备硬件，迁移至新设备时需用户重新输入 apiKey 重新加密存储
+- E2E 加密的 passphrase 应具有足够熵；PBKDF2 600000 迭代提供较强抗暴力破解能力，但弱 passphrase 仍是风险
+- GCM 认证失败时必须丢弃数据，不得返回部分解密结果
+
+---
+
+## 9. 密钥生命周期
+
+### apiKey 生命周期
+
+```
+[用户输入明文 apiKey]
+        ↓
+[KeystoreManager / KeychainManager.encrypt] → 本地存储 (AKS: 密文)
+        ↓
+[读取时] decryptOrRaw(storedValue) → 明文 apiKey
+        ↓
+[注入传输层] HTTP Header / WebSocket auth 帧 / MCP Header
+```
+
+### e2eKey（passphrase）生命周期
+
+```
+[用户配置 e2eKey]
+        ↓
+[本地存储] (建议同样经 AKS: 加密，传输时不带前缀)
+        ↓
+[发送消息] CryptoManager.encrypt(content, e2eKey) → AH1: 密文
+        ↓
+[接收消息] CryptoManager.decrypt(AH1: 密文, e2eKey) → 明文 content
+```
+
+---
+
+## 10. 变更记录
+
+| 版本 | 日期 | 变更说明 |
+|:---|:---|:---|
+| 1.0 | 2026-07-19 | 初始版本，从 Android 实现抽取并固化为双端契约 |
+| 1.1 | 2026-07-20 | 补充 iOS Keychain / CryptoKit 实现，明确双端加密映射 |

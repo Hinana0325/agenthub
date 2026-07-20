@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-07-20
+
+### Changed
+
+- **项目重命名**: 正式更名为 Agent Control Center，覆盖仓库名、应用显示名、文档与各处引用，清理旧项目名残留。
+- **包名迁移**: `com.agenthub.app` → `com.agentcontrolcenter.app`，同步更新 `AndroidManifest.xml`、`build.gradle`、ProGuard 规则及全部 import 路径。
+- **签名 keystore**: 启用全新 release 签名 keystore，旧 keystore 废弃；后续所有正式构建统一使用新签名。
+
+### Added
+
+- **iOS 项目骨架**: 完成 iOS 端 Swift + SwiftUI 项目骨架，与 Android 端共享协议层定义，双端并行开发正式启动。
+- **XcodeGen 配置**: 新增 `project.yml`，通过 XcodeGen 生成 Xcode 工程，避免手写 `.pbxproj` 造成的合并冲突。
+
+### Removed
+
+- 旧项目名相关残留引用（仓库元数据、文档标题、字符串资源等）。
+
+---
+
 ## [2.1.1] - 2026-07-19
 
 ### Fixed (Code Review Hotfix)
@@ -68,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **sendMessage()**: Indentation fix in ChatViewModel
 
 ### Changed
-- **ProGuard**: Removed blanket `-keep class com.agenthub.app.** { *; }` rule, replaced with targeted rules
+- **ProGuard**: Removed blanket `-keep class com.agentcontrolcenter.app.** { *; }` rule, replaced with targeted rules
 - **Room**: Version 6→7 (replyToId migration)
 
 ---
@@ -121,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Message duplication** in ChatViewModel (handleAgentEvent + simulateResponse)
 - **Tablet voice/attachment** callbacks missing in TabletChatLayout
 - **URL normalization** breaking HTTP endpoints (ws:// now only for WebSocket agents)
-- **Search overlay** overlapping with AgentHub title (wrapped in Box)
+- **Search overlay** overlapping with Agent Control Center title (wrapped in Box)
 - **ChatTopBar** streaming text overlapping with title (restructured layout)
 - **OfflineBanner** layout shift (added AnimatedVisibility)
 - **Inner Scaffold** double-padding (contentWindowInsets = WindowInsets(0))

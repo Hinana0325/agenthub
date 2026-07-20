@@ -9,7 +9,7 @@
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/AppTheme"
-        android:name=".AgentHubApplication"
+        android:name=".AgentControlCenterApplication"
         android:enableOnBackInvokedCallback="true">
 
         <activity
@@ -50,7 +50,7 @@
 
         <!--
             Sprint 8: Widget 快捷输入弹窗
-            由 AgentHubWidget.onUpdate 中 widget_input 的 PendingIntent 拉起。
+            由 AgentControlCenterWidget.onUpdate 中 widget_input 的 PendingIntent 拉起。
             采用对话框主题、不入最近任务栈、不保留历史，营造快速弹窗体验。
         -->
         <activity
@@ -68,26 +68,26 @@
 
         <!-- App Widget -->
         <receiver
-            android:name=".AgentHubWidget"
+            android:name=".AgentControlCenterWidget"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/agent_hub_widget_info" />
+                android:resource="@xml/agent_control_center_widget_info" />
         </receiver>
 
         <!--
             Widget 语音按钮接收器：处理 Widget 上的语音按钮点击。
-            Critical 2 修复：此前该类已实现（见 AgentHubWidget.kt）但未在
+            Critical 2 修复：此前该类已实现（见 AgentControlCenterWidget.kt）但未在
             Manifest 注册，导致 Widget 语音按钮点击无反应。
         -->
         <receiver
             android:name=".WidgetVoiceReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.agenthub.app.WIDGET_VOICE" />
+                <action android:name="com.agentcontrolcenter.app.WIDGET_VOICE" />
             </intent-filter>
         </receiver>
 

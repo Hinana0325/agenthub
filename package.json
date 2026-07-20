@@ -1,5 +1,5 @@
 {
-  "name": "agenthub",
+  "name": "agent-control-center",
   "version": "1.0.0",
   "description": "Multi-Agent mobile controller for AI agents (Hermes / OpenAI-compatible / Local Models) — Android (Kotlin + Jetpack Compose)",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Hinana0325/agenthub"
+    "url": "https://github.com/Hinana0325/Agent-Control-Center"
   },
   "keywords": [
     "ai-agent",

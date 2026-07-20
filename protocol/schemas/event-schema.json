@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agenthub.dev/protocol/schemas/event-schema.json",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/event-schema.json",
   "title": "Agent Control Center Event Schema",
   "description": "事件模型永久统一契约。对应 Android (Kotlin) 的 AgentEvent sealed class 与 AgentConnectionState 数据类。Android (Kotlin) 与 iOS (Swift) 共享此定义。AgentEvent 是以 type 字段为判别符的标签联合 (discriminated union)，描述传输层与 Agent 交互过程中产生的所有事件。",
   "type": "object",

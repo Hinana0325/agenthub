@@ -3,8 +3,8 @@
     <!-- App -->
     <string name="app_name">Agent Control Center</string>
     <string name="title_activity_main">Agent Control Center</string>
-    <string name="package_name">com.agenthub.app</string>
-    <string name="custom_url_scheme">com.agenthub.app</string>
+    <string name="package_name">com.agentcontrolcenter.app</string>
+    <string name="custom_url_scheme">com.agentcontrolcenter.app</string>
 
     <!-- Navigation / Tabs -->
     <string name="nav_chat">채팅</string>

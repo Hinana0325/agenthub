@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 // MARK: - McpBridge
-// 对应 Android com.agenthub.app.mcp.bridge.McpBridge
+// 对应 Android com.agentcontrolcenter.app.mcp.bridge.McpBridge
 
 /// MCP 桥接层 — Agent 工具调用与 MCP Server 之间的协调器。
 ///

@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 // MARK: - McpRegistry
-// 对应 Android com.agenthub.app.mcp.registry.McpRegistry
+// 对应 Android com.agentcontrolcenter.app.mcp.registry.McpRegistry
 
 /// MCP Server 注册表 — 管理已连接的 MCP Server 及其提供的工具。
 ///

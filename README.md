@@ -1,174 +1,178 @@
-# AgentHub v2.1.0
+# Agent Control Center v2.1.3
 
-**Multi-Agent 移动端远程控制应用** —— 用 Kotlin + Jetpack Compose 原生开发，连接并远程操控多种 AI Agent（Hermes / OpenCode / OpenAI 兼容 / 本地模型）。
+**双原生多 Agent 移动端控制中心** —— Android（Kotlin + Jetpack Compose）与 iOS（Swift + SwiftUI）双原生实现，共享永久统一协议层，连接并远程操控多种 AI Agent（Hermes / OpenCode / OpenAI 兼容 / 本地模型）。
 
-> ⚠️ 项目已重构：早期基于 PWA + Capacitor 的 Web 实现已废弃，当前仓库为纯 Android 原生应用。
-> 旧版说明见 [`docs/legacy-pwa.md`](docs/legacy-pwa.md)。
+> 项目已从早期 PWA + Capacitor 架构完全重构为双原生应用。旧版说明见 [`docs/legacy-pwa.md`](docs/legacy-pwa.md)。
 
 ---
 
+## 架构总览
+
+```
+┌─────────────────────────────────────────────────┐
+│                  Protocol Layer                  │
+│  10 JSON Schema + 4 Transport Protocol (共享)    │
+│  android/ ←  ios/  ←  protocol/ (单一事实来源)   │
+├────────────────────┬────────────────────────────┤
+│   Android (Kotlin)  │      iOS (Swift)           │
+│   Jetpack Compose   │      SwiftUI               │
+│   Hilt + Coroutines │      @Observable + async   │
+│   Room + DataStore  │      SwiftData + Keychain  │
+│   Ktor + OkHttp     │      URLSession + WS Task  │
+│   Android Keystore  │      CryptoKit             │
+└────────────────────┴────────────────────────────┘
+```
+
 ## 技术栈
 
-| 层 | 选型 |
+| 层 | Android | iOS |
+|:---|:---|:---|
+| 语言 | Kotlin 2.2.0 | Swift 5.9+ |
+| UI | Jetpack Compose (Material 3) | SwiftUI |
+| 架构 | MVVM + StateFlow | MVVM + @Observable |
+| 异步 | Coroutines + Flow | async/await + AsyncStream |
+| 网络 | Ktor (HTTP/SSE/WS) | URLSession + WebSocketTask |
+| 持久化 | Room + DataStore | SwiftData + UserDefaults |
+| 加密 | Android Keystore (AES-256-GCM) | CryptoKit (AES-256-GCM) |
+| DI | Hilt | 手动构造注入 |
+| 最低版本 | minSdk 24 | iOS 17.0 |
+
+## 协议层（双端共享）
+
+| 模块 | 文件 |
 |:---|:---|
-| 语言 / UI | **Kotlin 2.2.0** + **Jetpack Compose**（Material 3） |
-| 架构 | MVVM（`AndroidViewModel` + `StateFlow`）+ 单向数据流 |
-| 网络 | **Ktor**（WebSocket / HTTP + SSE） |
-| 持久化 | **Room**（会话 / 消息 / 配置 / 活动）+ **DataStore**（设置） |
-| 依赖注入 | **Hilt**（`@HiltAndroidApp`、`@HiltViewModel`、`@Inject`） |
-| 测试 | 14 个单元测试文件，75+ 测试用例（`src/test/`） |
-| 构建 | Gradle Kotlin DSL（`gradlew`），AGP + KSP |
-| 目标 | `minSdk` 24，`targetSdk` 最新；支持手机 / 平板 / 折叠屏自适应布局 |
+| Agent ID + 信息模型 | `protocol/schemas/agent-schema.json` |
+| Session | `protocol/schemas/session-schema.json` |
+| Message | `protocol/schemas/message-schema.json` |
+| Task | `protocol/schemas/task-schema.json` |
+| Workflow (DAG) | `protocol/schemas/workflow-schema.json` |
+| Event | `protocol/schemas/event-schema.json` |
+| Error Codes (37) | `protocol/schemas/error-codes.json` |
+| Plugin | `protocol/schemas/plugin-schema.json` |
+| MCP (JSON-RPC 2.0) | `protocol/schemas/mcp-schema.json` |
+| File Transfer | `protocol/schemas/file-transfer-schema.json` |
+| HTTP API | `protocol/transport/http-api.md` |
+| SSE Protocol | `protocol/transport/sse-protocol.md` |
+| WebSocket Protocol | `protocol/transport/websocket-protocol.md` |
+| Auth (AKS:/AH1:) | `protocol/transport/auth.md` |
 
 ---
 
 ## 连接方式（多协议）
 
-传输层由 `provider/AgentTransport`（sealed interface）统一抽象，`TransportFactory` 按 `AgentType` 路由：
+传输层统一抽象，按 `AgentType` 路由：
 
 | AgentType | 传输实现 | 协议 |
 |:---|:---|:---|
-| Hermes / OpenClaw / OpenCode | `WebSocketTransport` | `ws://host/ws`（带鉴权帧 + 自动重连） |
-| OpenAI / OpenRouter / Xiaomi MiMo | `OpenAIHttpTransport` | `POST /v1/chat/completions`（HTTP + SSE 流式） |
-| LocalModel（Ollama / LM Studio / llama.cpp） | `OpenAIHttpTransport` | 同上（本地端点暴露 OpenAI 格式） |
+| Hermes / OpenClaw | WebSocket | `ws://host/ws`（鉴权帧 + 自动重连） |
+| OpenAI / OpenRouter / Xiaomi MiMo | HTTP + SSE | `POST /v1/chat/completions`（流式） |
+| OpenCode | WebSocket | 同 Hermes |
+| LocalModel (Ollama / LM Studio) | HTTP + SSE | 本地端点暴露 OpenAI 格式 |
 
-> SSE 解析：优先 `stream:true` 解析 `data:` 增量；遇到不支持 SSE 的端点自动回退为单次 JSON 完成包解析。
+> 加密：`AKS:` 前缀用于静态存储（Keychain/Keystore），`AH1:` 前缀用于 E2E 传输加密（PBKDF2 600000 轮）。双端格式完全一致。
 
 ---
 
-## 技术特性
+## 项目结构
 
-- 💉 **Hilt 依赖注入**：全量迁移至 Hilt（`@HiltAndroidApp`、`@AndroidEntryPoint`、`@HiltViewModel`），6 个 ViewModel + Repository/DataStore 均使用 `@Inject constructor`
-- ✅ **单元测试**：14 个测试文件、75+ 测试用例，覆盖 MarkdownParser、TransportFactory、CryptoManager、WorkflowEngine、CompareViewModel 等核心模块
-- ♿ **无障碍 (Accessibility)**：Chat、Sessions、Agents、Compare 等屏幕均添加 `contentDescription`，支持 4 语言
-- 🔄 **CI/CD**：GitHub Actions `build-apk.yml`（`assembleDebug` + `testDebugUnitTest`），带 Gradle 缓存
-- 🛡️ **ProGuard**：精细化规则覆盖 Room、Ktor、Gson、coroutines、ViewModels
-- 🔐 **硬件加密**：Android Keystore AES-256-GCM 硬件后端加密存储
-- 🌐 **国际化 (i18n)**：完整支持英文 / 中文 / 日文 / 韩文
-
-## v2.1.0 更新内容
-
-- 💉 **Hilt 依赖注入全面落地**：从手动 DI 迁移至 Hilt，所有 ViewModel 和 Repository 均使用 `@Inject`
-- 🆚 **模型对比**：新增 CompareScreen，支持 side-by-side 模型响应对比
-- ↩️ **消息回复**：长按消息 → 回复，输入栏显示引用消息
-- ✅ **单元测试扩充**：10 → 14 个测试文件，50+ → 75+ 测试用例
-- ♿ **无障碍优化**：核心屏幕添加 contentDescription（4 语言）
-- 🔄 **CI 流水线**：GitHub Actions 自动构建 + 测试
-- 🐛 **CompareViewModel 修复**：传输泄漏、60s 超时、竞态条件、动态会话 ID
-- ⚡ **性能优化**：LazyColumn 动态更新、Splash 预加载、10MB 附件限制
-- 📦 **ProGuard 精细化**：移除全量 keep 规则，改为针对性规则
-- 🗄️ **Room 迁移**：v6 → v7（replyToId 字段）
-
-## v2.0.1 更新内容
-
-- 🔐 **KeystoreManager 硬件加密**：API 密钥与端到端密钥均使用 Android Keystore 硬件后端加密存储
-- 🛡️ **网络安全加固**：默认禁止明文流量（`cleartextTrafficPermitted=false`）
-- ✅ **单元测试**：10 个测试文件、50+ 测试用例，覆盖模型、传输、加密、工作流等核心模块
-- 🌐 **国际化 (i18n)**：完整支持英文 / 中文 / 日文 / 韩文
-- 📊 **性能监控面板**：`PerformanceMonitor` 实时展示性能指标
-- 🐛 **Bug 修复**：消息重复发送、平板布局异常、搜索遮罩层、TopBar 布局错位
+```
+agent-control-center/
+├── protocol/                    # 永久统一协议层（双端共享）
+│   ├── schemas/                 # 10 JSON Schema 契约
+│   ├── transport/               # 4 传输协议文档
+│   └── README.md
+├── android/                     # Android 原生 (Kotlin + Compose)
+│   ├── app/src/main/java/com/agentcontrolcenter/app/
+│   │   ├── AgentControlCenterApplication.kt
+│   │   ├── AgentControlCenterWidget.kt
+│   │   ├── AgentConnectionService.kt
+│   │   ├── MainActivity.kt
+│   │   ├── data/                # Repository + Room + DataStore
+│   │   ├── provider/            # Transport 抽象 + 工厂
+│   │   ├── runtime/             # AgentManager + WorkflowEngine
+│   │   ├── mcp/                 # MCP 协议实现
+│   │   ├── plugin/              # 插件执行器
+│   │   ├── feature/             # Compose Screens + ViewModels
+│   │   └── ui/                  # Theme + Components + Adaptive
+│   ├── app/src/test/            # 14 测试文件 / 75+ 用例
+│   └── build.gradle
+├── ios/                         # iOS 原生 (Swift + SwiftUI)
+│   ├── project.yml              # XcodeGen 配置
+│   ├── AgentControlCenter/
+│   │   ├── Models/              # 8 文件匹配 10 JSON Schema
+│   │   ├── Security/            # KeychainManager + CryptoManager
+│   │   ├── Transport/           # HTTP/SSE + WebSocket
+│   │   ├── Runtime/             # AgentManager + WorkflowEngine
+│   │   ├── MCP/                 # McpRegistry + McpClient + McpBridge
+│   │   ├── Plugin/              # PluginExecutor
+│   │   ├── Persistence/         # SwiftData 5 实体
+│   │   ├── Features/            # 6 SwiftUI Views
+│   │   └── Theme/               # AppTheme
+│   └── README.md
+├── .github/workflows/           # CI/CD
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── SECURITY.md
+```
 
 ---
 
 ## 功能
 
-- 💬 **多会话聊天**：流式增量渲染、消息反应、搜索、滑动切换会话
-- 🔌 **多协议连接**：见上表，向导式接入，配置持久化
-- 🖥️ **本地模型**：`LocalModelManager` 自动发现 Ollama / LM Studio / llama.cpp 端点
-- 🔔 **前台保活**：`AgentConnectionService` 前台服务 + 通知内联回复（RemoteInput）
-- 📱 **小米超级岛**：`SuperIslandManager` 灵动岛样式实时状态
-- 📤 **系统分享**：接收外部分享文本一键发问
-- 🎙️ **语音**：`VoiceInputManager` / `VoiceChatManager` 语音输入与语音对话模式
+- 💬 **多会话聊天**：流式增量渲染、消息回复、搜索、滑动切换
+- 🔌 **多协议连接**：WebSocket / HTTP+SSE，向导式接入，配置持久化
+- 🖥️ **本地模型**：自动发现 Ollama / LM Studio / llama.cpp 端点
+- 🔧 **MCP 协议**：JSON-RPC 2.0，工具注册与调用
+- ⚙️ **工作流引擎**：DAG 拓扑排序，多 Agent 编排（翻译链/代码审查/研究助手）
+- 🧩 **插件系统**：HttpCall / Broadcast / Workflow 三类动作
+- 🔔 **前台保活**：前台服务 + 通知内联回复（Android）
+- 📱 **桌面 Widget**：快捷输入弹窗 + 语音按钮（Android）
+- 🎙️ **语音**：语音输入与语音对话模式
 - 🎨 **主题**：浅色 / 深色 / Liquid Glass 三套
-- 🧩 **插件**：`PluginManager` 展示插件入口（执行引擎规划中）
-
----
-
-## 模块结构
-
-```
-android/app/src/main/java/com/agenthub/app/
-├── MainActivity.kt
-├── App.kt
-├── AgentConnectionService.kt          # 前台服务 + 通知内联回复
-├── di/
-│   └── DatabaseModule.kt               # Hilt @Provides AppDatabase, DAOs
-├── data/
-│   ├── AppModule.kt                    # 依赖装配（Repository 单例）
-│   ├── model/                          # AgentConfig, AgentType, Message, Session, ConnectionState
-│   ├── repository/ChatRepository.kt
-│   ├── local/AppDatabase.kt            # Room（Session / Message / AgentConfig / Activity）
-│   ├── settings/SettingsDataStore.kt   # DataStore
-│   └── plugin/PluginManager.kt         # 插件（展示，执行待实现）
-├── provider/
-│   ├── AgentTransport.kt               # 传输契约（sealed interface）
-│   ├── WebSocketTransport.kt           # Hermes / OpenClaw / OpenCode
-│   ├── OpenAIHttpTransport.kt          # OpenAI / Ollama / LM Studio / MiMo（HTTP + SSE）
-│   └── TransportFactory.kt             # 按 AgentType 路由
-├── ui/
-│   ├── chat/                           # ChatScreen, ChatViewModel
-│   ├── sessions/                       # SessionsScreen
-│   ├── settings/                       # SettingsScreen
-│   ├── workflow/                       # WorkflowScreen
-│   ├── agents/                         # AgentsScreen
-│   └── theme/                          # light / dark / liquid_glass
-├── navigation/AppNavigation.kt
-└── util/
-    ├── LocalModelManager.kt            # 本地模型自动发现
-    ├── SuperIslandManager.kt           # 小米超级岛
-    ├── VoiceInputManager.kt / VoiceChatManager.kt
-    ├── KeystoreManager.kt              # 硬件加密（API/E2E 密钥）
-    ├── CryptoManager.kt                # 加密管理
-    └── PerformanceMonitor.kt           # 性能监控面板
-```
-
-### 单元测试
-
-```
-android/app/src/test/java/com/agenthub/app/
-├── data/
-│   ├── model/
-│   │   ├── AgentConfigTest.kt
-│   │   ├── AgentTypeTest.kt
-│   │   ├── ConnectionStateTest.kt
-│   │   ├── MessageTest.kt
-│   │   └── SessionTest.kt
-│   └── update/
-│       └── UpdateManagerTest.kt
-├── provider/
-│   └── TransportFactoryTest.kt
-├── ui/chat/
-│   └── MarkdownParserTest.kt
-└── util/
-    ├── CryptoManagerTest.kt
-    └── WorkflowEngineTest.kt
-```
-
-### 国际化
-
-```
-android/app/src/main/res/
-├── values/strings.xml        # English
-├── values-zh/strings.xml     # 中文
-├── values-ja/strings.xml     # 日本語
-└── values-ko/strings.xml     # 한국어
-```
+- 📤 **系统分享**：接收外部分享文本一键发问
+- 🔐 **E2E 加密**：双端 `AH1:` 格式，PBKDF2 600000 轮
 
 ---
 
 ## 构建与运行
 
+### Android
+
 ```bash
 # 调试包
-npm run build:apk
-# 或
 cd android && ./gradlew assembleDebug
 
-# 发布包（需配置 agenthub.keystore 与 KEYSTORE_* 环境变量）
+# 发布包（需配置 agentcontrolcenter.keystore）
 cd android && ./gradlew assembleRelease
+
+# 运行测试
+cd android && ./gradlew testDebugUnitTest
 ```
 
 用 Android Studio 打开 `android/` 目录即可开发；最低要求 JDK 17 + Android SDK。
+
+### iOS
+
+```bash
+# 安装 XcodeGen
+brew install xcodegen
+
+# 生成 Xcode 工程
+cd ios && xcodegen generate
+
+# 打开 Xcode
+open AgentControlCenter.xcodeproj
+```
+
+最低要求 macOS 14.0 + Xcode 15.0 + iOS 17.0 SDK。
+
+---
+
+## CI/CD
+
+GitHub Actions（`.github/workflows/build-apk.yml`）：
+- Push to `main`：自动构建 Debug APK + 单元测试
+- Tag `v*`：构建 Release APK + 上传到 GitHub Releases
 
 ---
 

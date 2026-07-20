@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 // MARK: - AgentControlCenterApp
-// iOS App 入口，对应 Android com.agenthub.app.AgentHubApplication + MainActivity
+// iOS App 入口，对应 Android com.agentcontrolcenter.app.Agent Control CenterApplication + MainActivity
 
 /// 应用入口 — Agent Control Center iOS 应用。
 ///

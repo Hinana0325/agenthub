@@ -62,8 +62,8 @@
     </array>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
-        <string>com.agenthub.app.refresh</string>
-        <string>com.agenthub.app.processing</string>
+        <string>com.agentcontrolcenter.app.refresh</string>
+        <string>com.agentcontrolcenter.app.processing</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Agent Control Center 需要麦克风权限以支持语音输入</string>

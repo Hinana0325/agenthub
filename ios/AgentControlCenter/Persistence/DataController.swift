@@ -3,7 +3,7 @@ import SwiftData
 import Observation
 
 // MARK: - DataController
-// 对应 Android com.agenthub.app.data.repository.ChatRepository + AppDatabase
+// 对应 Android com.agentcontrolcenter.app.data.repository.ChatRepository + AppDatabase
 // 通过 SwiftData ModelContainer 提供持久化能力，封装 CRUD 操作。
 
 /// 数据控制器 — 管理 SwiftData `ModelContainer` 并提供领域模型的 CRUD 操作。

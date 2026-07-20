@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agenthub.dev/protocol/schemas/task-schema.json",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/task-schema.json",
   "title": "Agent Control Center Task Schema",
   "description": "任务模型契约。Task 是异步的、可追踪的、可调度的执行单元，区别于同步的 Chat。",
   "type": "object",

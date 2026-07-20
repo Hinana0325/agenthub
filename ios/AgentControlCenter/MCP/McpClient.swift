@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 // MARK: - McpClient
-// 对应 Android com.agenthub.app.mcp.client.McpClient
+// 对应 Android com.agentcontrolcenter.app.mcp.client.McpClient
 
 /// 原子递增计数器 — 使用 NSLock 保护，生成 JSON-RPC 请求 ID。
 ///

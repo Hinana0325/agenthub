@@ -19,7 +19,7 @@ WebSocket 连接地址由 HTTP `serverUrl` 转换而来：
 
 示例：
 
-- `https://api.agenthub.io` → `wss://api.agenthub.io/ws`
+- `https://api.agentcontrolcenter.io` → `wss://api.agentcontrolcenter.io/ws`
 - `http://192.168.1.10:8080/v1` → `ws://192.168.1.10:8080/v1/ws`
 
 > 若 `serverUrl` 末尾带斜杠，应在追加 `/ws` 前去除尾部斜杠，避免出现 `//ws`。

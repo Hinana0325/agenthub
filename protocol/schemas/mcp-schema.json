@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agenthub.dev/protocol/schemas/mcp-schema.json",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/mcp-schema.json",
   "title": "Agent Control Center MCP Bridge Schema",
   "description": "MCP (Model Context Protocol) 桥接协议永久统一契约。基于 MCP 2025-03-26 规范，Android (Kotlin) 与 iOS (Swift) 共享此定义。定义 MCP Server 配置、工具发现 (tools/list)、工具调用 (tools/call)、JSON-RPC 2.0 信封与传输层约定。Agent Control Center 通过 McpBridge 将远程 MCP Server 的工具能力接入 Agent 生态。",
   "type": "object",

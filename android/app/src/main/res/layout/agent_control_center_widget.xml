@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <!-- Top: Agent status bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+
+        <View
+            android:id="@+id/widget_status_dot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/dot_disconnected" />
+
+        <TextView
+            android:id="@+id/widget_agent_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🤖 Agent Control Center"
+            android:textColor="#1a1d2e"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_latency"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="— ms"
+            android:textColor="#8b8fa3"
+            android:textSize="11sp"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Middle: Last message preview -->
+    <TextView
+        android:id="@+id/widget_last_message"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="@string/widget_last_message_empty"
+        android:textColor="#5b6078"
+        android:textSize="12sp"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:layout_marginBottom="8dp"
+        android:gravity="top" />
+
+    <!-- Bottom: Quick action bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/widget_btn_voice"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:text="🎤"
+            android:textSize="16sp"
+            android:background="@drawable/widget_button_small"
+            android:padding="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!--
+            Sprint 8: Widget 输入区仍使用 TextView（RemoteViews 不支持 EditText），
+            但点击后会通过 PendingIntent 拉起轻量级 WidgetInputActivity，
+            在弹窗内完成真正的文本输入与发送（详见 AgentControlCenterWidget.onUpdate）。
+            保留原 id 便于复用既有逻辑。
+        -->
+        <TextView
+            android:id="@+id/widget_input"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:hint="@string/widget_input_hint"
+            android:textColor="#1a1d2e"
+            android:textColorHint="#a0a4b8"
+            android:textSize="12sp"
+            android:background="@drawable/widget_input_bg"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:singleLine="true"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp" />
+
+        <Button
+            android:id="@+id/widget_btn_send"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="@string/widget_send"
+            android:textColor="#ffffff"
+            android:textSize="12sp"
+            android:background="@drawable/widget_button"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+</LinearLayout>

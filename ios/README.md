@@ -124,7 +124,7 @@ open AgentControlCenter.xcodeproj
 2. 进入 **Signing & Capabilities** 标签
 3. 勾选 **Automatically manage signing**
 4. 选择你的 **Team**（Apple Developer 账号或免费个人账号）
-5. Bundle Identifier 已设为 `com.agenthub.app.ios`，可按需修改
+5. Bundle Identifier 已设为 `com.agentcontrolcenter.app.ios`，可按需修改
 
 ### 运行
 
@@ -140,7 +140,7 @@ open AgentControlCenter.xcodeproj
 
 | 配置项 | 值 | 说明 |
 |--------|-----|------|
-| Bundle ID | `com.agenthub.app.ios` | 与 Android `com.agenthub.app` 对齐 |
+| Bundle ID | `com.agentcontrolcenter.app.ios` | 与 Android `com.agentcontrolcenter.app` 对齐 |
 | Display Name | Agent Control Center | 用户可见名称 |
 | 版本 | 2.1.3 (build 1) | 与 Android 对齐 |
 | 最低部署 | iOS 17.0 | SwiftData 要求 |

@@ -3,7 +3,7 @@ import SwiftData
 
 // MARK: - SwiftData 持久化实体
 // 对应 protocol/schemas/ 下的 JSON Schema 契约与 Android Room 实体
-// (com.agenthub.app.core.database.entity.*)
+// (com.agentcontrolcenter.app.core.database.entity.*)
 
 /// Session 实体 — 对应 `protocol/schemas/session-schema.json` 与 Android `SessionEntity`。
 ///

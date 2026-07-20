@@ -15,7 +15,7 @@ import CryptoKit
 /// - decryptOrRaw: 无前缀返回原文(向后兼容), 解密失败返回空串
 enum KeychainManager {
 
-    private static let keyTag = "com.agenthub.app.master-key"
+    private static let keyTag = "com.agentcontrolcenter.app.master-key"
     private static let prefix = "AKS:"
     private static let ivLength = 12
 

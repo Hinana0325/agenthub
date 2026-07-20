@@ -1,0 +1,253 @@
+package com.agentcontrolcenter.app.feature.settings
+
+import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.ContentValues
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.agentcontrolcenter.app.R
+import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.data.model.ChatBackup
+import com.agentcontrolcenter.app.data.repository.ChatRepository
+import com.agentcontrolcenter.app.core.datastore.SettingsDataStore
+import com.agentcontrolcenter.app.core.common.PerformanceMonitor
+import dagger.hilt.android.lifecycle.HiltViewModel
+import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.io.File
+import java.security.SecureRandom
+import javax.inject.Inject
+
+data class SettingsUiState(
+    val themeMode: String = "system",
+    val fontSize: String = "medium",
+    val e2eEnabled: Boolean = false,
+    val e2eKey: String = "",
+    val backupMessage: String? = null
+)
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    application: Application,
+    private val dataStore: SettingsDataStore,
+    private val repository: ChatRepository
+) : AndroidViewModel(application) {
+
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    // Agent configs exposed via Hilt-injected repository (replaces direct AppModule access from the UI).
+    val agentConfigs: StateFlow<List<AgentConfig>> = repository.getAllConfigs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch {
+            dataStore.themeMode.collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.fontSize.collect { size ->
+                _uiState.update { it.copy(fontSize = size) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.e2eEnabled.collect { enabled ->
+                _uiState.update { it.copy(e2eEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.e2eKey.collect { key ->
+                _uiState.update { it.copy(e2eKey = key) }
+            }
+        }
+        // NOTE: The previous implementation ran a permanent `while (isActive) { ... delay(3000) }`
+        // loop in init to refresh performance metrics. That kept a coroutine alive for the entire
+        // lifetime of the ViewModel (i.e. the whole app session) and refreshed metrics even when the
+        // Settings screen was not on screen. Refresh is now opt-in via [refreshPerformanceMetrics],
+        // which the SettingsScreen should call from a `LaunchedEffect`/`DisposableEffect` so it only
+        // runs while the screen is visible.
+    }
+
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch { dataStore.setThemeMode(mode) }
+    }
+
+    fun setFontSize(size: String) {
+        viewModelScope.launch { dataStore.setFontSize(size) }
+    }
+
+    // ── E2E Encryption ──
+
+    fun toggleE2E(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setE2eEnabled(enabled)
+            if (enabled) {
+                // Read the actual key directly from DataStore instead of relying on
+                // _uiState.value.e2eKey. The UI state is updated asynchronously from
+                // dataStore.e2eKey and may still hold a stale (empty) value right after
+                // the user enables E2E, which previously caused an existing key to be
+                // regenerated and overwritten.
+                val currentKey = dataStore.e2eKey.first()
+                if (currentKey.isEmpty()) {
+                    regenerateKey()
+                }
+            }
+        }
+    }
+
+    fun regenerateKey() {
+        viewModelScope.launch {
+            val key = generateSecureKey()
+            dataStore.setE2eKey(key)
+        }
+    }
+
+    fun copyKey(context: Context) {
+        val key = _uiState.value.e2eKey
+        if (key.isNotEmpty()) {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Agent Control Center E2E Key", key)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, context.getString(R.string.e2e_key_copied), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun importKey(key: String) {
+        viewModelScope.launch {
+            dataStore.setE2eKey(key.trim())
+            if (!_uiState.value.e2eEnabled) {
+                dataStore.setE2eEnabled(true)
+            }
+        }
+    }
+
+    private fun generateSecureKey(): String {
+        val random = SecureRandom()
+        val bytes = ByteArray(32)
+        random.nextBytes(bytes)
+        return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    // ── Backup / Restore ──
+
+    fun exportChatHistory(context: Context) {
+        viewModelScope.launch {
+            try {
+                val sessions = repository.getAllSessionsList()
+                val allMessages = sessions.flatMap { session ->
+                    repository.getMessagesBySessionList(session.id)
+                }
+                val backup = ChatBackup(
+                    version = "2.2.0",
+                    exportedAt = System.currentTimeMillis(),
+                    sessions = sessions,
+                    messages = allMessages
+                )
+                val json = Gson().toJson(backup)
+                val fileName = "agentcontrolcenter-backup-${System.currentTimeMillis()}.json"
+                val saved = writeJsonToDownloads(context, fileName, json)
+                _uiState.update {
+                    it.copy(
+                        backupMessage = if (saved) context.getString(R.string.backup_saved, fileName)
+                        else context.getString(R.string.backup_export_failed, "Failed to write file")
+                    )
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_export_failed, e.message ?: "")) }
+            }
+        }
+    }
+
+    /**
+     * Write a JSON payload into the public Downloads directory.
+     *
+     * On Android 10+ (API 29+) this uses the MediaStore.Downloads API via
+     * ContentResolver.insert, which does not require any storage permissions.
+     * On older API levels it falls back to the legacy
+     * Environment.getExternalStoragePublicDirectory path (the WRITE_EXTERNAL_STORAGE
+     * permission must be declared in the manifest for those versions).
+     */
+    private fun writeJsonToDownloads(context: Context, fileName: String, json: String): Boolean {
+        val resolver = context.contentResolver
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            uri?.let {
+                resolver.openOutputStream(it)?.use { os ->
+                    os.write(json.toByteArray())
+                }
+            }
+            uri != null
+        } else {
+            @Suppress("DEPRECATION")
+            val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloads, fileName)
+            file.writeText(json)
+            true
+        }
+    }
+
+    fun importChatHistory(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+                if (json != null) {
+                    val backup = Gson().fromJson(json, ChatBackup::class.java)
+                    // 用事务原子导入：任一插入失败则整体回滚，避免半导入状态。
+                    repository.importBackup(backup.sessions, backup.messages)
+                    _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, backup.sessions.size, backup.messages.size)) }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restore_failed, e.message ?: "")) }
+            }
+        }
+    }
+
+    fun clearBackupMessage() {
+        _uiState.update { it.copy(backupMessage = null) }
+    }
+
+    // ── Performance ──
+
+    fun getPerformanceMetrics() = PerformanceMonitor.metrics
+
+    /**
+     * Refresh performance metrics (memory, uptime, avg latency) on demand.
+     *
+     * The SettingsScreen should call this from a `LaunchedEffect` (or `DisposableEffect` with a
+     * polling loop) while it is visible, instead of relying on a permanent background loop that
+     * runs for the entire ViewModel lifetime. This avoids keeping a coroutine alive and doing
+     * unnecessary work when the user is not viewing the Settings screen.
+     */
+    fun refreshPerformanceMetrics() {
+        viewModelScope.launch {
+            try {
+                PerformanceMonitor.refresh(getApplication())
+            } catch (_: Exception) {
+                // ignore — non-critical refresh
+            }
+        }
+    }
+}

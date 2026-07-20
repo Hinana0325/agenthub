@@ -55,8 +55,8 @@ jobs:
         working-directory: android
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > agenthub.keystore
-            echo "Keystore decoded: $(ls -la agenthub.keystore)"
+            echo "$KEYSTORE_BASE64" | base64 -d > agentcontrolcenter.keystore
+            echo "Keystore decoded: $(ls -la agentcontrolcenter.keystore)"
           else
             echo "KEYSTORE_BASE64 not set — release build will use debug signing"
           fi
@@ -95,7 +95,7 @@ jobs:
             gh release upload "${VERSION}" "${APK}" --clobber
           else
             gh release create "${VERSION}" \
-              --title "AgentHub ${VERSION}" \
-              --notes "For release notes see [CHANGELOG](https://github.com/Hinana0325/agenthub/blob/main/CHANGELOG.md)" \
+              --title "Agent Control Center ${VERSION}" \
+              --notes "For release notes see [CHANGELOG](https://github.com/Hinana0325/Agent-Control-Center/blob/main/CHANGELOG.md)" \
               "${APK}"
           fi

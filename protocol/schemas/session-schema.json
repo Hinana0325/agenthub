@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agenthub.dev/protocol/schemas/session-schema.json",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/session-schema.json",
   "title": "Agent Control Center Session Schema",
   "description": "会话模型契约。一个 Session 代表一次连续对话，包含多条 Message。",
   "type": "object",

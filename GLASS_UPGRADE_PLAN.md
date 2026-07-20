@@ -1,5 +1,7 @@
-# AgentHub — Android 17 液态玻璃升级规范（冻结归档版）
+# Agent Control Center — Android 液态玻璃升级规范（冻结归档版）
 
+> 仓库：`Hinana0325/Agent-Control-Center`
+> 包名：`com.agentcontrolcenter.app`
 > **文档状态：已冻结（FROZEN）**
 > 冻结时间：2026-07-17
 > 最终提交：`9968db0`
@@ -10,7 +12,7 @@
 
 ## 1. 项目背景
 
-基于 Android 17 系统级模糊设计 + Material 3 Expressive 设计语言，将 AgentHub（Kotlin 2.1 + Jetpack Compose 原生 Android）的 UI 全面升级为液态玻璃风格。
+基于 Android 17 系统级模糊设计 + Material 3 Expressive 设计语言，将 Agent Control Center（包名 `com.agentcontrolcenter.app`，Kotlin 2.1 + Jetpack Compose 原生 Android）的 UI 全面升级为液态玻璃风格。
 
 **工具链**：AGP 8.9.0 / compileSdk 36 / Kotlin 2.1.0 / Compose BOM 2025.01.01 / 0 Java 文件（纯 Kotlin + Compose）。
 
@@ -27,7 +29,7 @@
 | 强调色 | 固定 `AccentBlue`（已移除多色选择器与 `AccentPalettes`） |
 | 自定义主题 | **已移除**（取色器/自定义字号/圆角/`buildCustomColorScheme` 全部删除） |
 | 全局字号 | 保留（`small/medium/large` → 0.875× / 1.0× / 1.15× 缩放 `Typography`） |
-| `AgentHubTheme` 签名 | `(themeMode, fontSize, content)` —— 极简 |
+| `AgentControlCenterTheme` 签名 | `(themeMode, fontSize, content)` —— 极简 |
 
 ### 2.2 玻璃引擎文件清单
 
@@ -37,14 +39,14 @@
 | `ui/theme/GlassMotion.kt` | `SpringBounce/Smooth/Exit`、`GlassEnter/ExitTransition`、`rememberFloatingOffset`、`rememberMorphCornerShape`、`glassPress`/`glassClickable`、`lerpDp` |
 | `ui/theme/GlassBackdrop.kt` | 多层径向渐变 + `rememberInfiniteTransition` 缓慢漂移光晕 |
 | `ui/theme/Color.kt` | 模糊级别/光晕/深度阴影/形状/色散/背景渐变令牌 |
-| `ui/theme/Theme.kt` | `AgentHubTheme` 提供全部玻璃令牌（`CompositionLocal`）+ 根背景 `GlassBackdrop` |
+| `ui/theme/Theme.kt` | `AgentControlCenterTheme` 提供全部玻璃令牌（`CompositionLocal`）+ 根背景 `GlassBackdrop` |
 
 ### 2.3 数据持久化
 
 | 存储 | 用途 | 状态 |
 |------|------|------|
 | DataStore (`settings`) | `themeMode` / `fontSize` / `e2eEnabled` / `e2eKey` | ✅ 正确读写 |
-| Room (`agenthub.db` v4) | 会话/消息/Agent 配置/活动日志/插件 | ✅ 正确读写 |
+| Room (`com.agentcontrolcenter.app` 数据库 v4) | 会话/消息/Agent 配置/活动日志/插件 | ✅ 正确读写 |
 
 ---
 
@@ -77,8 +79,8 @@
 **修正**：全宽栏用 `RoundedCornerShape(0.dp)`；`ChatInputBar` 用仅顶部圆角。
 
 ### 4.4 自定义主题不生效（已修复）
-`MainActivity` 调 `AgentHubTheme` 时漏传自定义主题参数与 `fontSize`，导致存了不生效。
-**修正（后简化）**：直接移除自定义主题体系，`AgentHubTheme` 只收 `themeMode + fontSize`。
+`MainActivity` 调 `AgentControlCenterTheme` 时漏传自定义主题参数与 `fontSize`，导致存了不生效。
+**修正（后简化）**：直接移除自定义主题体系，`AgentControlCenterTheme` 只收 `themeMode + fontSize`。
 
 ### 4.5 内容模糊 Bug（已规避）
 `RenderEffect`/`Modifier.blur` 模糊的是自身子树（含文字），会导致文字被糊掉。

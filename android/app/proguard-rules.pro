@@ -24,11 +24,11 @@
 # === Gson (prevent reflection issues) ===
 # Gson 通过反射读写字段，必须保留 data model 类及其成员。
 -keep class com.google.gson.** { *; }
--keep class com.agenthub.app.data.model.** { *; }
--keepclassmembers class com.agenthub.app.data.model.** { *; }
+-keep class com.agentcontrolcenter.app.data.model.** { *; }
+-keepclassmembers class com.agentcontrolcenter.app.data.model.** { *; }
 # Gson TypeToken 子类需要保留（ChatRepository 中的 METADATA_MAP_TYPE）
 -keep class * extends com.google.gson.reflect.TypeToken { *; }
--keep class com.agenthub.app.core.database.entity.** { *; }
+-keep class com.agentcontrolcenter.app.core.database.entity.** { *; }
 
 # === Kotlin coroutines ===
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}

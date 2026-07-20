@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 // MARK: - AppState
-// 对应 Android com.agenthub.app.di.* (Hilt 依赖注入容器)
+// 对应 Android com.agentcontrolcenter.app.di.* (Hilt 依赖注入容器)
 
 /// 应用全局状态 — 中央依赖容器。
 ///
