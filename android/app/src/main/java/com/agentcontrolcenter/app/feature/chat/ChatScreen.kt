@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
@@ -64,13 +65,13 @@ import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.adaptive.shouldShowSidebar
 import com.agentcontrolcenter.app.ui.components.ErrorSnackbar
 import kotlinx.coroutines.launch
-import com.agentcontrolcenter.app.ui.components.scaleOnPress
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.ui.theme.glassBackground
 import com.agentcontrolcenter.app.ui.theme.GlassEnterTransition
 import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
 import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.ShapePill
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
 import com.agentcontrolcenter.app.core.ui.HapticFeedback
@@ -847,55 +848,64 @@ fun ChatInputBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Attachment button
+                    // M3 Expressive 风格：附件 + 语音合并为连接式按钮组
                     var showAttachMenu by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(
-                            onClick = { showAttachMenu = true },
-                            enabled = !isStreaming && !isVoiceListening
-                        ) {
-                            Icon(
-                                Icons.Default.AttachFile,
-                                contentDescription = stringResource(R.string.attach_file),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(
-                                    alpha = if (!isStreaming && !isVoiceListening) 0.6f else 0.2f
-                                )
-                            )
-                        }
-                        GlassDropdownMenu(
-                            expanded = showAttachMenu,
-                            onDismissRequest = { showAttachMenu = false }
-                        ) {
-                            GlassDropdownMenuItem(
-                                text = { Text(stringResource(R.string.attach_image)) },
-                                onClick = { showAttachMenu = false; onAttachImage() },
-                                leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp)) }
-                            )
-                            GlassDropdownMenuItem(
-                                text = { Text(stringResource(R.string.attach_document)) },
-                                onClick = { showAttachMenu = false; onAttachFile() },
-                                leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(20.dp)) }
-                            )
-                        }
-                    }
-
-                    // Voice button
-                    IconButton(
-                        onClick = { HapticFeedback.light(context); onVoiceToggle() },
-                        modifier = if (isVoiceListening) Modifier.scale(pulseScale) else Modifier
+                    Surface(
+                        shape = ShapePill,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        tonalElevation = 2.dp
                     ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = if (isVoiceListening)
-                                stringResource(R.string.voice_input_stop)
-                            else
-                                stringResource(R.string.voice_input_start),
-                            tint = if (isVoiceListening)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Attachment button
+                            Box {
+                                IconButton(
+                                    onClick = { showAttachMenu = true },
+                                    enabled = !isStreaming && !isVoiceListening
+                                ) {
+                                    Icon(
+                                        Icons.Default.AttachFile,
+                                        contentDescription = stringResource(R.string.attach_file),
+                                        tint = MaterialTheme.colorScheme.onSurface.copy(
+                                            alpha = if (!isStreaming && !isVoiceListening) 0.6f else 0.2f
+                                        )
+                                    )
+                                }
+                                GlassDropdownMenu(
+                                    expanded = showAttachMenu,
+                                    onDismissRequest = { showAttachMenu = false }
+                                ) {
+                                    GlassDropdownMenuItem(
+                                        text = { Text(stringResource(R.string.attach_image)) },
+                                        onClick = { showAttachMenu = false; onAttachImage() },
+                                        leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                                    )
+                                    GlassDropdownMenuItem(
+                                        text = { Text(stringResource(R.string.attach_document)) },
+                                        onClick = { showAttachMenu = false; onAttachFile() },
+                                        leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(20.dp)) }
+                                    )
+                                }
+                            }
+
+                            // Voice button
+                            IconButton(
+                                onClick = { HapticFeedback.light(context); onVoiceToggle() },
+                                modifier = if (isVoiceListening) Modifier.scale(pulseScale) else Modifier
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = if (isVoiceListening)
+                                        stringResource(R.string.voice_input_stop)
+                                    else
+                                        stringResource(R.string.voice_input_start),
+                                    tint = if (isVoiceListening)
+                                        MaterialTheme.colorScheme.error
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                     }
 
                     OutlinedTextField(
@@ -918,13 +928,23 @@ fun ChatInputBar(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // 发送按钮 - 有输入时变色 + 动画
+                    // 发送按钮 - 有输入时变色 + M3 Expressive 弹性按压动画
                     val buttonEnabled = inputText.isNotBlank() || isStreaming || pendingAttachmentType != null
                     val buttonColor by animateColorAsState(
                         targetValue = if (buttonEnabled) MaterialTheme.colorScheme.primary
                                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                         animationSpec = tween(200),
                         label = "send-button-color"
+                    )
+                    // M3 Expressive: spring 弹性按压缩放（中弹性 + 中低刚度）
+                    var isSendPressed by remember { mutableStateOf(false) }
+                    val sendScale by animateFloatAsState(
+                        targetValue = if (isSendPressed) 0.9f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        label = "sendButtonScale"
                     )
 
                     FilledIconButton(
@@ -937,7 +957,17 @@ fun ChatInputBar(
                         enabled = buttonEnabled,
                         modifier = Modifier
                             .size(48.dp)
-                            .scaleOnPress(enabled = buttonEnabled),
+                            .scale(sendScale)
+                            .pointerInput(buttonEnabled) {
+                                if (!buttonEnabled) return@pointerInput
+                                detectTapGestures(
+                                    onPress = {
+                                        isSendPressed = true
+                                        tryAwaitRelease()
+                                        isSendPressed = false
+                                    }
+                                )
+                            },
                         shape = CircleShape,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = buttonColor,

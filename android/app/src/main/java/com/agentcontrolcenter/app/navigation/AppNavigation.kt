@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -141,7 +142,7 @@ fun AppNavigation() {
                     AppNavHost(
                         navController = navController,
                         chatViewModel = chatViewModel,
-                        modifier = Modifier.padding(paddingValues)
+                        modifier = Modifier.padding(paddingValues).navigationBarsPadding()
                     )
                 }
             }

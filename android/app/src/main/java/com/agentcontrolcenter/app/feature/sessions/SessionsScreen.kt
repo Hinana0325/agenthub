@@ -33,6 +33,7 @@ import com.agentcontrolcenter.app.feature.chat.ChatViewModel
 import com.agentcontrolcenter.app.feature.chat.MessageBubble
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.ShapePill
 import com.agentcontrolcenter.app.ui.components.sharedBounds
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -340,6 +341,18 @@ private fun SessionsSinglePaneLayout(
                 title = { Text(stringResource(R.string.nav_sessions)) }
             )
         },
+        // M3 Expressive FAB：手机布局下新建会话入口（保留顶栏按钮向后兼容）
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { chatViewModel?.createNewSession() },
+                shape = ShapePill,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat))
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End,
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Box(
@@ -467,6 +480,9 @@ private fun SwipeableSessionListItem(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = "会话: ${session.title.ifEmpty { "未命名" }}, ${session.messageCount} 条消息"
+        },
         backgroundContent = {
             val direction = dismissState.dismissDirection
 
@@ -550,6 +566,9 @@ private fun SwipeableSessionCard(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = "会话: ${session.title.ifEmpty { "未命名" }}, ${session.messageCount} 条消息"
+        },
         backgroundContent = {
             val direction = dismissState.dismissDirection
 

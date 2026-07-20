@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2026-07-20
+
+### Added — M3 Expressive 组件 + 无障碍 + Insets
+
+- **Chat 输入栏 Button group**: 附件按钮和语音按钮合并为 M3 Expressive 连接式按钮组，用 `Surface(shape = ShapePill)` 包裹 + `surfaceContainerHigh` 容器色 + 2dp tonalElevation。发送按钮添加 spring 弹性按压动画（`DampingRatioMediumBouncy` + `StiffnessMediumLow`，`detectTapGestures` 监听按压）。
+- **SessionsScreen FAB**: 单栏布局添加 `FloatingActionButton`（`ShapePill` 胶囊形状 + `primaryContainer` 配色），点击新建会话。双栏布局保持原有顶栏按钮。
+- **无障碍语义增强**: 新增 `AccessibilityModifiers.kt`（`accessibleButton` / `accessibleSwitch` / `accessibleImage` 修饰符）。SessionsScreen 两处 `SwipeToDismissBox` 添加 `Modifier.semantics(mergeDescendants = true)`，TalkBack 朗读"会话: xxx, n 条消息"。
+- **Edge-to-Edge insets**: 平板分支 `AppNavHost` modifier 添加 `.navigationBarsPadding()`，修复导航栏遮挡内容。
+
+### Changed
+
+- **版本号**: Android versionCode 31 → 32 / versionName 4.1.0 → 4.2.0；iOS 同步。
+
 ## [4.1.0] - 2026-07-20
 
 ### Added — Android 16 深化适配
