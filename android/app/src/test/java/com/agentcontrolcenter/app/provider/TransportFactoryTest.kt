@@ -1,18 +1,24 @@
 package com.agentcontrolcenter.app.transport
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.transport.http.OpenAIHttpTransport
 import com.agentcontrolcenter.app.transport.websocket.WebSocketTransport
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 /**
  * TransportFactory 单元测试。
  * 验证按 AgentType 路由到正确的 Transport 实现。
  */
+@RunWith(RobolectricTestRunner::class)
 class TransportFactoryTest {
 
-    private val factory = TransportFactory()
+    private val context: Context = ApplicationProvider.getApplicationContext()
+    private val factory = TransportFactory(context)
 
     @Test
     fun `Hermes creates WebSocketTransport`() {
