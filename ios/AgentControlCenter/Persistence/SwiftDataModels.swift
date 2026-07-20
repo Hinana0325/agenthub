@@ -116,9 +116,12 @@ final class AgentConfigEntity {
     var temperature: Float
     /// 最大 token 数
     var maxTokens: Int
+    /// 通信协议类型（AgentProtocol.rawValue：WebSocket / HttpSSE / MCP / Local），默认 webSocket
+    var protocolType: String = "webSocket"
 
     /// 创建 Agent 配置实体
-    init(id: String, name: String, type: String, serverUrl: String, apiKey: String, model: String, systemPrompt: String, temperature: Float, maxTokens: Int) {
+    /// - Parameter protocolType: 通信协议类型 rawValue，默认 "webSocket"（向后兼容已有调用方）
+    init(id: String, name: String, type: String, serverUrl: String, apiKey: String, model: String, systemPrompt: String, temperature: Float, maxTokens: Int, protocolType: String = "webSocket") {
         self.id = id
         self.name = name
         self.type = type
@@ -128,6 +131,7 @@ final class AgentConfigEntity {
         self.systemPrompt = systemPrompt
         self.temperature = temperature
         self.maxTokens = maxTokens
+        self.protocolType = protocolType
     }
 }
 
@@ -399,7 +403,9 @@ extension AgentConfigEntity {
             model: config.model,
             systemPrompt: config.systemPrompt,
             temperature: config.temperature,
-            maxTokens: config.maxTokens
+            maxTokens: config.maxTokens,
+            // 持久化通信协议类型 rawValue
+            protocolType: config.protocolType.rawValue
         )
     }
 
@@ -421,7 +427,9 @@ extension AgentConfigEntity {
             model: model,
             systemPrompt: systemPrompt,
             temperature: temperature,
-            maxTokens: maxTokens
+            maxTokens: maxTokens,
+            // 还原通信协议类型，解析失败时回退到默认 .webSocket
+            protocolType: AgentProtocol(rawValue: protocolType) ?? .webSocket
         )
     }
 }
@@ -439,7 +447,9 @@ extension AgentConfig {
             model: entity.model,
             systemPrompt: entity.systemPrompt,
             temperature: entity.temperature,
-            maxTokens: entity.maxTokens
+            maxTokens: entity.maxTokens,
+            // 还原通信协议类型，解析失败时回退到默认 .webSocket
+            protocolType: AgentProtocol(rawValue: entity.protocolType) ?? .webSocket
         )
     }
 }

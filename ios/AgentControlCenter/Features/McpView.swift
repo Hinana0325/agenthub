@@ -152,7 +152,7 @@ private struct AddMcpServerSheet: View {
                     TextField("名称", text: $name)
                     TextField("传输地址 (URL)", text: $transportUrl)
                         .keyboardType(.URL)
-                        .autocapitalization(.none)
+                        .textInputAutocapitalization(.disabled)
                     SecureField("API Key (可选)", text: $apiKey)
 
                     Picker("传输类型", selection: $transportType) {

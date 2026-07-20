@@ -55,6 +55,8 @@ struct AgentConfig: Codable, Identifiable, Equatable {
     var systemPrompt: String = ""
     var temperature: Float = 0.7
     var maxTokens: Int = 4096
+    /// 通信协议类型（AgentProtocol.rawValue：WebSocket / HttpSSE / MCP / Local）
+    var protocolType: AgentProtocol = .webSocket
 }
 
 /// Agent 运行时实例

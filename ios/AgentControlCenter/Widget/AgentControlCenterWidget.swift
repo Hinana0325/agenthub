@@ -114,6 +114,8 @@ struct AgentControlCenterWidget: Widget {
 }
 
 // MARK: - Widget Bundle
+// 注意: 此 @main 仅在 Widget Extension Target 中生效
+// 主 App Target 不应编译此文件（通过 project.yml 的 target 归属控制）
 
 @main
 struct AgentWidgetBundle: WidgetBundle {

@@ -11,7 +11,7 @@ struct SettingsView: View {
 
     // ============ Agent 默认配置 ============
     @AppStorage("defaultModel") private var defaultModel: String = "gpt-4"
-    @AppStorage("temperature") private var temperature: Double = 0.7
+    @AppStorage("temperature") private var temperature: Float = 0.7
     @AppStorage("maxTokens") private var maxTokens: Int = 4096
 
     // ============ 字体大小 ============

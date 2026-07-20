@@ -31,7 +31,7 @@ final class PluginExecutor {
         case .httpCall(let http):
             return await executeHttp(http, input: input)
         case .broadcast(let broadcast):
-            return executeBroadcast(broadcast, input: input)
+            return await executeBroadcast(broadcast, input: input)
         case .workflow(let workflow):
             return executeWorkflow(workflow, input: input)
         }

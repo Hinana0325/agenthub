@@ -4,7 +4,7 @@ import SwiftUI
 /// 使用 NavigationSplitView 提供侧边栏 + 详情区的双栏布局
 struct ContentView: View {
     @Environment(AppState.self) private var appState
-    @State private var selectedTab: SidebarTab = .sessions
+    @State private var selectedTab: SidebarTab? = .sessions
 
     /// 侧边栏标签枚举：会话 / Agent / 任务 / 工作流 / 插件 / 对比 / MCP / 活动 / 洞察 / 设置
     enum SidebarTab: String, CaseIterable, Identifiable {
@@ -55,6 +55,7 @@ struct ContentView: View {
             case .activity: ActivityView()
             case .insights: InsightsView()
             case .settings: SettingsView()
+            case .none: SessionsView()
             }
         }
     }

@@ -20,14 +20,23 @@ struct SessionsView: View {
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         // 滑动:删除会话
                         Button(role: .destructive) {
+                            // 先更新内存状态(SessionManager)
                             appState.sessionManager.deleteSession(session.id)
+                            // 同步删除持久化层的消息记录与会话本体,避免 App 重启后数据残留
+                            appState.dataController.deleteMessages(sessionId: session.id)
+                            appState.dataController.deleteSession(session.id)
                         } label: {
                             Label("删除", systemImage: "trash")
                         }
 
                         // 滑动:切换置顶状态
                         Button {
+                            // 仅更新内存状态(SessionManager)
                             appState.sessionManager.togglePin(session.id)
+                            // 说明:DataController 未提供专门更新 isPinned 的方法,
+                            // 当前置顶变更仅保留在内存中,App 重启后会回退到上次持久化的状态。
+                            // 如需持久化,可通过 saveSession(传入切换后的 session)整体 upsert 实现,
+                            // 但需先从 sessionManager 取回最新 session 对象,此处暂不引入额外副作用。
                         } label: {
                             Label(
                                 session.isPinned ? "取消置顶" : "置顶",
@@ -44,7 +53,10 @@ struct SessionsView: View {
                 // 工具栏:新建会话(使用默认标题 "新对话")
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        _ = appState.sessionManager.createSession()
+                        // 先创建内存会话(SessionManager)
+                        let session = appState.sessionManager.createSession()
+                        // 同步保存到 SwiftData,确保 App 重启后会话不丢失
+                        appState.dataController.saveSession(session)
                     } label: {
                         Image(systemName: "plus")
                     }

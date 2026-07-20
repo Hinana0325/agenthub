@@ -1,6 +1,7 @@
 import Foundation
 import Security
 import CryptoKit
+import CommonCrypto
 
 // MARK: - KeychainManager
 // 对应 Android KeystoreManager — AKS: 前缀格式跨平台兼容

@@ -28,6 +28,7 @@ targets:
         excludes:
           - Info.plist
           - Resources
+          - Widget
     resources:
       - path: AgentControlCenter/Resources/Assets.xcassets
     info:
