@@ -1,0 +1,40 @@
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.playground/
+DerivedData/
+build/
+Build/
+*.moved-aside
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+Package.swift
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# XcodeGen 生成文件（由 project.yml 重新生成）
+*.xcodeproj
+*.xcworkspace
