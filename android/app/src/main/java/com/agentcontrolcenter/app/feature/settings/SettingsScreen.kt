@@ -276,6 +276,15 @@ fun SettingsScreen(
                                     )
                                 }
                                 item {
+                                    SettingsToggleItem(
+                                        title = stringResource(R.string.dynamic_color),
+                                        subtitle = stringResource(R.string.dynamic_color_desc),
+                                        icon = Icons.Default.AutoAwesome,
+                                        checked = uiState.dynamicColor,
+                                        onCheckedChange = { settingsViewModel.setDynamicColor(it) }
+                                    )
+                                }
+                                item {
                                     SettingsItem(
                                         title = stringResource(R.string.font_size),
                                         subtitle = fontSizeLabel(uiState.fontSize, context),
@@ -479,6 +488,15 @@ fun SettingsScreen(
                                 subtitle = themeLabel(uiState.themeMode, context),
                                 icon = Icons.Default.Palette,
                                 onClick = { showThemeDialog = true }
+                            )
+                        }
+                        item {
+                            SettingsToggleItem(
+                                title = stringResource(R.string.dynamic_color),
+                                subtitle = stringResource(R.string.dynamic_color_desc),
+                                icon = Icons.Default.AutoAwesome,
+                                checked = uiState.dynamicColor,
+                                onCheckedChange = { settingsViewModel.setDynamicColor(it) }
                             )
                         }
                         item {
@@ -726,6 +744,48 @@ private fun SettingsItem(
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+        }
+    }
+}
+
+/**
+ * 带开关的设置项 — 用于布尔值切换（如动态取色、E2E 加密等）。
+ */
+@Composable
+private fun SettingsToggleItem(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) },
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
             )
         }
     }

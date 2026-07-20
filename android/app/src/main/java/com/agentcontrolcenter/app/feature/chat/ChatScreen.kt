@@ -1301,8 +1301,9 @@ private fun MarkdownBlockView(
         }
 
         is MarkdownBlock.Paragraph -> {
-            val annotated = remember(block.spans, baseColor) {
-                buildSpanAnnotatedString(block.spans, baseColor)
+            val linkColor = MaterialTheme.colorScheme.primary
+            val annotated = remember(block.spans, baseColor, linkColor) {
+                buildSpanAnnotatedString(block.spans, baseColor, linkColor)
             }
             ClickableAnnotatedText(
                 text = annotated,
@@ -1349,8 +1350,9 @@ private fun MarkdownBlockView(
                     shape = RoundedCornerShape(2.dp)
                 ) {}
                 Spacer(modifier = Modifier.width(8.dp))
-                val annotated = remember(block.spans, baseColor) {
-                    buildSpanAnnotatedString(block.spans, baseColor)
+                val linkColor2 = MaterialTheme.colorScheme.primary
+                val annotated = remember(block.spans, baseColor, linkColor2) {
+                    buildSpanAnnotatedString(block.spans, baseColor, linkColor2)
                 }
                 Surface(
                     shape = RoundedCornerShape(4.dp),
@@ -1374,7 +1376,8 @@ private fun MarkdownBlockView(
                     Row {
                         Text(text = "\u2022  ", style = baseStyle, color = baseColor)
                         val annotated = remember(spans, baseColor) {
-                            buildSpanAnnotatedString(spans, baseColor)
+                            val lc = androidx.compose.ui.graphics.Color(0xFF1976D2)
+                            buildSpanAnnotatedString(spans, baseColor, lc)
                         }
                         ClickableAnnotatedText(
                             text = annotated,
@@ -1453,7 +1456,8 @@ private fun MarkdownBlockView(
 /** Build an AnnotatedString from a list of MarkdownSpan with proper styling. */
 private fun buildSpanAnnotatedString(
     spans: List<MarkdownSpan>,
-    baseColor: androidx.compose.ui.graphics.Color
+    baseColor: androidx.compose.ui.graphics.Color,
+    linkColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(0xFF1976D2)
 ): AnnotatedString = buildAnnotatedString {
     spans.forEach { span ->
         when (span) {
@@ -1478,7 +1482,7 @@ private fun buildSpanAnnotatedString(
                 val tag = "link_${span.url.hashCode()}"
                 pushStringAnnotation(tag = tag, annotation = span.url)
                 withStyle(SpanStyle(
-                    color = androidx.compose.ui.graphics.Color(0xFF1976D2),
+                    color = linkColor,
                     textDecoration = TextDecoration.Underline
                 )) {
                     append(span.text)
@@ -2017,7 +2021,8 @@ private fun SearchResultItem(
             }
             Spacer(modifier = Modifier.height(4.dp))
             val snippet = message.content.take(200)
-            val highlightedText = remember(snippet, query) {
+            val highlightColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)
+            val highlightedText = remember(snippet, query, highlightColor) {
                 buildAnnotatedString {
                     val lowerSnippet = snippet.lowercase()
                     val lowerQuery = query.lowercase()
@@ -2030,7 +2035,7 @@ private fun SearchResultItem(
                         }
                         append(snippet.substring(start, idx))
                         pushStyle(SpanStyle(
-                            background = androidx.compose.ui.graphics.Color(0xFFFFF176).copy(alpha = 0.5f),
+                            background = highlightColor,
                             fontWeight = FontWeight.Bold
                         ))
                         append(snippet.substring(idx, idx + query.length))

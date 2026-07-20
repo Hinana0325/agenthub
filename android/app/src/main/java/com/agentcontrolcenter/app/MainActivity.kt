@@ -121,7 +121,8 @@ class MainActivity : ComponentActivity() {
 
             AgentControlCenterTheme(
                 themeMode = themeMode,
-                fontSize = settingsState.fontSize
+                fontSize = settingsState.fontSize,
+                dynamicColor = settingsState.dynamicColor
             ) {
                 val isGlass = LocalIsGlass.current
                 val isDark = isSystemInDarkTheme()

@@ -60,6 +60,8 @@
     <string name="appearance">Appearance</string>
     <string name="theme">Theme</string>
     <string name="accent_color">Accent Color</string>
+    <string name="dynamic_color">Dynamic Color</string>
+    <string name="dynamic_color_desc">Use colors from your wallpaper (Android 12+)</string>
     <string name="font_size">Font Size</string>
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>

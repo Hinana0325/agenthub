@@ -36,6 +36,7 @@ import javax.inject.Inject
 data class SettingsUiState(
     val themeMode: String = "system",
     val fontSize: String = "medium",
+    val dynamicColor: Boolean = false,
     val e2eEnabled: Boolean = false,
     val e2eKey: String = "",
     val backupMessage: String? = null
@@ -78,6 +79,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            dataStore.dynamicColorEnabled.collect { enabled ->
+                _uiState.update { it.copy(dynamicColor = enabled) }
+            }
+        }
+        viewModelScope.launch {
             dataStore.e2eEnabled.collect { enabled ->
                 _uiState.update { it.copy(e2eEnabled = enabled) }
             }
@@ -101,6 +107,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setFontSize(size: String) {
         viewModelScope.launch { dataStore.setFontSize(size) }
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { dataStore.setDynamicColorEnabled(enabled) }
     }
 
     // ── E2E Encryption ──

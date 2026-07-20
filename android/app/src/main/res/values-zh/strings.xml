@@ -55,6 +55,8 @@
     <string name="appearance">外观</string>
     <string name="theme">主题</string>
     <string name="accent_color">强调色</string>
+    <string name="dynamic_color">动态取色</string>
+    <string name="dynamic_color_desc">从壁纸提取颜色（Android 12+）</string>
     <string name="font_size">字体大小</string>
     <string name="theme_system">跟随系统</string>
     <string name="theme_light">浅色</string>

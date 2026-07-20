@@ -28,6 +28,7 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
         private val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
         private val FEATURE_FLAG_OVERRIDES = stringPreferencesKey("feature_flag_overrides")
         private val AUTO_BACKUP_SCHEDULE = stringPreferencesKey("auto_backup_schedule")
+        private val DYNAMIC_COLOR_ENABLED = booleanPreferencesKey("dynamic_color_enabled")
 
         private const val DEFAULT_THEME = "system"
         private const val DEFAULT_FONT_SIZE = "medium"
@@ -38,6 +39,7 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
         // P3-3: 自动备份调度默认 MANUAL（手动），避免在用户未感知时占用后台资源。
         // 取值与 BackupManager.BackupSchedule.storageValue 对齐：daily / weekly / manual。
         private const val DEFAULT_AUTO_BACKUP_SCHEDULE = "manual"
+        private const val DEFAULT_DYNAMIC_COLOR_ENABLED = false
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
@@ -174,5 +176,23 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
      */
     suspend fun setAutoBackup(schedule: String) {
         context.dataStore.edit { it[AUTO_BACKUP_SCHEDULE] = schedule }
+    }
+
+    // ── Material You 动态取色 ──
+    // Android 12+ (API 31+) 支持从系统壁纸提取色板。
+    // 默认关闭，用户可在设置页开启。开启后覆盖 AccentBlue 调色板。
+
+    /** 是否启用 Material You 动态取色（默认 false）。 */
+    val dynamicColorEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[DYNAMIC_COLOR_ENABLED] ?: DEFAULT_DYNAMIC_COLOR_ENABLED
+    }
+
+    /**
+     * 设置动态取色开关。
+     *
+     * @param enabled true 启用动态取色，false 使用应用自带调色板
+     */
+    suspend fun setDynamicColorEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[DYNAMIC_COLOR_ENABLED] = enabled }
     }
 }

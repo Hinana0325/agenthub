@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-07-20
+
+### Added — Android 专项 UX 改进
+
+- **Material You 动态取色**: Android 12+ (API 31+) 支持从系统壁纸提取色板（`dynamicLightColorScheme` / `dynamicDarkColorScheme`），Glass 模式下保留半透明 surfaceContainer。通过设置页「动态取色」开关控制，默认关闭。`Theme.kt` 新增 `dynamicColor` 参数，`SettingsDataStore` 新增 `dynamicColorEnabled` Flow，`SettingsViewModel` 新增 `dynamicColor` 状态，`SettingsScreen` 新增 `SettingsToggleItem` 组件和开关 UI。
+- **通知 MessagingStyle**: `LocalNotificationManager` 新增 `notifyChatMessage()` 方法，Android 7+ 使用 `MessagingStyle`（含 `Person` 发送者身份），多条消息自动堆叠为对话视图，低于 API 24 回退到 `BigTextStyle`。新增 `notifyGroupSummary()` 分组摘要通知，通知栏归组显示。
+- **Widget color resources**: Widget 布局 XML 中所有硬编码颜色（#1a1d2e / #8b8fa3 / #5b6078 / #a0a4b8 / #ffffff）替换为 `@color/widget_text_*` color resources，为后续深色模式适配做准备。
+
+### Fixed
+
+- **深色模式硬编码颜色**: `ChatScreen.kt` 中 Markdown 链接颜色 `Color(0xFF1976D2)` 改为 `MaterialTheme.colorScheme.primary`，搜索高亮背景 `Color(0xFFFFF176)` 改为 `MaterialTheme.colorScheme.tertiary`，暗色模式下可读性大幅提升。`buildSpanAnnotatedString` 新增 `linkColor` 参数，3 处调用处传入主题色。
+- **Widget 触摸目标**: Widget 语音按钮 / 输入区 / 发送按钮高度从 36dp 提升到 48dp，满足无障碍触摸目标最小尺寸要求。
+
+### Changed
+
+- **版本号**: Android versionCode 28 → 29 / versionName 3.1.0 → 3.2.0；iOS 同步。
+
 ## [3.1.0] - 2026-07-20
 
 ### Added — UX 用户体验改进

@@ -1,12 +1,15 @@
 package com.agentcontrolcenter.app.ui.theme
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -14,6 +17,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
@@ -117,6 +121,7 @@ private fun scaleTypography(base: Typography, factor: Float): Typography = Typog
 fun AgentControlCenterTheme(
     themeMode: ThemeMode = ThemeMode.System,
     fontSize: String = "medium",
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val isDark = when (themeMode) {
@@ -127,7 +132,31 @@ fun AgentControlCenterTheme(
     // Liquid glass is always on; the theme mode only selects the dark/light base.
     val isGlass = true
     val accent = AccentBlue
-    val colorScheme = buildColorScheme(accent, isDark, isGlass)
+    val context = LocalContext.current
+
+    // Material You 动态取色（Android 12+）。
+    // 开启时从系统壁纸提取色板，关闭时使用应用自带的 AccentBlue 调色板。
+    // Glass 模式下仍保留半透明 surfaceContainer，但 primary/secondary 取自动态色板。
+    val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val dynScheme = if (isDark) {
+            dynamicDarkColorScheme(context)
+        } else {
+            dynamicLightColorScheme(context)
+        }
+        // 覆盖 surface 系列为 Glass 半透明色，保留液态玻璃效果
+        val glassSurface = if (isDark) GlassSurfaceDark else GlassSurfaceLight
+        dynScheme.copy(
+            background = if (isGlass) Color.Transparent else dynScheme.background,
+            surface = if (isGlass) Color.Transparent else dynScheme.surface,
+            surfaceContainerLowest = if (isGlass) glassSurface.copy(alpha = 0.90f) else dynScheme.surfaceContainerLowest,
+            surfaceContainerLow = if (isGlass) glassSurface.copy(alpha = 0.85f) else dynScheme.surfaceContainerLow,
+            surfaceContainer = if (isGlass) glassSurface.copy(alpha = 0.80f) else dynScheme.surfaceContainer,
+            surfaceContainerHigh = if (isGlass) glassSurface.copy(alpha = 0.75f) else dynScheme.surfaceContainerHigh,
+            surfaceContainerHighest = if (isGlass) glassSurface.copy(alpha = 0.70f) else dynScheme.surfaceContainerHighest
+        )
+    } else {
+        buildColorScheme(accent, isDark, isGlass)
+    }
 
     // Apply the persisted font-size setting by scaling the base typography.
     val typography = scaleTypography(AppTypography, fontScaleFor(fontSize))
