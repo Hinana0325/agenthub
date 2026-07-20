@@ -7,8 +7,11 @@ import SwiftUI
 struct PluginView: View {
     @Environment(AppState.self) private var appState
 
-    /// 本地插件列表（DataController 暂无 Plugin CRUD，使用空列表 + 空状态）
+    /// 本地插件列表(DataController 暂无 Plugin CRUD,使用 UserDefaults + JSON 编码持久化)
     @State private var plugins: [Plugin] = []
+
+    /// UserDefaults 持久化键
+    private static let storageKey = "plugins"
 
     /// 是否显示添加插件 Sheet
     @State private var showAddSheet: Bool = false
@@ -69,6 +72,8 @@ struct PluginView: View {
                     let pluginId = plugins[index].id
                     plugins.remove(at: index)
                 }
+                // 删除后立即持久化
+                savePlugins()
             }
         }
         .listStyle(.insetGrouped)
@@ -120,6 +125,10 @@ struct PluginView: View {
             Toggle("", isOn: plugin.isEnabled)
                 .labelsHidden()
                 .tint(AppTheme.primaryColor)
+                // 切换启用状态后立即持久化
+                .onChange(of: plugin.wrappedValue.isEnabled) { _, _ in
+                    savePlugins()
+                }
         }
         .padding(.vertical, 4)
     }
@@ -153,6 +162,8 @@ struct PluginView: View {
         NavigationStack {
             AddPluginForm { newPlugin in
                 plugins.append(newPlugin)
+                // 添加后立即持久化,确保 App 重启后插件不丢失
+                savePlugins()
                 showAddSheet = false
             }
             .navigationTitle("添加插件")
@@ -166,12 +177,21 @@ struct PluginView: View {
         .presentationDetents([.medium])
     }
 
-    // MARK: - 加载插件
+    // MARK: - 持久化
 
-    /// 尝试从持久化层加载插件（当前 DataController 未实现 Plugin CRUD，使用空列表）
+    /// 从 UserDefaults 加载已保存的插件列表(JSON 解码)
     private func loadPlugins() {
-        // DataController 暂未实现 fetchPlugins()，保持空列表
-        // 后续接入后可在此处调用 appState.dataController.fetchPlugins()
+        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+           let decoded = try? JSONDecoder().decode([Plugin].self, from: data) {
+            plugins = decoded
+        }
+    }
+
+    /// 将当前插件列表编码为 JSON 并写入 UserDefaults
+    private func savePlugins() {
+        if let data = try? JSONEncoder().encode(plugins) {
+            UserDefaults.standard.set(data, forKey: Self.storageKey)
+        }
     }
 }
 

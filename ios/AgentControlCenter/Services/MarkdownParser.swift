@@ -7,6 +7,10 @@ struct MarkdownText: View {
     let markdown: String
     let isUser: Bool
 
+    /// 从环境读取字体大小偏好(P1-4),由 ChatView 的 MessageBubble 注入,
+    /// 使助手消息的 Markdown 渲染能响应设置页的"字体大小"选项。
+    @Environment(\.appFontSize) private var fontSize
+
     init(_ markdown: String, isUser: Bool = false) {
         self.markdown = markdown
         self.isUser = isUser
@@ -40,8 +44,8 @@ struct MarkdownText: View {
 
         do {
             var attr = try AttributedString(markdown: result, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
-            // 整体字体
-            attr.font = .body
+            // 整体字体:跟随用户设置的字体大小偏好(小/中/大)
+            attr.font = fontSize.font
             if !isUser {
                 attr.foregroundColor = .primary
             }

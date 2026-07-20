@@ -12,6 +12,10 @@ import SwiftData
 /// - 将 `DataController.container` 注入 SwiftUI 的 SwiftData 环境，
 ///   使 `@Query`、`@Environment(\.modelContext)` 等自动使用此容器
 /// - 挂载根视图 `ContentView`
+///
+/// 主题：`preferredColorScheme` 由 `ContentView` 内部根据
+/// `@AppStorage("theme")` 统一应用（参见 `AppTheme.ThemePreference`），
+/// 因此本入口仅负责依赖注入，不再重复设置配色方案。
 @main
 struct AgentControlCenterApp: App {
 
@@ -20,6 +24,8 @@ struct AgentControlCenterApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // 根视图。preferredColorScheme 由 ContentView 内部根据
+            // @AppStorage("theme") 统一应用，此处仅负责依赖注入。
             ContentView()
                 // 注入 AppState 到 SwiftUI 环境，子视图通过 @Environment(AppState.self) 访问
                 .environment(appState)

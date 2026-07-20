@@ -15,20 +15,29 @@ struct McpView: View {
     @State private var servers: [McpServer] = []
     @State private var showingAddSheet = false
 
+    /// UserDefaults 持久化键(因 DataController 未提供 McpServerEntity,使用 JSON 编码方式持久化)
+    private static let storageKey = "mcp_servers"
+
     var body: some View {
         NavigationStack {
             List {
                 // MCP Server 列表
                 Section("MCP 服务器") {
                     if servers.isEmpty {
-                        Text("暂无 MCP 服务器")
-                            .foregroundStyle(.secondary)
+                        // 空状态使用 ContentUnavailableView,对齐 iOS 17 设计语言
+                        ContentUnavailableView(
+                            "暂无 MCP 服务器",
+                            systemImage: "server.rack",
+                            description: Text("点击右上角加号添加 MCP 服务器")
+                        )
                     } else {
                         ForEach(servers) { server in
                             McpServerRow(server: server)
                         }
                         .onDelete { indexSet in
                             indexSet.forEach { servers.remove(at: $0) }
+                            // 删除后立即持久化,避免 App 重启后数据残留
+                            saveServers()
                         }
                     }
                 }
@@ -59,8 +68,31 @@ struct McpView: View {
             .sheet(isPresented: $showingAddSheet) {
                 AddMcpServerSheet { newServer in
                     servers.append(newServer)
+                    // 添加后立即持久化,确保 App 重启后服务器不丢失
+                    saveServers()
                 }
             }
+            // 视图出现时从 UserDefaults 加载已保存的 MCP 服务器列表
+            .onAppear {
+                loadServers()
+            }
+        }
+    }
+
+    // MARK: - 持久化
+
+    /// 将 servers 列表编码为 JSON 并写入 UserDefaults
+    private func saveServers() {
+        if let data = try? JSONEncoder().encode(servers) {
+            UserDefaults.standard.set(data, forKey: Self.storageKey)
+        }
+    }
+
+    /// 从 UserDefaults 读取并解码 servers 列表
+    private func loadServers() {
+        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
+           let decoded = try? JSONDecoder().decode([McpServer].self, from: data) {
+            servers = decoded
         }
     }
 }

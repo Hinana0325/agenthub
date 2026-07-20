@@ -1,36 +1,263 @@
 import SwiftUI
 
-/// 全局主题定义
-/// 集中管理颜色、状态色映射及时间格式化工具
+/// 应用设计令牌系统
+///
+/// 统一管理颜色、间距、圆角、阴影、字体等设计变量。
+/// 所有视觉常量均从此处取用，避免在视图层散落魔法数字。
+///
+/// 兼容性说明：
+/// - `statusColors` / `taskStatusColors` 保留枚举键，以兼容现有调用
+///   `AppTheme.statusColors[agent.status]` / `AppTheme.taskStatusColors[task.status]`。
+/// - `timeAgo` 入参仍为毫秒级时间戳（与 `Session.updatedAt`、`Task.createdAt`、
+///   `Message.timestamp` 等数据模型保持一致，均由 `Date().timeIntervalSince1970 * 1000` 生成）。
+/// - `ThemePreference` 的 rawValue 与 `SettingsView` 中既有的 `AppThemePreference`
+///   保持一致（"light" / "dark" / "system"），共用同一个 `@AppStorage("theme")` 键。
 enum AppTheme {
-    // 主色调
-    static let primaryColor = Color.blue
-    // 背景色
-    static let backgroundColor = Color(.systemBackground)
-    static let secondaryBackground = Color(.secondarySystemBackground)
 
-    // 聊天气泡颜色
-    static let userBubbleColor = Color.blue
-    static let assistantBubbleColor = Color(.secondarySystemBackground)
+    // MARK: - 间距 (Spacing)
 
-    // Agent 状态 -> 颜色映射(绿/灰/黄/红)
+    /// 间距令牌（pt）
+    enum Spacing {
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        static let lg: CGFloat = 16
+        static let xl: CGFloat = 24
+        static let xxl: CGFloat = 32
+    }
+
+    // MARK: - 圆角 (CornerRadius)
+
+    /// 圆角令牌（pt）
+    enum CornerRadius {
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        static let lg: CGFloat = 16
+        static let xl: CGFloat = 20
+        static let pill: CGFloat = 999
+    }
+
+    // MARK: - 阴影 (Shadow)
+
+    /// 阴影令牌（color / radius / x / y）
+    enum Shadow {
+        static let light = (color: Color.black.opacity(0.05), radius: CGFloat(4), x: CGFloat(0), y: CGFloat(2))
+        static let medium = (color: Color.black.opacity(0.1), radius: CGFloat(8), x: CGFloat(0), y: CGFloat(4))
+        static let heavy = (color: Color.black.opacity(0.15), radius: CGFloat(16), x: CGFloat(0), y: CGFloat(8))
+    }
+
+    // MARK: - 品牌色
+
+    /// 主品牌色（引用 Assets 中的 AccentColor，#214DF6）
+    static let primaryColor = Color("AccentColor")
+
+    /// 主品牌渐变（左上 → 右下）
+    static let primaryGradient = LinearGradient(
+        colors: [Color(red: 0.13, green: 0.30, blue: 0.96), Color(red: 0.25, green: 0.55, blue: 1.0)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    // MARK: - 语义色
+
+    static let successColor = Color.green
+    static let warningColor = Color.orange
+    static let errorColor = Color.red
+    static let infoColor = Color.blue
+
+    // MARK: - 背景色
+
+    static let backgroundColor = Color(.systemGroupedBackground)
+    static let secondaryBackground = Color(.secondarySystemGroupedBackground)
+    static let tertiaryBackground = Color(.tertiarySystemGroupedBackground)
+
+    // MARK: - 气泡色
+
+    /// 用户气泡背景（品牌蓝）
+    static let userBubbleColor = Color(red: 0.13, green: 0.30, blue: 0.96)
+    /// 用户气泡文字
+    static let userBubbleTextColor = Color.white
+    /// 助手气泡背景
+    static let assistantBubbleColor = Color(.secondarySystemGroupedBackground)
+    /// 助手气泡文字
+    static let assistantBubbleTextColor = Color.primary
+    /// 系统气泡背景
+    static let systemBubbleColor = Color(.tertiarySystemGroupedBackground)
+
+    // MARK: - 文本色
+
+    static let primaryTextColor = Color.primary
+    static let secondaryTextColor = Color.secondary
+    static let tertiaryTextColor = Color(.tertiaryLabel)
+
+    // MARK: - 边框
+
+    static let separatorColor = Color(.separator)
+    static let borderColor = Color(.separator).opacity(0.5)
+
+    // MARK: - 状态色
+
+    /// Agent 状态 -> 颜色映射
+    /// 使用 `AgentStatus` 枚举作为键，兼容 `AppTheme.statusColors[agent.status]`、
+    /// `AppTheme.statusColors[.online]` 等既有调用方式。
     static let statusColors: [AgentStatus: Color] = [
-        .online: .green, .offline: .gray, .connecting: .yellow, .error: .red
+        .online: .green,
+        .offline: .gray,
+        .connecting: .orange,
+        .error: .red
     ]
 
-    // 任务状态 -> 颜色映射(灰/蓝/绿/红/橙)
+    // MARK: - 任务状态色
+
+    /// 任务状态 -> 颜色映射
+    /// 使用 `TaskStatus` 枚举作为键，兼容 `AppTheme.taskStatusColors[task.status]` 等既有调用方式。
     static let taskStatusColors: [TaskStatus: Color] = [
-        .pending: .gray, .running: .blue, .completed: .green,
-        .failed: .red, .cancelled: .orange
+        .pending: .gray,
+        .running: .blue,
+        .completed: .green,
+        .failed: .red,
+        .cancelled: .orange
     ]
 
-    /// 将毫秒时间戳格式化为"几分钟前 / 几小时前"等相对时间字符串
+    // MARK: - 动态字体
+
+    /// 根据用户设置的字体大小返回 Font
+    /// - Parameters:
+    ///   - size: 字号档位（小 / 中 / 大）
+    ///   - weight: 字重
+    /// - Returns: 对应的 SwiftUI Font
+    static func dynamicFont(size: FontSize = .medium, weight: Font.Weight = .regular) -> Font {
+        switch size {
+        case .small:  return .system(.subheadline, design: .default, weight: weight)
+        case .medium: return .system(.body,        design: .default, weight: weight)
+        case .large:  return .system(.title3,      design: .default, weight: weight)
+        }
+    }
+
+    /// 字号档位（与 `SettingsView` 中既有的顶层 `FontSize` 同义，此处为命名空间下的等价定义）
+    enum FontSize: String, CaseIterable {
+        case small = "小"
+        case medium = "中"
+        case large = "大"
+
+        /// 缩放系数，可用于手动缩放自定义文本
+        var scaleFactor: CGFloat {
+            switch self {
+            case .small:  0.85
+            case .medium: 1.0
+            case .large:  1.15
+            }
+        }
+    }
+
+    // MARK: - 主题偏好
+
+    /// 外观主题偏好
+    ///
+    /// rawValue 与 `SettingsView` 中既有的 `AppThemePreference` 完全一致
+    /// （"light" / "dark" / "system"），二者共用同一个 `@AppStorage("theme")` 键，
+    /// 保证根视图 `ContentView` 与设置页之间的主题切换互通。
+    /// 中文展示名通过 `displayName` 提供，避免将本地化字符串作为 rawValue。
+    enum ThemePreference: String, CaseIterable {
+        case light = "light"
+        case dark = "dark"
+        case system = "system"
+
+        /// 中文展示名
+        var displayName: String {
+            switch self {
+            case .light:  "浅色"
+            case .dark:   "深色"
+            case .system: "跟随系统"
+            }
+        }
+
+        /// 映射到 SwiftUI 的 ColorScheme；`system` 返回 nil 表示跟随系统
+        var colorScheme: ColorScheme? {
+            switch self {
+            case .light:  .light
+            case .dark:   .dark
+            case .system: nil
+            }
+        }
+    }
+
+    // MARK: - 辅助方法
+
+    /// 将毫秒级时间戳格式化为相对时间字符串（"刚刚 / X分钟前 / X小时前 / X天前 / MM/dd"）。
+    ///
+    /// 兼容性：入参为毫秒级时间戳（与 `Session.updatedAt`、`Task.createdAt`、
+    /// `Message.timestamp` 等模型字段一致），内部除以 1000 转为秒。
     /// - Parameter timestamp: 毫秒级时间戳
     /// - Returns: 本地化的相对时间描述
     static func timeAgo(_ timestamp: Int64) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(timestamp) / 1000)
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+        let interval = Date().timeIntervalSince(date)
+        if interval < 60 { return "刚刚" }
+        if interval < 3600 { return "\(Int(interval / 60))分钟前" }
+        if interval < 86400 { return "\(Int(interval / 3600))小时前" }
+        if interval < 604800 { return "\(Int(interval / 86400))天前" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd"
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - View 扩展
+
+extension View {
+    /// 应用卡片样式：内边距 + 二级背景 + 大圆角 + 轻阴影
+    func appCard() -> some View {
+        self
+            .padding(AppTheme.Spacing.lg)
+            .background(AppTheme.secondaryBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.lg))
+            .shadow(
+                color: AppTheme.Shadow.light.color,
+                radius: AppTheme.Shadow.light.radius,
+                x: AppTheme.Shadow.light.x,
+                y: AppTheme.Shadow.light.y
+            )
+    }
+
+    /// 应用药丸标签样式
+    /// - Parameters:
+    ///   - foreground: 文字颜色
+    ///   - background: 背景颜色
+    func appPill(
+        foreground: Color = AppTheme.secondaryTextColor,
+        background: Color = AppTheme.tertiaryBackground
+    ) -> some View {
+        self
+            .font(.caption2)
+            .foregroundStyle(foreground)
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xs)
+            .background(background)
+            .clipShape(Capsule())
+    }
+}
+
+// MARK: - 字体大小环境注入(P1-4)
+
+/// 字体大小环境键:用于在视图树中注入用户在设置页选择的字体大小偏好,
+/// 使 ChatView 的 MessageBubble / MarkdownText 等组件能响应"字体大小"设置。
+/// 类型使用顶层 `FontSize`(与 SettingsView 的 @AppStorage("fontSize") 一致)。
+private struct AppFontSizeEnvironmentKey: EnvironmentKey {
+    static let defaultValue: FontSize = .medium
+}
+
+extension EnvironmentValues {
+    /// 用户设置的字体大小偏好(默认 .medium)
+    var appFontSize: FontSize {
+        get { self[AppFontSizeEnvironmentKey.self] }
+        set { self[AppFontSizeEnvironmentKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// 注入字体大小偏好到环境,供子视图(如 MarkdownText)读取
+    func appFontSize(_ size: FontSize) -> some View {
+        environment(\.appFontSize, size)
     }
 }

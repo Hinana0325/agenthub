@@ -15,6 +15,8 @@ struct ChatView: View {
     @AppStorage("encryptionEnabled") private var encryptionEnabled: Bool = false
     /// E2E 加密密钥
     @AppStorage("encryptionPassphrase") private var encryptionPassphrase: String = ""
+    /// 字体大小偏好(P1-4):与设置页共用 @AppStorage 键,注入环境后供 MessageBubble / MarkdownText 使用
+    @AppStorage("fontSize") private var fontSize: FontSize = .medium
 
     // MARK: - 参数
     /// 目标会话 ID
@@ -54,12 +56,22 @@ struct ChatView: View {
     @State private var helpText: String = ""
     /// 语音输入管理器
     @State private var voiceManager = VoiceInputManager()
+    /// 是否显示 Agent 配置 Sheet（空状态引导时触发）
+    @State private var showAgentConfig: Bool = false
+    /// 错误提示文本（流式错误等场景，不固化为消息）
+    @State private var errorMessage: String?
+    /// 输入框焦点状态（用于键盘完成按钮收起键盘）
+    @FocusState private var isInputFocused: Bool
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
             // MARK: 消息列表区域
+            // 无活跃 Agent 且无消息时显示空状态引导，否则显示消息列表
+            if !hasActiveAgent && messages.isEmpty {
+                ChatEmptyState(configureAction: { showAgentConfig = true })
+            } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
@@ -87,6 +99,8 @@ struct ChatView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                 }
+                // 滚动时交互式收起键盘
+                .scrollDismissesKeyboard(.interactively)
                 .onAppear {
                     loadMessages()
                     setupTransport()
@@ -102,22 +116,41 @@ struct ChatView: View {
                     scrollToBottom(proxy: proxy, animated: true)
                 }
                 .onChange(of: streamingText) { _, _ in
-                    scrollToBottom(proxy: proxy, animated: true)
+                    // 流式滚动不用动画，避免高频更新导致的卡顿
+                    scrollToBottom(proxy: proxy, animated: false)
                 }
             }
+            } // 结束 else（消息列表分支）
 
             Divider()
 
             // MARK: 底部输入栏
             inputBar
         }
+        // 注入字体大小偏好到环境,MessageBubble 内的 Text 与 MarkdownText 均可读取(P1-4)
+        .environment(\.appFontSize, fontSize)
         .navigationTitle(sessionTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showSlashCommands) {
-            slashCommandSheet
-        }
         .sheet(isPresented: $showHelpSheet) {
             helpSheetView
+        }
+        .sheet(isPresented: $showAgentConfig) {
+            // 空状态引导跳转的 Agent 配置页
+            NavigationStack {
+                AgentsView()
+            }
+        }
+        // 流式错误等场景的错误提示 banner
+        .alert("出错了",
+               isPresented: Binding(
+                   get: { errorMessage != nil },
+                   set: { if !$0 { errorMessage = nil } }
+               ),
+               presenting: errorMessage
+        ) { _ in
+            Button("好的", role: .cancel) { errorMessage = nil }
+        } message: { msg in
+            Text(msg)
         }
     }
 
@@ -146,6 +179,32 @@ struct ChatView: View {
                 replyPreviewBar(repliedMessage)
             }
 
+            // 图片附件缩略图预览条 — 选中图片后在输入栏顶部展示，可点 X 清除
+            if let base64 = attachmentBase64,
+               let data = Data(base64Encoded: base64),
+               let uiImage = UIImage(data: data) {
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
+                    Text("已选择图片")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        attachmentBase64 = nil
+                        attachmentName = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.top, AppTheme.Spacing.sm)
+            }
+
             HStack(alignment: .bottom, spacing: 8) {
                 // 图片附件选择器
                 PhotosPicker(selection: $photoItem, matching: .images) {
@@ -162,9 +221,17 @@ struct ChatView: View {
                 TextField("输入消息…", text: $inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
+                    .focused($isInputFocused)
+                    .toolbar {
+                        // 键盘上方添加完成按钮，用于收起键盘
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("完成") { isInputFocused = false }
+                        }
+                    }
                     .onChange(of: inputText) { _, newValue in
-                        // 输入 `/` 时弹出斜杠命令列表
-                        showSlashCommands = newValue.hasPrefix("/") && newValue.trimmingCharacters(in: .whitespaces).count <= 1
+                        // 输入 `/` 开头时弹出斜杠命令内联列表（支持边输入边过滤）
+                        showSlashCommands = newValue.hasPrefix("/")
                     }
                     .submitLabel(.send)
                     .onSubmit {
@@ -189,8 +256,21 @@ struct ChatView: View {
             .padding(.vertical, 8)
             .background(AppTheme.secondaryBackground)
         }
-        // 左右滑动切换会话
-        .gesture(
+        // 斜杠命令内联悬浮列表（替代 sheet，在输入栏上方显示）
+        .overlay(alignment: .top) {
+            if showSlashCommands {
+                SlashCommandList(commands: filteredCommands) { cmd in
+                    executeSlashCommand(cmd)
+                    inputText = ""
+                    showSlashCommands = false
+                }
+                .padding(.bottom, 4)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: showSlashCommands)
+        // 左右滑动切换会话 — 使用 simultaneousGesture 避免拦截输入框交互
+        .simultaneousGesture(
             DragGesture(minimumDistance: 50)
                 .onEnded { value in
                     handleSwipe(value: value)
@@ -326,59 +406,26 @@ struct ChatView: View {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isWaiting
     }
 
-    // MARK: - 斜杠命令 Sheet
+    // MARK: - 斜杠命令数据
 
-    /// 斜杠命令列表（用 sheet 展示，不弹 alert）
-    private var slashCommandSheet: some View {
-        NavigationStack {
-            List {
-                slashCommandRow(
-                    command: "/clear",
-                    description: "清空当前会话的所有消息"
-                )
-                slashCommandRow(
-                    command: "/new",
-                    description: "新建会话并跳转"
-                )
-                slashCommandRow(
-                    command: "/reconnect",
-                    description: "重新连接传输层"
-                )
-                slashCommandRow(
-                    command: "/help",
-                    description: "显示帮助文本"
-                )
-            }
-            .navigationTitle("斜杠命令")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
-                        showSlashCommands = false
-                        inputText = ""
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
+    /// 全部可用的斜杠命令
+    private var allSlashCommands: [SlashCommandItem] {
+        [
+            SlashCommandItem(command: "/clear", description: "清空当前会话的所有消息"),
+            SlashCommandItem(command: "/new", description: "新建会话并跳转"),
+            SlashCommandItem(command: "/reconnect", description: "重新连接传输层"),
+            SlashCommandItem(command: "/help", description: "显示帮助文本")
+        ]
     }
 
-    /// 单条斜杠命令行
-    private func slashCommandRow(command: String, description: String) -> some View {
-        Button {
-            showSlashCommands = false
-            inputText = ""
-            executeSlashCommand(command)
-        } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(command)
-                    .font(.headline)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    /// 根据输入框文本过滤的斜杠命令列表（用于内联悬浮列表展示）
+    private var filteredCommands: [SlashCommandItem] {
+        let input = inputText.lowercased()
+        // 仅输入 "/" 或为空时展示全部
+        if input.isEmpty || input == "/" {
+            return allSlashCommands
         }
-        .tint(.primary)
+        return allSlashCommands.filter { $0.command.lowercased().contains(input) }
     }
 
     // MARK: - 帮助 Sheet
@@ -511,7 +558,14 @@ struct ChatView: View {
     // MARK: - 会话切换（左右滑动）
 
     /// 处理输入栏区域的左右滑动手势
+    /// 仅当严格水平滑动（水平位移远大于垂直位移）时才触发会话切换，
+    /// 避免与输入框/滚动等垂直操作冲突。
     private func handleSwipe(value: DragGesture.Value) {
+        // 方向判断：水平位移需大于垂直位移的 2 倍且超过 50pt 才视为水平滑动
+        let isHorizontalSwipe = abs(value.translation.width) > abs(value.translation.height) * 2
+            && abs(value.translation.width) > 50
+        guard isHorizontalSwipe else { return }
+
         let sorted = appState.sessionManager.sortedSessions
         guard let currentIndex = sorted.firstIndex(where: { $0.id == sessionId }) else { return }
 
@@ -642,8 +696,16 @@ struct ChatView: View {
             // 流结束：把累积文本固化为一条助手消息
             finalizeAssistantMessage(sessionId: sessionId)
         case .error(let message):
-            streamingText = "错误: \(message)"
-            finalizeAssistantMessage(sessionId: sessionId)
+            // 错误不固化为助手消息，更新最后一条用户消息状态为 failed
+            if let lastUserMsg = messages.last(where: { $0.role == .user }),
+               let idx = messages.firstIndex(where: { $0.id == lastUserMsg.id }) {
+                messages[idx].status = .failed
+                appState.dataController.saveMessage(messages[idx])
+            }
+            // 显示错误 toast/banner
+            errorMessage = message
+            isWaiting = false
+            streamingText = ""
         case .connected:
             // 连接成功，无需特殊处理
             break
@@ -758,6 +820,9 @@ private struct MessageBubble: View {
     var onReply: (Message) -> Void
     var onDelete: (Message) -> Void
 
+    /// 字体大小偏好(P1-4):由 ChatView 注入,用于用户消息 Text 的字号
+    @Environment(\.appFontSize) private var fontSize
+
     private var isUser: Bool { message.role == .user }
     private var isSystem: Bool { message.role == .system }
 
@@ -815,6 +880,23 @@ private struct MessageBubble: View {
                     .foregroundStyle(isUser ? .white : .primary)
                     .textSelection(.enabled)
 
+                // 气泡底部状态行 — 仅用户消息显示发送状态图标
+                HStack(spacing: 4) {
+                    if message.role == .user {
+                        switch message.status {
+                        case .sending:
+                            Image(systemName: "clock").foregroundStyle(.secondary)
+                        case .sent:
+                            Image(systemName: "checkmark").foregroundStyle(.secondary)
+                        case .received:
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        case .failed:
+                            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
+                        }
+                    }
+                }
+                .font(.caption2)
+
                 // 时间戳
                 Text(AppTheme.timeAgo(message.timestamp))
                     .font(.caption2)
@@ -840,10 +922,11 @@ private struct MessageBubble: View {
     @ViewBuilder
     private var bubbleContent: some View {
         if isUser {
-            // 用户消息保持纯文本
+            // 用户消息保持纯文本,应用字体大小偏好(P1-4)
             Text(message.content)
+                .font(fontSize.font)
         } else {
-            // 助手消息使用 Markdown 渲染
+            // 助手消息使用 Markdown 渲染(MarkdownText 内部已读取环境字体大小)
             MarkdownText(message.content, isUser: false)
         }
     }
@@ -972,11 +1055,64 @@ private struct TypingIndicator: View {
     }
 }
 
+// MARK: - 斜杠命令内联悬浮列表
+
+/// 斜杠命令数据项
+private struct SlashCommandItem: Identifiable {
+    let id = UUID()
+    let command: String
+    let description: String
+}
+
+/// 斜杠命令内联悬浮列表（替代 sheet，轻量地在输入栏上方展示）
+private struct SlashCommandList: View {
+    let commands: [SlashCommandItem]
+    var onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(commands.enumerated()), id: \.element.id) { index, item in
+                Button {
+                    onSelect(item.command)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.command)
+                            .font(.headline)
+                        Text(item.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .tint(.primary)
+
+                // 非最后一项显示分隔线
+                if index < commands.count - 1 {
+                    Divider()
+                }
+            }
+        }
+        .background(
+            AppTheme.secondaryBackground,
+            in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+        .padding(.horizontal, AppTheme.Spacing.md)
+    }
+}
+
 // MARK: - 空状态引导页面
 
 /// 无活跃 Agent 时显示的连接向导
 struct ChatEmptyState: View {
     @Environment(AppState.self) private var appState
+
+    /// 可选的配置回调；若提供则用按钮触发（便于以 sheet 形式弹出），否则使用 NavigationLink
+    var configureAction: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 24) {
@@ -996,15 +1132,30 @@ struct ChatEmptyState: View {
                     .multilineTextAlignment(.center)
             }
 
-            NavigationLink {
-                AgentsView()
-            } label: {
-                Text("前往配置 Agent")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: 12))
+            if let configureAction {
+                // 通过闭包触发配置（例如弹出 sheet）
+                Button {
+                    configureAction()
+                } label: {
+                    Text("前往配置 Agent")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: 12))
+                }
+            } else {
+                // 默认使用 NavigationLink 直接跳转
+                NavigationLink {
+                    AgentsView()
+                } label: {
+                    Text("前往配置 Agent")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: 12))
+                }
             }
 
             Spacer()

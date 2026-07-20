@@ -125,7 +125,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $temperature, in: 0...1, step: 0.1)
+                Slider(value: $temperature, in: 0...2, step: 0.1)
             }
 
             Stepper("最大 Tokens: \(maxTokens)", value: $maxTokens, in: 256...32768, step: 256)
@@ -241,8 +241,7 @@ struct SettingsView: View {
 
             // 数据洞察
             NavigationLink {
-                Text("即将推出")
-                    .navigationTitle("数据洞察")
+                InsightsView()
             } label: {
                 Label("数据洞察", systemImage: "chart.bar.xaxis")
             }
@@ -271,7 +270,8 @@ struct SettingsView: View {
             HStack {
                 Text("应用版本")
                 Spacer()
-                Text("2.2.0")
+                // 动态读取 Bundle 版本号(P2-12),回退到 "2.2.0"
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.2.0")
                     .foregroundStyle(.secondary)
             }
             HStack {
@@ -475,7 +475,7 @@ struct SettingsView: View {
 
     // MARK: - 清除数据
 
-    /// 清除所有持久化数据:会话(含消息)/ 任务 / Agent 配置
+    /// 清除所有持久化数据:会话(含消息)/ 任务 / Agent 配置,并同步清理各 Manager 内存状态
     private func clearAllData() {
         for session in appState.dataController.fetchSessions() {
             appState.dataController.deleteMessages(sessionId: session.id)
@@ -486,6 +486,19 @@ struct SettingsView: View {
         }
         for config in appState.dataController.fetchAgentConfigs() {
             appState.dataController.deleteAgentConfig(config.id)
+        }
+
+        // 清理内存状态:持久化数据已清空,各 Manager 的内存缓存也需同步,
+        // 否则 UI 仍会展示已删除的会话/任务,重启后才会刷新。
+        // 说明:各 Manager 的集合均为 private(set),无法直接 removeAll,
+        // 改用遍历调用对应的删除方法;Agent 配置保留(注释:注意保留 Agent 配置)。
+        let sessionIds = appState.sessionManager.sessions.map(\.id)
+        for id in sessionIds {
+            appState.sessionManager.deleteSession(id)
+        }
+        let taskIds = appState.taskManager.tasks.map(\.id)
+        for id in taskIds {
+            appState.taskManager.deleteTask(id)
         }
     }
 }

@@ -6,11 +6,34 @@ struct SessionsView: View {
     // 全局应用状态(通过环境注入)
     @Environment(AppState.self) private var appState
 
+    // MARK: - 重命名状态(P1-10)
+    /// 是否显示重命名 Sheet
+    @State private var showRenameSheet: Bool = false
+    /// 待重命名的会话
+    @State private var sessionToRename: Session?
+    /// 重命名输入框文本
+    @State private var renameText: String = ""
+
+    // MARK: - 搜索状态(P2-5)
+    /// 搜索关键字(用于按标题过滤会话列表)
+    @State private var searchText: String = ""
+
+    /// 根据搜索关键字过滤后的会话列表(置顶优先,再按更新时间降序)
+    private var filteredSessions: [Session] {
+        let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !keyword.isEmpty else {
+            return appState.sessionManager.sortedSessions
+        }
+        return appState.sessionManager.sortedSessions.filter {
+            $0.title.lowercased().contains(keyword) || $0.summary.lowercased().contains(keyword)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             // 会话列表(已排序:置顶在前,再按更新时间降序)
             List {
-                ForEach(appState.sessionManager.sortedSessions) { session in
+                ForEach(filteredSessions) { session in
                     NavigationLink {
                         // 点击行进入对应会话的聊天视图
                         ChatView(sessionId: session.id)
@@ -31,12 +54,12 @@ struct SessionsView: View {
 
                         // 滑动:切换置顶状态
                         Button {
-                            // 仅更新内存状态(SessionManager)
+                            // 更新内存状态(SessionManager)
                             appState.sessionManager.togglePin(session.id)
-                            // 说明:DataController 未提供专门更新 isPinned 的方法,
-                            // 当前置顶变更仅保留在内存中,App 重启后会回退到上次持久化的状态。
-                            // 如需持久化,可通过 saveSession(传入切换后的 session)整体 upsert 实现,
-                            // 但需先从 sessionManager 取回最新 session 对象,此处暂不引入额外副作用。
+                            // 持久化置顶状态:从 sessionManager 取回最新 session 对象后整体 upsert
+                            if let updated = appState.sessionManager.sessions.first(where: { $0.id == session.id }) {
+                                appState.dataController.saveSession(updated)
+                            }
                         } label: {
                             Label(
                                 session.isPinned ? "取消置顶" : "置顶",
@@ -44,11 +67,23 @@ struct SessionsView: View {
                             )
                         }
                         .tint(.yellow)
+
+                        // 滑动:重命名会话(P1-10)
+                        Button {
+                            sessionToRename = session
+                            renameText = session.title
+                            showRenameSheet = true
+                        } label: {
+                            Label("重命名", systemImage: "pencil")
+                        }
+                        .tint(.blue)
                     }
                 }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("会话")
+            // 会话列表搜索(P2-5):按标题/摘要过滤
+            .searchable(text: $searchText, prompt: "搜索会话")
             .toolbar {
                 // 工具栏:新建会话(使用默认标题 "新对话")
                 ToolbarItem(placement: .primaryAction) {
@@ -65,15 +100,68 @@ struct SessionsView: View {
             }
             // 空状态占位(iOS 17 ContentUnavailableView)
             .overlay {
-                if appState.sessionManager.sortedSessions.isEmpty {
-                    ContentUnavailableView(
-                        "暂无会话",
-                        systemImage: "bubble.left.and.bubble.right",
-                        description: Text("点击右上角加号创建新会话")
-                    )
+                if filteredSessions.isEmpty {
+                    if !searchText.isEmpty {
+                        // 有搜索关键字但无结果:提示无匹配会话
+                        ContentUnavailableView(
+                            "无匹配会话",
+                            systemImage: "magnifyingglass",
+                            description: Text("尝试更换关键字")
+                        )
+                    } else {
+                        // 无会话:引导新建
+                        ContentUnavailableView(
+                            "暂无会话",
+                            systemImage: "bubble.left.and.bubble.right",
+                            description: Text("点击右上角加号创建新会话")
+                        )
+                    }
+                }
+            }
+            // 重命名 Sheet(P1-10)
+            .sheet(isPresented: $showRenameSheet) {
+                if let session = sessionToRename {
+                    renameSheet(for: session)
                 }
             }
         }
+    }
+
+    // MARK: - 重命名 Sheet(P1-10)
+
+    /// 会话重命名表单:更新内存标题并同步持久化
+    private func renameSheet(for session: Session) -> some View {
+        NavigationStack {
+            Form {
+                TextField("会话名称", text: $renameText)
+                    .autocorrectionDisabled()
+            }
+            .navigationTitle("重命名")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        showRenameSheet = false
+                        sessionToRename = nil
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        // 更新内存标题
+                        appState.sessionManager.updateTitle(session.id, title: trimmed)
+                        // 同步持久化:取回最新 session 对象后整体 upsert
+                        if let updated = appState.sessionManager.sessions.first(where: { $0.id == session.id }) {
+                            appState.dataController.saveSession(updated)
+                        }
+                        showRenameSheet = false
+                        sessionToRename = nil
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 

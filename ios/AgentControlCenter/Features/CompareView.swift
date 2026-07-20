@@ -263,9 +263,8 @@ struct CompareView: View {
                         }
                         .padding(12)
                     } else {
-                        // 响应文本
-                        Text(response)
-                            .font(.body)
+                        // 响应文本:使用 MarkdownText 渲染(P1-21),支持代码块/粗体/标题等格式
+                        MarkdownText(response)
                             .textSelection(.enabled)
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)

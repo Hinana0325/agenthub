@@ -64,6 +64,10 @@ struct TasksView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                // 下拉刷新(P1-13):重新从 DataController 加载任务列表
+                .refreshable {
+                    await refreshTasks()
+                }
             }
             .navigationTitle("任务")
             // 工具栏创建按钮
@@ -153,6 +157,15 @@ struct TasksView: View {
     /// 从 DataController 重新加载任务列表
     private func reloadTasks() {
         tasks = appState.dataController.fetchTasks()
+    }
+
+    /// 下拉刷新专用(P1-13):异步包装 reloadTasks,让 .refreshable 有正常动画
+    private func refreshTasks() async {
+        // 让出当前任务,使下拉刷新动画能正常展示
+        await Task.yield()
+        await MainActor.run {
+            reloadTasks()
+        }
     }
 }
 
