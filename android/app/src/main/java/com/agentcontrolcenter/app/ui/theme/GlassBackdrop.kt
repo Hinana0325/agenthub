@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.Color
  * wallpaper-like depth that glass surfaces bleed through. Place this as the
  * root background behind all [glassBackground] surfaces.
  *
- * Pair with [Agent Control CenterTheme] (liquid glass is always on; the theme mode only
+ * Pair with [AgentControlCenterTheme] (liquid glass is always on; the theme mode only
  * selects the dark/light base).
  */
 @Composable

@@ -30,7 +30,7 @@ import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopLight
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.navigation.AppNavigation
 import com.agentcontrolcenter.app.feature.settings.SettingsViewModel
-import com.agentcontrolcenter.app.ui.theme.Agent Control CenterTheme
+import com.agentcontrolcenter.app.ui.theme.AgentControlCenterTheme
 import com.agentcontrolcenter.app.ui.theme.ThemeMode
 import com.agentcontrolcenter.app.runtime.notification.StatusNotificationManager
 import com.agentcontrolcenter.app.runtime.notification.LocalNotificationManager
@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
                 "dark" -> ThemeMode.Dark
                 else -> ThemeMode.System
             }
-            Agent Control CenterTheme(
+            AgentControlCenterTheme(
                 themeMode = themeMode,
                 fontSize = settingsState.fontSize
             ) {

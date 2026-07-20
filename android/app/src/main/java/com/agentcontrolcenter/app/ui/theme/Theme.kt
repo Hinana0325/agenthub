@@ -114,7 +114,7 @@ private fun scaleTypography(base: Typography, factor: Float): Typography = Typog
 )
 
 @Composable
-fun Agent Control CenterTheme(
+fun AgentControlCenterTheme(
     themeMode: ThemeMode = ThemeMode.System,
     fontSize: String = "medium",
     content: @Composable () -> Unit
