@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2026-07-20
+
+### Added — UI 结构优化 + 功能增强
+
+- **统一 EmptyStateView**: 新增 `EmptyStateView.kt`（图标+标题+描述+引导操作按钮），与 `ErrorStateView` 对称。接入 SessionsScreen、TasksScreen、ActivityScreen、AgentsScreen，替换各自内联的空状态实现。TasksScreen 删除了 `EmptyTasksState` 死代码。
+- **Skeleton 骨架屏接入**: SessionsScreen 和 AgentsScreen 首次加载时显示骨架屏（`SessionSkeletonItem` × 5 / `AgentCardSkeletonItem` × 4），加载完成后显示空状态或列表。ChatViewModel 新增 `isLoadingSessions` 状态，AgentsViewModel 新增 `isLoading` 状态。
+- **Chat 搜索跳转**: `SearchOverlay` 的 `onResultClick` 从仅 `closeSearch()` 升级为通过 `messageId` 定位消息 index，调用 `listState.animateScrollToItem(index)` 滚动到原消息。
+- **消息重试机制**: `sendMessage()` 添加 try-catch，发送失败时置 `MessageStatus.Failed`。新增 `retrySendMessage(messageId)` 方法。`MessageBubble` 和 `MessageStatusIndicator` 新增 `onRetry` 参数，Failed 状态显示重试按钮（`Icons.Default.Refresh`）。
+- **Sessions 排序**: 单栏布局顶栏新增排序按钮 + DropdownMenu，支持三种排序：最近更新、创建时间、名称。当前选中项显示勾选标记。4 种语言新增排序相关 strings。
+
+### Changed — ChatScreen 拆分
+
+- **ChatScreen.kt**: 从 2125 行缩减到 1001 行，提取 4 个独立文件：
+  - `ChatMarkdown.kt`（290 行）：`MarkdownText`、`MarkdownBlockView`、`buildSpanAnnotatedString`、`ClickableAnnotatedText`
+  - `ChatOverlays.kt`（427 行）：`OfflineBanner`、`EmptyChatPlaceholder`、`WizardOverlay`
+  - `ChatSearch.kt`（161 行）：`SearchOverlay`、`SearchResultItem`
+  - `ChatInputBar.kt`（359 行）：`ChatInputBar`
+- 3 处可见性调整（private → internal）以支持跨文件调用。
+
+### Changed
+
+- **版本号**: Android versionCode 32 → 33 / versionName 4.2.0 → 4.3.0；iOS 同步。
+
 ## [4.2.0] - 2026-07-20
 
 ### Added — M3 Expressive 组件 + 无障碍 + Insets

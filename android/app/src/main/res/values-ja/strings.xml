@@ -346,6 +346,10 @@
     <string name="action_edit">編集</string>
     <string name="action_reply">返信</string>
     <string name="search_sessions">セッションを検索…</string>
+    <string name="sort">並べ替え</string>
+    <string name="sort_last_updated">最終更新順</string>
+    <string name="sort_created">作成日時順</string>
+    <string name="sort_name">名前順</string>
     <string name="editing_message">メッセージ編集中…</string>
 
     <!-- Compare -->

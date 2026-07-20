@@ -38,6 +38,8 @@ import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
+import com.agentcontrolcenter.app.ui.components.EmptyStateView
+import com.agentcontrolcenter.app.ui.components.AgentCardSkeletonItem
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
 import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
@@ -139,34 +141,34 @@ fun AgentsScreen(
             }
         }
     ) { padding ->
-        if (uiState.agents.isEmpty()) {
+        if (uiState.agents.isEmpty() && uiState.isLoading) {
+            // 首屏加载：显示骨架屏占位
             Box(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.TopCenter
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Box(
+                    modifier = Modifier.widthIn(max = 600.dp).fillMaxSize()
                 ) {
-                    Icon(
-                        Icons.Default.Hub,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        stringResource(R.string.no_agents),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.no_agents_subtitle),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        items(4) {
+                            AgentCardSkeletonItem()
+                        }
+                    }
                 }
             }
+        } else if (uiState.agents.isEmpty()) {
+            EmptyStateView(
+                icon = Icons.Default.SmartToy,
+                title = stringResource(R.string.no_agents),
+                description = stringResource(R.string.no_agents_subtitle),
+                actionText = stringResource(R.string.new_agent),
+                onAction = { agentsViewModel.showNewForm() },
+                modifier = Modifier.fillMaxSize().padding(padding)
+            )
         } else if (useGrid) {
             // Grid layout for Expanded: 2-3 columns
             LazyVerticalGrid(

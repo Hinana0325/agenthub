@@ -430,6 +430,10 @@
     <string name="action_edit">Edit</string>
     <string name="action_reply">Reply</string>
     <string name="search_sessions">Search sessions…</string>
+    <string name="sort">Sort</string>
+    <string name="sort_last_updated">Last updated</string>
+    <string name="sort_created">Created</string>
+    <string name="sort_name">Name</string>
     <string name="editing_message">Editing message…</string>
 
     <!-- Compare -->

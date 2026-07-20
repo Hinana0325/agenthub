@@ -29,7 +29,9 @@ data class AgentsUiState(
     val agents: List<AgentConfig> = emptyList(),
     val editingAgent: AgentConfig? = null,
     val showForm: Boolean = false,
-    val exportMessage: String? = null
+    val exportMessage: String? = null,
+    // Agent 列表首次加载状态：首次从 Room 拿到数据前为 true，用于驱动骨架屏
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -44,7 +46,8 @@ class AgentsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             repository.getAllConfigs().collect { agents ->
-                _uiState.update { it.copy(agents = agents) }
+                // 首次拿到数据后关闭骨架屏加载状态
+                _uiState.update { it.copy(agents = agents, isLoading = false) }
             }
         }
     }

@@ -34,12 +34,19 @@ import com.agentcontrolcenter.app.feature.chat.MessageBubble
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
 import com.agentcontrolcenter.app.ui.theme.ShapePill
+import com.agentcontrolcenter.app.ui.components.EmptyStateView
+import com.agentcontrolcenter.app.ui.components.SessionSkeletonItem
 import com.agentcontrolcenter.app.ui.components.sharedBounds
 import java.text.SimpleDateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+/**
+ * 会话列表排序方式。仅在 UI 层对已加载的会话排序，不修改数据库。
+ */
+enum class SessionSortMode { LAST_UPDATED, CREATED, NAME }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +58,7 @@ fun SessionsScreen(
     val uiState = chatViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val sessionList = uiState?.sessions ?: emptyList()
     val currentSessionId = uiState?.currentSessionId
+    val isLoadingSessions = uiState?.isLoadingSessions ?: true
     val useDualPane = adaptive.shouldShowSidebar // Expanded or Medium+Landscape
 
     if (useDualPane && chatViewModel != null) {
@@ -65,7 +73,8 @@ fun SessionsScreen(
             sessionList = sessionList,
             currentSessionId = currentSessionId,
             chatViewModel = chatViewModel,
-            adaptive = adaptive
+            adaptive = adaptive,
+            isLoading = isLoadingSessions
         )
     }
 }
@@ -322,7 +331,8 @@ private fun SessionsSinglePaneLayout(
     sessionList: List<Session>,
     currentSessionId: String?,
     chatViewModel: ChatViewModel?,
-    adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig
+    adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig,
+    isLoading: Boolean = true
 ) {
     val maxContentWidth = if (adaptive.isTablet) 720.dp else 600.dp
     val context = LocalContext.current
@@ -330,15 +340,63 @@ private fun SessionsSinglePaneLayout(
 
     var isRefreshing by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val filteredSessions = remember(sessionList, searchQuery) {
-        if (searchQuery.isBlank()) sessionList
+    // 排序状态：仅前端排序，不修改数据库
+    var sortMode by remember { mutableStateOf(SessionSortMode.LAST_UPDATED) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    val filteredSessions = remember(sessionList, searchQuery, sortMode) {
+        val filtered = if (searchQuery.isBlank()) sessionList
         else sessionList.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        when (sortMode) {
+            SessionSortMode.LAST_UPDATED -> filtered.sortedByDescending { it.updatedAt }
+            SessionSortMode.CREATED -> filtered.sortedByDescending { it.createdAt }
+            SessionSortMode.NAME -> filtered.sortedBy { it.title }
+        }
     }
 
     Scaffold(
         topBar = {
             GlassTopAppBar(
-                title = { Text(stringResource(R.string.nav_sessions)) }
+                title = { Text(stringResource(R.string.nav_sessions)) },
+                actions = {
+                    // 排序按钮 + 下拉菜单
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.sort))
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sort_last_updated)) },
+                                onClick = { sortMode = SessionSortMode.LAST_UPDATED; showSortMenu = false },
+                                trailingIcon = {
+                                    if (sortMode == SessionSortMode.LAST_UPDATED) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sort_created)) },
+                                onClick = { sortMode = SessionSortMode.CREATED; showSortMenu = false },
+                                trailingIcon = {
+                                    if (sortMode == SessionSortMode.CREATED) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sort_name)) },
+                                onClick = { sortMode = SessionSortMode.NAME; showSortMenu = false },
+                                trailingIcon = {
+                                    if (sortMode == SessionSortMode.NAME) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             )
         },
         // M3 Expressive FAB：手机布局下新建会话入口（保留顶栏按钮向后兼容）
@@ -390,31 +448,24 @@ private fun SessionsSinglePaneLayout(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
                     )
-                    if (sessionList.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                    if (sessionList.isEmpty() && isLoading) {
+                        // 首屏加载：显示骨架屏占位
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Forum,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                stringResource(R.string.no_sessions),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                stringResource(R.string.no_sessions_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
+                            items(5) {
+                                SessionSkeletonItem()
+                            }
                         }
+                    } else if (sessionList.isEmpty()) {
+                        EmptyStateView(
+                            icon = Icons.Default.ChatBubbleOutline,
+                            title = stringResource(R.string.no_sessions),
+                            description = stringResource(R.string.no_sessions_subtitle),
+                            actionText = stringResource(R.string.new_chat),
+                            onAction = { chatViewModel?.createNewSession() }
+                        )
                     } else if (filteredSessions.isEmpty()) {
                         Box(
                             modifier = Modifier.weight(1f).fillMaxWidth(),

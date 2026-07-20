@@ -51,6 +51,8 @@ import android.graphics.BitmapFactory
 data class ChatUiState(
     val messages: List<Message> = emptyList(),
     val sessions: List<Session> = emptyList(),
+    // 会话列表首次加载状态：首次从 Room 拿到数据前为 true，用于驱动骨架屏
+    val isLoadingSessions: Boolean = true,
     val currentSessionId: String? = null,
     val inputText: String = "",
     val isStreaming: Boolean = false,
@@ -127,7 +129,8 @@ class ChatViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             repository.getAllSessions().collect { sessions ->
-                _uiState.update { it.copy(sessions = sessions) }
+                // 首次拿到数据后关闭骨架屏加载状态
+                _uiState.update { it.copy(sessions = sessions, isLoadingSessions = false) }
             }
         }
         viewModelScope.launch {
@@ -391,7 +394,8 @@ class ChatViewModel @Inject constructor(
                     sessionId = userMsg.sessionId,
                     role = MessageRole.User,
                     content = text,
-                    status = MessageStatus.Sent,
+                    // G4-2: 先置为 Sending，发送成功后更新为 Sent，失败更新为 Failed
+                    status = MessageStatus.Sending,
                     attachmentType = state.pendingAttachmentType,
                     attachmentData = state.pendingAttachmentData,
                     attachmentName = state.pendingAttachmentName,
@@ -410,7 +414,27 @@ class ChatViewModel @Inject constructor(
             }
 
             if (_uiState.value.connectionState.isConnected) {
-                connectionRepository.sendMessage(sessionId, text)
+                // G4-2: 捕获网络发送异常，将消息状态置为 Failed 以支持重试。
+                try {
+                    connectionRepository.sendMessage(sessionId, text)
+                    // 发送成功，更新状态为 Sent
+                    _uiState.update { s ->
+                        s.copy(messages = s.messages.map {
+                            if (it.id == userMsg.id) it.copy(status = MessageStatus.Sent) else it
+                        })
+                    }
+                } catch (e: Exception) {
+                    // 发送失败，更新状态为 Failed，供用户点击重试
+                    _uiState.update { s ->
+                        s.copy(
+                            messages = s.messages.map {
+                                if (it.id == userMsg.id) it.copy(status = MessageStatus.Failed) else it
+                            },
+                            isStreaming = false,
+                            errorMessage = "发送失败：${e.message ?: "未知错误"}"
+                        )
+                    }
+                }
             } else {
                 simulateResponse()
             }
@@ -431,6 +455,48 @@ class ChatViewModel @Inject constructor(
         streamingJob?.cancel()
         streamingJob = null
         _uiState.update { it.copy(isStreaming = false) }
+    }
+
+    /**
+     * G4-2: 重试发送此前失败的消息。
+     *
+     * 由 [MessageBubble] 的重试按钮调用：当消息状态为 [MessageStatus.Failed] 时，
+     * 将状态置回 [MessageStatus.Sending] 并重新通过 [connectionRepository] 发送。
+     * 成功则更新为 [MessageStatus.Sent]，失败则再次置为 [MessageStatus.Failed]。
+     */
+    fun retrySendMessage(messageId: String) {
+        val failedMessage = _uiState.value.messages.find { it.id == messageId } ?: return
+        // 仅允许重试 User 角色且 Failed 状态的消息
+        if (failedMessage.role != MessageRole.User || failedMessage.status != MessageStatus.Failed) return
+        val sessionId = failedMessage.sessionId
+        val content = failedMessage.content
+        // 先更新状态为 Sending，提示用户正在重试
+        _uiState.update { state ->
+            state.copy(messages = state.messages.map {
+                if (it.id == messageId) it.copy(status = MessageStatus.Sending) else it
+            })
+        }
+        viewModelScope.launch {
+            try {
+                connectionRepository.sendMessage(sessionId, content)
+                // 重试成功，更新为 Sent
+                _uiState.update { state ->
+                    state.copy(messages = state.messages.map {
+                        if (it.id == messageId) it.copy(status = MessageStatus.Sent) else it
+                    })
+                }
+            } catch (e: Exception) {
+                // 重试仍失败，置回 Failed 并提示错误
+                _uiState.update { state ->
+                    state.copy(
+                        messages = state.messages.map {
+                            if (it.id == messageId) it.copy(status = MessageStatus.Failed) else it
+                        },
+                        errorMessage = "重试失败：${e.message ?: "未知错误"}"
+                    )
+                }
+            }
+        }
     }
 
     private suspend fun simulateResponse() {

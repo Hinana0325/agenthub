@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.runtime.task.TaskManager
+import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
 import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
@@ -96,7 +97,10 @@ fun TasksScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (tasks.isEmpty()) {
-                    EmptyTasksState(
+                    EmptyStateView(
+                        icon = Icons.Default.CheckCircleOutline,
+                        title = stringResource(R.string.no_tasks),
+                        description = stringResource(R.string.no_tasks_subtitle),
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -332,37 +336,6 @@ private fun StatusBadge(status: TaskManager.TaskStatus) {
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
-    }
-}
-
-@Composable
-private fun EmptyTasksState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.Checklist,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.no_tasks),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.no_tasks_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            )
-        }
     }
 }
 

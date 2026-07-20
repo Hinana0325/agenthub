@@ -22,6 +22,7 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.model.ActivityItem
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
+import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
 import java.text.SimpleDateFormat
@@ -165,30 +166,11 @@ fun ActivityScreen(
 
 @Composable
 private fun EmptyActivityHint() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            Icons.Default.Timeline,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.no_activity),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.no_activity_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-        )
-    }
+    EmptyStateView(
+        icon = Icons.Default.Timeline,
+        title = stringResource(R.string.no_activity),
+        description = stringResource(R.string.no_activity_subtitle)
+    )
 }
 
 @Composable
