@@ -20,7 +20,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class TransportFactory @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context?
 ) {
     fun create(type: AgentType): AgentTransport = when (type) {
         AgentType.Hermes,
