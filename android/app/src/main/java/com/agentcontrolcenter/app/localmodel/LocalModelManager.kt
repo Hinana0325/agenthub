@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.localmodel
 
+import com.agentcontrolcenter.app.core.hardware.SnapdragonOptimizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,7 @@ import java.net.URL
  * 本地模型管理器 — 支持离线推理
  *
  * 当前实现：通过 HTTP 请求本地推理服务（如 llama.cpp server, Ollama, LM Studio）
- * 未来可集成 MLC-LLM 进行 on-device 推理
+ * 骁龙优化：根据检测到的 SoC 能力自动调整推理参数（线程数、上下文长度、NPU 加速）
  */
 class LocalModelManager {
 
@@ -41,7 +42,9 @@ class LocalModelManager {
         val models: List<LocalModel> = emptyList(),
         val isDiscovering: Boolean = false,
         val discoveredProviders: List<LocalProvider> = emptyList(),
-        val error: String? = null
+        val error: String? = null,
+        val hardwareOptimized: Boolean = false,
+        val npuAcceleration: Boolean = false
     )
 
     private val _state = MutableStateFlow(LocalModelState())
@@ -190,6 +193,8 @@ class LocalModelManager {
             put("model", model.id)
             put("messages", messages)
             put("stream", false)
+            // 骁龙优化：注入硬件调优参数
+            put("options", JSONObject(SnapdragonOptimizer.getOllamaOptions()))
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")
@@ -221,6 +226,8 @@ class LocalModelManager {
             put("model", model.id)
             put("messages", messages)
             put("stream", true)
+            // 骁龙优化：注入硬件调优参数
+            put("options", JSONObject(SnapdragonOptimizer.getOllamaOptions()))
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")

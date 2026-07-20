@@ -497,4 +497,25 @@
     <string name="mcp_no_tools">No registered tools</string>
     <string name="mcp_test_success">Connection successful</string>
     <string name="mcp_test_failed">Connection failed</string>
+
+    <!-- Snapdragon / Hardware Optimization -->
+    <string name="hardware_info">Hardware Info</string>
+    <string name="hardware_soc">Processor</string>
+    <string name="hardware_cpu_cores">CPU Cores</string>
+    <string name="hardware_max_freq">Max Frequency</string>
+    <string name="hardware_total_memory">Total Memory</string>
+    <string name="hardware_available_memory">Available Memory</string>
+    <string name="hardware_gpu">GPU</string>
+    <string name="hardware_abi">Architecture</string>
+    <string name="hardware_nnapi">NNAPI Support</string>
+    <string name="hardware_16k_pages">16KB Page Size</string>
+    <string name="hardware_npu_acceleration">NPU Acceleration</string>
+    <string name="hardware_thermal_status">Thermal Status</string>
+    <string name="hardware_thermal_normal">Normal</string>
+    <string name="hardware_thermal_throttling">Throttling</string>
+    <string name="hardware_inference_config">Inference Configuration</string>
+    <string name="hardware_recommended_model">Recommended Model Size</string>
+    <string name="hardware_recommended_quantization">Recommended Quantization</string>
+    <string name="hardware_max_context">Max Context Length</string>
+    <string name="hardware_not_snapdragon">Not a Snapdragon device — optimizations are inactive</string>
 </resources>

@@ -2,6 +2,8 @@ package com.agentcontrolcenter.app.core.common
 
 import android.content.Context
 import android.os.Debug
+import com.agentcontrolcenter.app.core.hardware.SnapdragonHardwareDetector
+import com.agentcontrolcenter.app.core.hardware.SnapdragonOptimizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +14,13 @@ data class PerformanceMetrics(
     val connectionQuality: String = "Unknown",
     val memoryUsageMB: Long = 0,
     val totalMessages: Long = 0,
-    val uptimeMinutes: Long = 0
+    val uptimeMinutes: Long = 0,
+    val socModel: String = "Unknown",
+    val isSnapdragon: Boolean = false,
+    val npuAcceleration: Boolean = false,
+    val thermalStatus: String = "Unknown",
+    val cpuCores: Int = 0,
+    val totalMemoryMB: Long = 0
 )
 
 object PerformanceMonitor {
@@ -22,6 +30,26 @@ object PerformanceMonitor {
     private val latencySamples = mutableListOf<Long>()
     private val startTime = System.currentTimeMillis()
     private var totalMessageCount = 0L
+    private var hardwareInfo: SnapdragonHardwareDetector.HardwareInfo? = null
+
+    /**
+     * 初始化硬件检测。应在 Application.onCreate() 中调用。
+     */
+    fun initializeHardware(context: Context) {
+        SnapdragonOptimizer.initialize(context)
+        val info = SnapdragonHardwareDetector.detect(context)
+        hardwareInfo = info
+
+        _metrics.update {
+            it.copy(
+                socModel = info.socModel,
+                isSnapdragon = info.isSnapdragon,
+                cpuCores = info.cpuCores,
+                totalMemoryMB = info.totalMemoryMB,
+                npuAcceleration = SnapdragonOptimizer.getNNApiConfig()?.enableNNAPI == true
+            )
+        }
+    }
 
     fun recordMessageLatency(latencyMs: Long) {
         synchronized(latencySamples) {
@@ -58,7 +86,23 @@ object PerformanceMonitor {
         val runtime = Runtime.getRuntime()
         val usedMemoryMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
 
-        _metrics.update { it.copy(memoryUsageMB = usedMemoryMB) }
+        // 获取热状态
+        val thermal = if (hardwareInfo?.isSnapdragon == true) {
+            val throttled = SnapdragonOptimizer.shouldThrottle()
+            when {
+                !throttled -> "Normal"
+                else -> "Throttling"
+            }
+        } else {
+            "N/A"
+        }
+
+        _metrics.update {
+            it.copy(
+                memoryUsageMB = usedMemoryMB,
+                thermalStatus = thermal
+            )
+        }
     }
 
     private fun updateMetrics() {
@@ -81,6 +125,21 @@ object PerformanceMonitor {
     fun refresh(context: Context) {
         updateMemoryUsage(context)
         updateMetrics()
+    }
+
+    /**
+     * 获取硬件摘要（用于设置页面显示）。
+     */
+    fun getHardwareSummary(): String {
+        return SnapdragonOptimizer.getHardwareSummary()
+    }
+
+    /**
+     * 获取端侧推理配置建议。
+     */
+    fun getInferenceRecommendation(): SnapdragonHardwareDetector.InferenceConfig? {
+        val info = hardwareInfo ?: return null
+        return SnapdragonHardwareDetector.recommendInferenceConfig(info)
     }
 
     fun reset() {
