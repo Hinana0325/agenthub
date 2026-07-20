@@ -42,3 +42,9 @@
 -dontwarn okio.**
 -dontwarn io.ktor.**
 -dontwarn androidx.datastore.**
+
+# === Sentry (crash reporting) ===
+# Sentry ships its own consumer rules; these are extra safety.
+-keep class io.sentry.** { *; }
+-keep class io.sentry.android.** { *; }
+-dontwarn io.sentry.**

@@ -57,6 +57,11 @@ fun DeviceSyncScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Development banner
+            item {
+                DevFeatureBanner()
+            }
+
             // Sync toggle
             item {
                 SyncToggleCard(
@@ -382,6 +387,41 @@ private fun EmptyDevicesCard() {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
+        }
+    }
+}
+
+@Composable
+private fun DevFeatureBanner() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.BuildCircle,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = stringResource(R.string.device_sync_dev_banner_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = stringResource(R.string.device_sync_dev_banner_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }

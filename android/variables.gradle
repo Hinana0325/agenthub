@@ -25,6 +25,9 @@ ext {
     // Network
     ktorVersion = '3.2.3'
 
+    // Crash Reporting
+    sentryVersion = '8.42.0'
+
     // Test
     junitVersion = '4.13.2'
     androidxJunitVersion = '1.1.5'

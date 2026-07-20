@@ -17,8 +17,20 @@ android {
         applicationId "com.agentcontrolcenter.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 23
-        versionName "2.5.1"
+
+        // Read version from the single source of truth: version.properties
+        def versionProps = new Properties()
+        def versionPropsFile = rootProject.file('version.properties')
+        if (versionPropsFile.exists()) {
+            versionProps.load(new FileInputStream(versionPropsFile))
+        }
+        versionCode (versionProps['versionCode'] ?: '23').toInteger()
+        versionName versionProps['versionName'] ?: '2.5.1'
+
+        // Sentry DSN — read from SENTRY_DSN env var at build time.
+        // Empty string = Sentry initialized but events not sent (safe default).
+        manifestPlaceholders = [sentryDsn: System.getenv('SENTRY_DSN') ?: '']
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Room schema export directory (required by exportSchema = true in AppDatabase).
@@ -165,6 +177,9 @@ dependencies {
 
     // Material (for floating service UI, widgets)
     implementation "com.google.android.material:material:1.12.0"
+
+    // Sentry (crash reporting)
+    implementation "io.sentry:sentry-android:$sentryVersion"
 
     // Testing
     testImplementation "junit:junit:$junitVersion"

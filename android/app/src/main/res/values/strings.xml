@@ -267,6 +267,8 @@
     <string name="device_sync_remove">Remove device</string>
     <string name="device_sync_remove_title">Remove Device?</string>
     <string name="device_sync_remove_desc">Remove "%s" from paired devices?</string>
+    <string name="device_sync_dev_banner_title">Feature In Development</string>
+    <string name="device_sync_dev_banner_desc">Device sync is under active development. Discovery and sync may not work yet.</string>
 
     <!-- Collaboration -->
     <string name="collab_title">Collaboration</string>

@@ -84,6 +84,9 @@ struct DeviceSyncView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
+                // 0. Development banner
+                devFeatureBanner
+
                 // 1. 当前设备信息
                 currentDeviceSection
 
@@ -117,6 +120,30 @@ struct DeviceSyncView: View {
         } message: { msg in
             Text(msg)
         }
+    }
+
+    // MARK: - 开发中横幅
+
+    /// 设备同步功能开发中提示横幅
+    private var devFeatureBanner: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "hammer.circle.fill")
+                .font(.title2)
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                Text("功能开发中")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                Text("设备同步功能正在开发中，设备发现和同步可能尚不可用。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(AppTheme.Spacing.md)
+        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - 当前设备信息

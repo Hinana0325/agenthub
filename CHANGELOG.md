@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-07-20
+
+### Security
+
+- **iOS ATS 修复**: 将 `NSAllowsArbitraryLoads=true`（全局禁用 App Transport Security）改为 `NSAllowsLocalNetworking=true`，仅允许本地网络 HTTP 连接（Ollama/LM Studio），外部连接强制 HTTPS。
+- **keystore 模板化**: 新增 `keystore.properties.example` 模板文件（含占位符），实际 `keystore.properties` 已在 `.gitignore` 中且未被 git 跟踪。
+
+### Added
+
+- **Sentry 崩溃监控**: 双端集成 Sentry SDK（Android 8.42.0 + iOS SPM 8.x），支持云端崩溃上报。DSN 通过 `SENTRY_DSN` 环境变量注入。
+- **本地崩溃日志器**: Android `Thread.setDefaultUncaughtExceptionHandler` + iOS `NSSetUncaughtExceptionHandler`，与 Sentry handler 链式调用，崩溃时本地写入 `crashes/crash_*.log` 作为二级保障。
+- **版本号统一**: 新增 `version.properties` 作为双端版本号的单一事实来源，Android `build.gradle` 和 iOS `project.yml`/`Info.plist` 均从该文件读取。
+- **DeviceSync 开发中横幅**: Android 和 iOS 的设备同步页面顶部新增「功能开发中」提示横幅，避免用户误以为同步功能已可用。
+- **Sentry ProGuard 规则**: 新增 `io.sentry.**` keep 规则。
+
+### Changed
+
+- **iOS 版本号**: `CFBundleShortVersionString` 2.2.0 → 2.6.0 / `MARKETING_VERSION` 2.3.0 → 2.6.0 / `CURRENT_PROJECT_VERSION` 2 → 24。
+- **Android 版本号**: versionCode 23 → 24 / versionName 2.5.1 → 2.6.0，统一从 `version.properties` 读取。
+- **AndroidManifest**: 新增 Sentry DSN / traces-sample-rate / session-replay meta-data。
+
 ## [2.2.0] - 2026-07-20
 
 ### Changed
