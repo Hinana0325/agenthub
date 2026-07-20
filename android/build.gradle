@@ -20,7 +20,7 @@ buildscript {
         classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:2.2.0-2.0.2"
         classpath 'com.google.dagger:hilt-android-gradle-plugin:2.56.2'
         // Detekt — static analysis for Kotlin
-        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.7"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.8"
     }
 }
 
