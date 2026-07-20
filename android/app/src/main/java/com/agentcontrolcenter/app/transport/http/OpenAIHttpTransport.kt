@@ -50,7 +50,7 @@ import com.agentcontrolcenter.app.transport.protocol.AgentTransport
  * - HTTP 传输无持久连接：`connect()` 仅记录配置并标记就绪；`disconnect()` 才置为离线。
  */
 class OpenAIHttpTransport(
-    private val context: Context,
+    private val context: Context?,
     private val gson: Gson = Gson()
 ) : AgentTransport {
 
@@ -132,7 +132,10 @@ class OpenAIHttpTransport(
                 _events.send(AgentEvent.Connected(config.serverUrl, config.type))
             } else {
                 _connectionState.value = _connectionState.value.copy(isConnected = false)
-                _events.send(AgentEvent.Error(context.getString(R.string.error_cannot_connect, config.serverUrl)))
+                _events.send(AgentEvent.Error(
+                    context?.getString(R.string.error_cannot_connect, config.serverUrl)
+                        ?: "Cannot connect to ${config.serverUrl}"
+                ))
             }
         }
     }
