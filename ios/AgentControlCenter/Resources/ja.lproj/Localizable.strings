@@ -1,0 +1,177 @@
+/* サイドバー */
+"tab.sessions" = "セッション";
+"tab.agents" = "エージェント";
+"tab.tasks" = "タスク";
+"tab.workflow" = "ワークフロー";
+"tab.plugins" = "プラグイン";
+"tab.compare" = "比較";
+"tab.mcp" = "MCP";
+"tab.activity" = "アクティビティ";
+"tab.insights" = "インサイト";
+"tab.settings" = "設定";
+
+/* チャット */
+"chat.placeholder" = "メッセージを入力…";
+"chat.send" = "送信";
+"chat.stop" = "停止";
+"chat.voice" = "音声";
+"chat.attach" = "添付";
+"chat.empty.title" = "会話を開始";
+"chat.empty.description" = "エージェントを選択してチャットを始めましょう";
+"chat.empty.configure" = "エージェントを設定";
+"chat.no.agent" = "アクティブなエージェントが設定されていません。「エージェント」ページでエージェントを選択・設定してください。";
+"chat.reply.cancel" = "返信をキャンセル";
+"chat.reply.to" = "返信";
+
+/* メッセージ */
+"message.copy" = "コピー";
+"message.delete" = "削除";
+"message.reply" = "返信";
+"message.delete.confirm" = "このメッセージを削除しますか？";
+"message.deleted" = "メッセージが削除されました";
+
+/* セッション */
+"session.new" = "新規セッション";
+"session.empty.title" = "セッションなし";
+"session.empty.description" = "+ をタップして新しい会話を始めましょう";
+"session.delete.confirm" = "このセッションとすべてのメッセージを削除しますか？";
+
+/* エージェント */
+"agent.empty.title" = "エージェントなし";
+"agent.empty.description" = "右上の + ボタンをタップして新しいエージェントを追加";
+"agent.add" = "エージェントを追加";
+"agent.edit" = "エージェントを編集";
+"agent.delete" = "エージェントを削除";
+"agent.delete.confirm" = "このエージェントを削除しますか？";
+"agent.active" = "アクティブなエージェント";
+"agent.all" = "すべてのエージェント";
+
+/* エージェントフォーム */
+"agent.form.name" = "名前";
+"agent.form.type" = "タイプ";
+"agent.form.server" = "サーバーアドレス";
+"agent.form.apiKey" = "API Key";
+"agent.form.model" = "モデル";
+"agent.form.systemPrompt" = "System Prompt";
+"agent.form.temperature" = "温度";
+"agent.form.maxTokens" = "最大トークン数";
+"agent.form.save" = "保存";
+"agent.form.cancel" = "キャンセル";
+"agent.form.import" = "設定をインポート";
+"agent.form.export" = "設定をエクスポート";
+
+/* タスク */
+"task.empty.title" = "タスクなし";
+"task.empty.description" = "タスクは自動的にここに表示されます";
+"task.create" = "タスクを作成";
+"task.title" = "タイトル";
+"task.type" = "タイプ";
+"task.agent" = "エージェント";
+"task.input" = "入力内容";
+"task.cancel" = "タスクをキャンセル";
+"task.filter.all" = "すべて";
+"task.filter.active" = "実行中";
+"task.filter.completed" = "完了";
+
+/* ワークフロー */
+"workflow.templates" = "ワークフローテンプレート";
+"workflow.input" = "入力内容";
+"workflow.execute" = "実行";
+"workflow.stop" = "停止";
+"workflow.logs" = "実行ログ";
+"workflow.result" = "実行結果";
+"workflow.nodes" = "ノード";
+
+/* プラグイン */
+"plugin.empty.title" = "プラグインなし";
+"plugin.empty.description" = "プラグインを追加してエージェントの機能を拡張";
+"plugin.add" = "プラグインを追加";
+"plugin.name" = "名前";
+"plugin.type" = "タイプ";
+"plugin.description" = "説明";
+
+/* 比較 */
+"compare.agentA" = "エージェント A";
+"compare.agentB" = "エージェント B";
+"compare.input" = "質問を入力";
+"compare.send" = "比較を開始";
+"compare.stop" = "停止";
+"compare.no.agent" = "比較には少なくとも2つのエージェントが必要です";
+
+/* アクティビティ */
+"activity.empty.title" = "アクティビティなし";
+"activity.empty.description" = "アクティビティ記録は自動的にここに表示されます";
+"activity.filter.all" = "すべて";
+
+/* インサイト */
+"insights.empty.title" = "データなし";
+"insights.empty.description" = "しばらく利用するとデータインサイトがここに表示されます";
+"insights.sessions" = "セッション数";
+"insights.messages" = "メッセージ数";
+"insights.agents" = "アクティブエージェント";
+"insights.avgResponse" = "平均応答";
+"insights.distribution" = "メッセージ分布";
+"insights.agentUsage" = "エージェント使用頻度";
+"insights.activeHours" = "アクティブ時間帯";
+
+/* MCP */
+"mcp.servers" = "MCP サーバー";
+"mcp.tools" = "利用可能なツール";
+"mcp.add" = "サーバーを追加";
+"mcp.name" = "名前";
+"mcp.url" = "エンドポイント";
+"mcp.apiKey" = "API Key";
+"mcp.transport" = "トランスポートタイプ";
+"mcp.connect" = "接続";
+"mcp.disconnect" = "切断";
+"mcp.empty.servers" = "MCP サーバーなし";
+"mcp.empty.tools" = "利用可能なツールなし";
+
+/* 設定 */
+"settings.agentDefaults" = "エージェントデフォルト設定";
+"settings.defaultModel" = "デフォルトモデル";
+"settings.temperature" = "温度";
+"settings.maxTokens" = "最大トークン数";
+"settings.fontSize" = "フォントサイズ";
+"settings.fontSize.small" = "小";
+"settings.fontSize.medium" = "中";
+"settings.fontSize.large" = "大";
+"settings.appearance" = "外観";
+"settings.theme.light" = "ライト";
+"settings.theme.dark" = "ダーク";
+"settings.theme.system" = "システムに従う";
+"settings.theme.current" = "現在適用中";
+"settings.e2e" = "エンドツーエンド暗号化";
+"settings.e2e.enable" = "暗号化を有効にする";
+"settings.e2e.passphrase" = "パスフレーズ";
+"settings.e2e.showKey" = "鍵を表示";
+"settings.e2e.regenerate" = "再生成";
+"settings.e2e.import" = "鍵をインポート";
+"settings.data" = "データ管理";
+"settings.data.export" = "チャット履歴をエクスポート";
+"settings.data.import" = "チャット履歴をインポート";
+"settings.data.insights" = "データインサイト";
+"settings.data.performance" = "パフォーマンス監視";
+"settings.notifications" = "スマート通知";
+"settings.notifications.high" = "高優先度";
+"settings.notifications.medium" = "中優先度";
+"settings.notifications.low" = "低優先度";
+"settings.about" = "について";
+"settings.version" = "アプリバージョン";
+"settings.protocol" = "プロトコルバージョン";
+"settings.danger" = "すべてのデータを消去";
+"settings.danger.confirm" = "すべてのデータを消去しますか？";
+"settings.danger.message" = "この操作は取り消せません。すべてのセッション、エージェント、タスク、設定データが削除されます。";
+"settings.danger.cancel" = "キャンセル";
+"settings.danger.delete" = "消去";
+
+/* 共通 */
+"common.cancel" = "キャンセル";
+"common.save" = "保存";
+"common.delete" = "削除";
+"common.confirm" = "確認";
+"common.done" = "完了";
+"common.loading" = "読み込み中…";
+"common.error" = "エラーが発生しました";
+"common.retry" = "再試行";
+"common.noData" = "データなし";

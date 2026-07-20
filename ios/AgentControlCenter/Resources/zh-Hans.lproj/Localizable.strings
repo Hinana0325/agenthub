@@ -1,0 +1,177 @@
+/* 侧边栏 */
+"tab.sessions" = "会话";
+"tab.agents" = "Agent";
+"tab.tasks" = "任务";
+"tab.workflow" = "工作流";
+"tab.plugins" = "插件";
+"tab.compare" = "对比";
+"tab.mcp" = "MCP";
+"tab.activity" = "活动";
+"tab.insights" = "洞察";
+"tab.settings" = "设置";
+
+/* 聊天 */
+"chat.placeholder" = "输入消息…";
+"chat.send" = "发送";
+"chat.stop" = "停止";
+"chat.voice" = "语音";
+"chat.attach" = "附件";
+"chat.empty.title" = "开始对话";
+"chat.empty.description" = "选择一个 Agent 开始聊天";
+"chat.empty.configure" = "配置 Agent";
+"chat.no.agent" = "未配置活跃 Agent，请先在「Agent」页面选择并配置一个 Agent。";
+"chat.reply.cancel" = "取消回复";
+"chat.reply.to" = "回复";
+
+/* 消息 */
+"message.copy" = "复制";
+"message.delete" = "删除";
+"message.reply" = "回复";
+"message.delete.confirm" = "确认删除此消息？";
+"message.deleted" = "消息已删除";
+
+/* 会话 */
+"session.new" = "新建会话";
+"session.empty.title" = "暂无会话";
+"session.empty.description" = "点击 + 开始新对话";
+"session.delete.confirm" = "确认删除此会话及所有消息？";
+
+/* Agent */
+"agent.empty.title" = "暂无 Agent";
+"agent.empty.description" = "点击右上角加号添加新 Agent";
+"agent.add" = "添加 Agent";
+"agent.edit" = "编辑 Agent";
+"agent.delete" = "删除 Agent";
+"agent.delete.confirm" = "确认删除此 Agent？";
+"agent.active" = "当前活跃 Agent";
+"agent.all" = "所有 Agent";
+
+/* Agent 表单 */
+"agent.form.name" = "名称";
+"agent.form.type" = "类型";
+"agent.form.server" = "服务器地址";
+"agent.form.apiKey" = "API Key";
+"agent.form.model" = "模型";
+"agent.form.systemPrompt" = "System Prompt";
+"agent.form.temperature" = "温度";
+"agent.form.maxTokens" = "最大 Tokens";
+"agent.form.save" = "保存";
+"agent.form.cancel" = "取消";
+"agent.form.import" = "导入配置";
+"agent.form.export" = "导出配置";
+
+/* 任务 */
+"task.empty.title" = "暂无任务";
+"task.empty.description" = "任务会自动出现在这里";
+"task.create" = "创建任务";
+"task.title" = "标题";
+"task.type" = "类型";
+"task.agent" = "Agent";
+"task.input" = "输入内容";
+"task.cancel" = "取消任务";
+"task.filter.all" = "全部";
+"task.filter.active" = "进行中";
+"task.filter.completed" = "已完成";
+
+/* 工作流 */
+"workflow.templates" = "工作流模板";
+"workflow.input" = "输入内容";
+"workflow.execute" = "执行";
+"workflow.stop" = "停止";
+"workflow.logs" = "执行日志";
+"workflow.result" = "执行结果";
+"workflow.nodes" = "节点";
+
+/* 插件 */
+"plugin.empty.title" = "暂无插件";
+"plugin.empty.description" = "添加插件扩展 Agent 能力";
+"plugin.add" = "添加插件";
+"plugin.name" = "名称";
+"plugin.type" = "类型";
+"plugin.description" = "描述";
+
+/* 对比 */
+"compare.agentA" = "Agent A";
+"compare.agentB" = "Agent B";
+"compare.input" = "输入问题";
+"compare.send" = "开始对比";
+"compare.stop" = "停止";
+"compare.no.agent" = "至少需要两个 Agent 进行对比";
+
+/* 活动 */
+"activity.empty.title" = "暂无活动";
+"activity.empty.description" = "活动记录会自动出现在这里";
+"activity.filter.all" = "全部";
+
+/* 洞察 */
+"insights.empty.title" = "暂无数据";
+"insights.empty.description" = "使用一段时间后数据洞察将出现在这里";
+"insights.sessions" = "会话数";
+"insights.messages" = "消息数";
+"insights.agents" = "活跃 Agent";
+"insights.avgResponse" = "平均响应";
+"insights.distribution" = "消息分布";
+"insights.agentUsage" = "Agent 使用频率";
+"insights.activeHours" = "活跃时段";
+
+/* MCP */
+"mcp.servers" = "MCP 服务器";
+"mcp.tools" = "可用工具";
+"mcp.add" = "添加服务器";
+"mcp.name" = "名称";
+"mcp.url" = "Endpoint";
+"mcp.apiKey" = "API Key";
+"mcp.transport" = "传输类型";
+"mcp.connect" = "连接";
+"mcp.disconnect" = "断开";
+"mcp.empty.servers" = "暂无 MCP 服务器";
+"mcp.empty.tools" = "暂无可用工具";
+
+/* 设置 */
+"settings.agentDefaults" = "Agent 默认配置";
+"settings.defaultModel" = "默认模型";
+"settings.temperature" = "温度";
+"settings.maxTokens" = "最大 Tokens";
+"settings.fontSize" = "字体大小";
+"settings.fontSize.small" = "小";
+"settings.fontSize.medium" = "中";
+"settings.fontSize.large" = "大";
+"settings.appearance" = "外观";
+"settings.theme.light" = "浅色";
+"settings.theme.dark" = "深色";
+"settings.theme.system" = "跟随系统";
+"settings.theme.current" = "当前生效";
+"settings.e2e" = "端到端加密";
+"settings.e2e.enable" = "启用加密";
+"settings.e2e.passphrase" = "密码短语";
+"settings.e2e.showKey" = "显示密钥";
+"settings.e2e.regenerate" = "重新生成";
+"settings.e2e.import" = "导入密钥";
+"settings.data" = "数据管理";
+"settings.data.export" = "导出聊天历史";
+"settings.data.import" = "导入聊天历史";
+"settings.data.insights" = "数据洞察";
+"settings.data.performance" = "性能监控";
+"settings.notifications" = "智能通知";
+"settings.notifications.high" = "高优先级通知";
+"settings.notifications.medium" = "中优先级通知";
+"settings.notifications.low" = "低优先级通知";
+"settings.about" = "关于";
+"settings.version" = "应用版本";
+"settings.protocol" = "协议版本";
+"settings.danger" = "清除所有数据";
+"settings.danger.confirm" = "确认清除所有数据？";
+"settings.danger.message" = "此操作不可恢复，将删除所有会话、Agent、任务及配置数据。";
+"settings.danger.cancel" = "取消";
+"settings.danger.delete" = "清除";
+
+/* 通用 */
+"common.cancel" = "取消";
+"common.save" = "保存";
+"common.delete" = "删除";
+"common.confirm" = "确认";
+"common.done" = "完成";
+"common.loading" = "加载中…";
+"common.error" = "发生错误";
+"common.retry" = "重试";
+"common.noData" = "暂无数据";

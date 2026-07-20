@@ -1,0 +1,177 @@
+/* Sidebar */
+"tab.sessions" = "Sessions";
+"tab.agents" = "Agents";
+"tab.tasks" = "Tasks";
+"tab.workflow" = "Workflow";
+"tab.plugins" = "Plugins";
+"tab.compare" = "Compare";
+"tab.mcp" = "MCP";
+"tab.activity" = "Activity";
+"tab.insights" = "Insights";
+"tab.settings" = "Settings";
+
+/* Chat */
+"chat.placeholder" = "Type a message...";
+"chat.send" = "Send";
+"chat.stop" = "Stop";
+"chat.voice" = "Voice";
+"chat.attach" = "Attach";
+"chat.empty.title" = "Start a Conversation";
+"chat.empty.description" = "Select an Agent to start chatting";
+"chat.empty.configure" = "Configure Agent";
+"chat.no.agent" = "No active Agent configured. Please select and configure an Agent on the \"Agents\" page first.";
+"chat.reply.cancel" = "Cancel Reply";
+"chat.reply.to" = "Reply to";
+
+/* Messages */
+"message.copy" = "Copy";
+"message.delete" = "Delete";
+"message.reply" = "Reply";
+"message.delete.confirm" = "Are you sure you want to delete this message?";
+"message.deleted" = "Message deleted";
+
+/* Sessions */
+"session.new" = "New Session";
+"session.empty.title" = "No Sessions";
+"session.empty.description" = "Tap + to start a new conversation";
+"session.delete.confirm" = "Are you sure you want to delete this session and all its messages?";
+
+/* Agents */
+"agent.empty.title" = "No Agents";
+"agent.empty.description" = "Tap the + button in the top right to add a new Agent";
+"agent.add" = "Add Agent";
+"agent.edit" = "Edit Agent";
+"agent.delete" = "Delete Agent";
+"agent.delete.confirm" = "Are you sure you want to delete this Agent?";
+"agent.active" = "Active Agent";
+"agent.all" = "All Agents";
+
+/* Agent Form */
+"agent.form.name" = "Name";
+"agent.form.type" = "Type";
+"agent.form.server" = "Server URL";
+"agent.form.apiKey" = "API Key";
+"agent.form.model" = "Model";
+"agent.form.systemPrompt" = "System Prompt";
+"agent.form.temperature" = "Temperature";
+"agent.form.maxTokens" = "Max Tokens";
+"agent.form.save" = "Save";
+"agent.form.cancel" = "Cancel";
+"agent.form.import" = "Import Config";
+"agent.form.export" = "Export Config";
+
+/* Tasks */
+"task.empty.title" = "No Tasks";
+"task.empty.description" = "Tasks will appear here automatically";
+"task.create" = "Create Task";
+"task.title" = "Title";
+"task.type" = "Type";
+"task.agent" = "Agent";
+"task.input" = "Input";
+"task.cancel" = "Cancel Task";
+"task.filter.all" = "All";
+"task.filter.active" = "Active";
+"task.filter.completed" = "Completed";
+
+/* Workflow */
+"workflow.templates" = "Workflow Templates";
+"workflow.input" = "Input";
+"workflow.execute" = "Execute";
+"workflow.stop" = "Stop";
+"workflow.logs" = "Execution Logs";
+"workflow.result" = "Execution Result";
+"workflow.nodes" = "Nodes";
+
+/* Plugins */
+"plugin.empty.title" = "No Plugins";
+"plugin.empty.description" = "Add plugins to extend Agent capabilities";
+"plugin.add" = "Add Plugin";
+"plugin.name" = "Name";
+"plugin.type" = "Type";
+"plugin.description" = "Description";
+
+/* Compare */
+"compare.agentA" = "Agent A";
+"compare.agentB" = "Agent B";
+"compare.input" = "Enter your question";
+"compare.send" = "Start Compare";
+"compare.stop" = "Stop";
+"compare.no.agent" = "At least two Agents are required for comparison";
+
+/* Activity */
+"activity.empty.title" = "No Activity";
+"activity.empty.description" = "Activity records will appear here automatically";
+"activity.filter.all" = "All";
+
+/* Insights */
+"insights.empty.title" = "No Data";
+"insights.empty.description" = "Insights will appear here after some usage";
+"insights.sessions" = "Sessions";
+"insights.messages" = "Messages";
+"insights.agents" = "Active Agents";
+"insights.avgResponse" = "Avg Response";
+"insights.distribution" = "Message Distribution";
+"insights.agentUsage" = "Agent Usage";
+"insights.activeHours" = "Active Hours";
+
+/* MCP */
+"mcp.servers" = "MCP Servers";
+"mcp.tools" = "Available Tools";
+"mcp.add" = "Add Server";
+"mcp.name" = "Name";
+"mcp.url" = "Endpoint";
+"mcp.apiKey" = "API Key";
+"mcp.transport" = "Transport Type";
+"mcp.connect" = "Connect";
+"mcp.disconnect" = "Disconnect";
+"mcp.empty.servers" = "No MCP Servers";
+"mcp.empty.tools" = "No Tools Available";
+
+/* Settings */
+"settings.agentDefaults" = "Agent Defaults";
+"settings.defaultModel" = "Default Model";
+"settings.temperature" = "Temperature";
+"settings.maxTokens" = "Max Tokens";
+"settings.fontSize" = "Font Size";
+"settings.fontSize.small" = "Small";
+"settings.fontSize.medium" = "Medium";
+"settings.fontSize.large" = "Large";
+"settings.appearance" = "Appearance";
+"settings.theme.light" = "Light";
+"settings.theme.dark" = "Dark";
+"settings.theme.system" = "System";
+"settings.theme.current" = "Currently Active";
+"settings.e2e" = "End-to-End Encryption";
+"settings.e2e.enable" = "Enable Encryption";
+"settings.e2e.passphrase" = "Passphrase";
+"settings.e2e.showKey" = "Show Key";
+"settings.e2e.regenerate" = "Regenerate";
+"settings.e2e.import" = "Import Key";
+"settings.data" = "Data Management";
+"settings.data.export" = "Export Chat History";
+"settings.data.import" = "Import Chat History";
+"settings.data.insights" = "Data Insights";
+"settings.data.performance" = "Performance Monitor";
+"settings.notifications" = "Smart Notifications";
+"settings.notifications.high" = "High Priority";
+"settings.notifications.medium" = "Medium Priority";
+"settings.notifications.low" = "Low Priority";
+"settings.about" = "About";
+"settings.version" = "App Version";
+"settings.protocol" = "Protocol Version";
+"settings.danger" = "Clear All Data";
+"settings.danger.confirm" = "Are you sure you want to clear all data?";
+"settings.danger.message" = "This action cannot be undone. All sessions, Agents, tasks, and configuration data will be deleted.";
+"settings.danger.cancel" = "Cancel";
+"settings.danger.delete" = "Clear";
+
+/* Common */
+"common.cancel" = "Cancel";
+"common.save" = "Save";
+"common.delete" = "Delete";
+"common.confirm" = "Confirm";
+"common.done" = "Done";
+"common.loading" = "Loading...";
+"common.error" = "An error occurred";
+"common.retry" = "Retry";
+"common.noData" = "No Data";
