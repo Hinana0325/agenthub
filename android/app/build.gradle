@@ -19,13 +19,16 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
 
         // Read version from the single source of truth: version.properties
+        // File is at the repo root (parent of the android/ Gradle project).
         def versionProps = new Properties()
-        def versionPropsFile = rootProject.file('version.properties')
+        def versionPropsFile = rootProject.file('../version.properties')
         if (versionPropsFile.exists()) {
             versionProps.load(new FileInputStream(versionPropsFile))
         }
-        versionCode (versionProps['versionCode'] ?: '23').toInteger()
-        versionName versionProps['versionName'] ?: '2.5.1'
+        def vCode = (versionProps.getProperty('versionCode') ?: '23').toInteger()
+        def vName = versionProps.getProperty('versionName') ?: '2.5.1'
+        versionCode vCode
+        versionName vName
 
         // Sentry DSN — read from SENTRY_DSN env var at build time.
         // Empty string = Sentry initialized but events not sent (safe default).
