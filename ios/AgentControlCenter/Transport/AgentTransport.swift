@@ -49,11 +49,9 @@ enum TransportFactory {
 
     static func create(_ agentType: AgentType) -> AgentTransport {
         switch agentType {
-        case .hermes, .openClaw:
+        case .hermes, .openClaw, .openCode:
             return WebSocketTransport()
-        case .openAI, .openCode, .xiaomiMiMo:
-            return OpenAIHTTPTransport()
-        case .localModel:
+        case .openAI, .xiaomiMiMo, .localModel:
             return OpenAIHTTPTransport()  // 本地模型走 OpenAI 兼容 API
         }
     }

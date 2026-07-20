@@ -38,7 +38,9 @@ fun SettingsScreen(
     onNavigateToMarketplace: () -> Unit = {},
     onNavigateToDeviceSync: () -> Unit = {},
     onNavigateToPlugins: () -> Unit = {},
-    onNavigateToInsights: () -> Unit = {}
+    onNavigateToInsights: () -> Unit = {},
+    onNavigateToTasks: () -> Unit = {},
+    onNavigateToMcp: () -> Unit = {}
 ) {
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
@@ -292,6 +294,22 @@ fun SettingsScreen(
                                         onClick = onNavigateToAgents
                                     )
                                 }
+                                item {
+                                    SettingsItem(
+                                        title = stringResource(R.string.nav_tasks),
+                                        subtitle = stringResource(R.string.no_tasks_subtitle),
+                                        icon = Icons.Default.TaskAlt,
+                                        onClick = onNavigateToTasks
+                                    )
+                                }
+                                item {
+                                    SettingsItem(
+                                        title = stringResource(R.string.nav_mcp),
+                                        subtitle = stringResource(R.string.mcp_no_servers_subtitle),
+                                        icon = Icons.Default.Dns,
+                                        onClick = onNavigateToMcp
+                                    )
+                                }
                             }
                             "marketplace" -> {
                                 item { SettingsHeader(stringResource(R.string.nav_marketplace)) }
@@ -479,6 +497,22 @@ fun SettingsScreen(
                                 subtitle = stringResource(R.string.manage_agents_subtitle, agentConfigs.size),
                                 icon = Icons.Default.Hub,
                                 onClick = onNavigateToAgents
+                            )
+                        }
+                        item {
+                            SettingsItem(
+                                title = stringResource(R.string.nav_tasks),
+                                subtitle = stringResource(R.string.no_tasks_subtitle),
+                                icon = Icons.Default.TaskAlt,
+                                onClick = onNavigateToTasks
+                            )
+                        }
+                        item {
+                            SettingsItem(
+                                title = stringResource(R.string.nav_mcp),
+                                subtitle = stringResource(R.string.mcp_no_servers_subtitle),
+                                icon = Icons.Default.Dns,
+                                onClick = onNavigateToMcp
                             )
                         }
                         item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.nav_marketplace)) }

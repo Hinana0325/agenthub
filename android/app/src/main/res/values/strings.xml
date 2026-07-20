@@ -439,4 +439,62 @@
     <string name="compare_summary">Summary</string>
     <string name="compare_chars">%d chars</string>
     <string name="compare_words">%d words</string>
+
+    <!-- Tasks (对齐 iOS TasksView) -->
+    <string name="nav_tasks">Tasks</string>
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_refresh">Refresh</string>
+    <string name="tasks_filter_all">All</string>
+    <string name="tasks_filter_active">Active</string>
+    <string name="tasks_filter_completed">Completed</string>
+    <string name="tasks_filter_failed">Failed</string>
+    <string name="task_status_pending">Pending</string>
+    <string name="task_status_running">Running</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="task_status_failed">Failed</string>
+    <string name="task_status_cancelled">Cancelled</string>
+    <string name="task_type_chat">Chat</string>
+    <string name="task_type_code">Code</string>
+    <string name="task_type_workflow">Workflow</string>
+    <string name="task_type_tool_call">Tool Call</string>
+    <string name="task_type_file_operation">File Operation</string>
+    <string name="task_empty_input">(no content)</string>
+    <string name="task_more_actions">More actions</string>
+    <string name="task_cancel">Cancel Task</string>
+    <string name="task_delete">Delete Task</string>
+    <string name="task_delete_title">Delete Task?</string>
+    <string name="task_delete_message">This will remove the task from history. This cannot be undone.</string>
+    <string name="no_tasks">No tasks yet</string>
+    <string name="no_tasks_subtitle">Agent executed tasks will appear here</string>
+
+    <!-- MCP Servers (对齐 iOS McpView) -->
+    <string name="nav_mcp">MCP</string>
+    <string name="mcp_title">MCP Servers</string>
+    <string name="mcp_servers">MCP Servers</string>
+    <string name="mcp_no_servers">No MCP servers</string>
+    <string name="mcp_no_servers_subtitle">Tap + to add an MCP server</string>
+    <string name="mcp_add_server">Add MCP Server</string>
+    <string name="mcp_edit_server">Edit MCP Server</string>
+    <string name="mcp_label_name">Name</string>
+    <string name="mcp_label_url">Transport URL</string>
+    <string name="mcp_label_api_key">API Key (optional)</string>
+    <string name="mcp_label_transport_type">Transport Type</string>
+    <string name="mcp_transport_stdio">stdio</string>
+    <string name="mcp_transport_sse">SSE</string>
+    <string name="mcp_transport_http">HTTP</string>
+    <string name="mcp_name_placeholder">MCP Server</string>
+    <string name="mcp_connect">Connect</string>
+    <string name="mcp_disconnect">Disconnect</string>
+    <string name="mcp_test_connection">Test</string>
+    <string name="mcp_connected">Connected</string>
+    <string name="mcp_connecting">Connecting…</string>
+    <string name="mcp_disconnected">Disconnected</string>
+    <string name="mcp_connection_failed">Failed</string>
+    <string name="mcp_more_actions">More actions</string>
+    <string name="mcp_delete_server_title">Delete MCP Server?</string>
+    <string name="mcp_delete_server_message">This will remove "%s". This cannot be undone.</string>
+    <string name="mcp_tools_section">Available Tools</string>
+    <string name="mcp_no_tools">No registered tools</string>
+    <string name="mcp_test_success">Connection successful</string>
+    <string name="mcp_test_failed">Connection failed</string>
 </resources>

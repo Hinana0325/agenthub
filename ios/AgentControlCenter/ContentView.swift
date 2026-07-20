@@ -23,53 +23,67 @@ struct ContentView: View {
     /// compact 模式下选中的底部 Tab
     @State private var selectedCompactTab: CompactTab = .sessions
 
+    /// 是否显示命令面板（⌘K 触发）
+    @State private var showingCommandPalette: Bool = false
+
+    /// 命令面板管理器（共享实例，便于注册运行时命令）
+    private var commandPaletteManager: CommandPaletteManager {
+        CommandPaletteManager.shared
+    }
+
     // MARK: - 侧边栏标签
 
     /// 侧边栏所有可导航页面
     enum SidebarTab: String, CaseIterable, Identifiable {
-        case sessions, agents, tasks, workflow, plugins, compare, mcp, activity, insights, settings
+        case sessions, agents, tasks, marketplace, workflow, plugins, compare, mcp, voiceChat, activity, insights, deviceSync, settings
 
         var id: String { rawValue }
 
         /// 中文显示名
         var displayName: String {
             switch self {
-            case .sessions: "会话"
-            case .agents:   "Agent"
-            case .tasks:    "任务"
-            case .workflow: "工作流"
-            case .plugins:  "插件"
-            case .compare:  "对比"
-            case .mcp:      "MCP"
-            case .activity: "活动"
-            case .insights: "洞察"
-            case .settings: "设置"
+            case .sessions:   "会话"
+            case .agents:     "Agent"
+            case .tasks:      "任务"
+            case .marketplace:"市场"
+            case .workflow:   "工作流"
+            case .plugins:    "插件"
+            case .compare:    "对比"
+            case .mcp:        "MCP"
+            case .voiceChat:  "语音消息"
+            case .activity:   "活动"
+            case .insights:   "洞察"
+            case .deviceSync: "设备同步"
+            case .settings:   "设置"
             }
         }
 
         /// SF Symbol 图标名
         var systemImage: String {
             switch self {
-            case .sessions: "bubble.left.and.bubble.right"
-            case .agents:   "cpu"
-            case .tasks:    "checklist"
-            case .workflow: "arrow.triangle.branch"
-            case .plugins:  "puzzlepiece"
-            case .compare:  "arrow.left.arrow.right"
-            case .mcp:      "network"
-            case .activity: "clock"
-            case .insights: "chart.bar"
-            case .settings: "gear"
+            case .sessions:   "bubble.left.and.bubble.right"
+            case .agents:     "cpu"
+            case .tasks:      "checklist"
+            case .marketplace:"storefront"
+            case .workflow:   "arrow.triangle.branch"
+            case .plugins:    "puzzlepiece"
+            case .compare:    "arrow.left.arrow.right"
+            case .mcp:        "network"
+            case .voiceChat:  "waveform"
+            case .activity:   "clock"
+            case .insights:   "chart.bar"
+            case .deviceSync: "arrow.triangle.2.circlepath"
+            case .settings:   "gear"
             }
         }
 
         /// 所属分组
         var section: SidebarSection {
             switch self {
-            case .sessions, .agents, .tasks:            .main
-            case .workflow, .plugins, .compare, .mcp:   .tools
-            case .activity, .insights:                  .data
-            case .settings:                             .system
+            case .sessions, .agents, .tasks:                .main
+            case .marketplace, .voiceChat, .workflow, .plugins, .compare, .mcp:   .tools
+            case .activity, .insights:                      .data
+            case .deviceSync, .settings:                    .system
             }
         }
     }
@@ -110,7 +124,158 @@ struct ContentView: View {
                 compactView
             }
         }
+        // 全局连接状态条：仅在状态非 idle 时显示
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if appState.statusNotificationManager.currentStatus != .idle {
+                statusBar
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: appState.statusNotificationManager.currentStatus)
         .preferredColorScheme(preferredColorScheme)
+        // 命令面板触发：隐藏的 ⌘K 快捷键按钮
+        .background(
+            Button("") { showingCommandPalette = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        )
+        // 命令面板 Sheet
+        .sheet(isPresented: $showingCommandPalette) {
+            CommandPaletteView()
+                .presentationDetents([.medium, .large])
+                .presentationBackgroundInteraction(.enabled)
+                .presentationDragIndicator(.visible)
+        }
+        // 首次启动注册命令面板的运行时动作
+        .task { registerCommandActions() }
+    }
+
+    // MARK: - 命令面板动作注册
+
+    /// 将命令面板中静态注册的命令绑定到运行时导航动作
+    ///
+    /// 由于 `CommandPaletteManager.shared` 是单例，在 `init` 时无法访问 `selectedTab`
+    /// 等运行时状态，因此命令的 `action` 闭包留空，由本方法在视图启动时统一绑定。
+    /// 命令导航支持：
+    /// - regular（iPad）：直接设置 `selectedTab`
+    /// - compact（iPhone）：若目标存在对应 `CompactTab`，则同时切换 `selectedCompactTab`
+    private func registerCommandActions() {
+        let manager = commandPaletteManager
+        let actions: [(String, () -> Void)] = [
+            ("nav.sessions",        { navigate(to: .sessions) }),
+            ("nav.agents",          { navigate(to: .agents) }),
+            ("nav.tasks",           { navigate(to: .tasks) }),
+            ("nav.marketplace",     { navigate(to: .marketplace) }),
+            ("nav.voicechat",       { navigate(to: .voiceChat) }),
+            ("nav.settings",       { navigate(to: .settings) }),
+            ("action.new_session",  {
+                let session = appState.sessionManager.createSession()
+                appState.dataController.saveSession(session)
+                navigate(to: .sessions)
+            }),
+            ("action.add_agent",    {
+                navigate(to: .agents)
+            }),
+            ("action.toggle_theme", { toggleTheme() }),
+            ("tools.command_palette", { showingCommandPalette = true }),
+            ("tools.refresh_market", {
+                Task { await appState.marketplaceClient.loadAgents() }
+                navigate(to: .marketplace)
+            })
+        ]
+
+        for (id, action) in actions {
+            if let cmd = manager.command(byId: id) {
+                let bound = CommandItem(
+                    id: cmd.id,
+                    systemImage: cmd.systemImage,
+                    title: cmd.title,
+                    subtitle: cmd.subtitle,
+                    keywords: cmd.keywords,
+                    shortcut: cmd.shortcut,
+                    isQuickAction: cmd.isQuickAction,
+                    category: cmd.category,
+                    action: action
+                )
+                manager.register(bound)
+            }
+        }
+    }
+
+    /// 通用导航：同时设置 regular / compact 选中项
+    /// - Parameter tab: 目标侧边栏项
+    private func navigate(to tab: SidebarTab) {
+        selectedTab = tab
+        // 若 compact 模式有对应 Tab，则同步切换
+        switch tab {
+        case .sessions: selectedCompactTab = .sessions
+        case .agents:   selectedCompactTab = .agents
+        case .tasks:    selectedCompactTab = .tasks
+        case .settings: selectedCompactTab = .settings
+        default: break
+        }
+    }
+
+    /// 切换主题（在浅色/深色/跟随系统间循环）
+    private func toggleTheme() {
+        let order: [AppTheme.ThemePreference] = [.light, .dark, .system]
+        let current = AppTheme.ThemePreference(rawValue: themeRaw) ?? .system
+        guard let idx = order.firstIndex(of: current) else { return }
+        let next = order[(idx + 1) % order.count]
+        themeRaw = next.rawValue
+    }
+
+    // MARK: - 全局状态条
+
+    /// 顶部连接状态条，展示 StatusNotificationManager 的当前状态。
+    ///
+    /// - .connecting: 橙色背景 + 旋转图标
+    /// - .connected:  绿色背景 + 勾选图标
+    /// - .error:      红色背景 + 警告图标
+    /// - .idle:       不显示
+    private var statusBar: some View {
+        let status = appState.statusNotificationManager.currentStatus
+        let message = appState.statusNotificationManager.statusMessage
+
+        return HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: status.systemImage)
+                .font(.caption)
+                .foregroundStyle(.white)
+                .rotationEffect(.degrees(status == .connecting ? 360 : 0))
+                .animation(
+                    status == .connecting
+                        ? .linear(duration: 1).repeatForever(autoreverses: false)
+                        : .default,
+                    value: status
+                )
+
+            Text(status.displayName)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.white)
+
+            Text(message)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1)
+
+            Spacer()
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(statusBarColor(for: status))
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    /// 根据状态返回对应的背景色
+    private func statusBarColor(for status: AppStatus) -> Color {
+        switch status {
+        case .idle:       return AppTheme.secondaryTextColor
+        case .connecting: return AppTheme.warningColor
+        case .connected:  return AppTheme.successColor
+        case .error:      return AppTheme.errorColor
+        }
     }
 
     // MARK: - iPad 双栏视图
@@ -171,16 +336,19 @@ struct ContentView: View {
     @ViewBuilder
     private func detailView(for tab: SidebarTab?) -> some View {
         switch tab {
-        case .sessions:  SessionsView()
-        case .agents:    AgentsView()
-        case .tasks:     TasksView()
-        case .workflow:  WorkflowView()
-        case .plugins:   PluginView()
-        case .compare:   CompareView()
-        case .mcp:       McpView()
-        case .activity:  ActivityView()
-        case .insights:  InsightsView()
-        case .settings:  SettingsView()
+        case .sessions:    SessionsView()
+        case .agents:      AgentsView()
+        case .tasks:       TasksView()
+        case .marketplace: MarketplaceView()
+        case .workflow:    WorkflowView()
+        case .plugins:     PluginView()
+        case .compare:     CompareView()
+        case .mcp:         McpView()
+        case .voiceChat:   VoiceChatView()
+        case .activity:    ActivityView()
+        case .insights:    InsightsView()
+        case .deviceSync:  DeviceSyncView()
+        case .settings:    SettingsView()
         case .none:
             ContentUnavailableView(
                 "选择一个页面",

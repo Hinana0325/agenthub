@@ -1,0 +1,325 @@
+import Foundation
+import Observation
+import AVFoundation
+
+// MARK: - VoiceChatManager
+//
+// 与 `VoiceInputManager`（基于 SFSpeechRecognizer 的语音转文字）不同，
+// 本管理器专注于「录音 + 回放 + 波形可视化」，用于 VoiceChatView 录制语音消息：
+// - 录音：使用 AVAudioRecorder 写入 m4a 文件
+// - 回放：使用 AVAudioPlayer 播放已录制文件
+// - 实时音量：通过 audioRecorder.averagePower(forChannel:) 计算 dB，归一化为 0~1 的 audioLevel
+// - 波形可视化：定时采样 audioLevel 写入 levels 数组（最多保留 64 个采样点）
+
+/// 语音聊天管理器 — 录音、回放与波形可视化
+@Observable
+final class VoiceChatManager {
+
+    // MARK: - 状态
+
+    /// 是否正在录音
+    private(set) var isRecording: Bool = false
+
+    /// 是否正在播放
+    private(set) var isPlaying: Bool = false
+
+    /// 当前录音音量（0.0 ~ 1.0，已归一化的线性值）
+    @ObservationIgnored private(set) var audioLevel: Float = 0.0
+
+    /// 当前播放进度（秒）
+    private(set) var playbackProgress: TimeInterval = 0.0
+
+    /// 当前录音时长（秒）
+    private(set) var recordingDuration: TimeInterval = 0.0
+
+    /// 当前播放文件总时长（秒）
+    private(set) var playbackDuration: TimeInterval = 0.0
+
+    /// 波形采样数据（用于绘制波形图，最多保留 64 个采样点）
+    private(set) var waveformLevels: [Float] = []
+
+    /// 录音文件 URL（最近一次录音）
+    private(set) var lastRecordingURL: URL?
+
+    /// 错误信息
+    private(set) var errorMessage: String?
+
+    /// 录音会话状态
+    enum SessionState {
+        case idle        // 空闲
+        case recording   // 录音中
+        case playing     // 播放中
+        case paused      // 暂停
+    }
+
+    /// 当前会话状态
+    var state: SessionState {
+        if isRecording { return .recording }
+        if isPlaying { return .playing }
+        return .idle
+    }
+
+    /// 波形最大采样数
+    private let maxWaveformSamples = 64
+
+    // MARK: - 私有资源
+
+    @ObservationIgnored private var audioRecorder: AVAudioRecorder?
+    @ObservationIgnored private var audioPlayer: AVAudioPlayer?
+    @ObservationIgnored private var recordingTimer: Timer?
+    @ObservationIgnored private var playbackTimer: Timer?
+
+    /// 当前正在播放的消息 ID（用于 UI 高亮）
+    @ObservationIgnored private(set) var currentPlayingMessageId: String?
+
+    // MARK: - 初始化
+
+    init() {
+        configureAudioSession()
+    }
+
+    deinit {
+        stopAll()
+    }
+
+    // MARK: - AudioSession 配置
+
+    /// 配置 AVAudioSession（播放与录音模式）
+    private func configureAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setActive(true)
+        } catch {
+            errorMessage = "音频会话配置失败：\(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - 录音
+
+    /// 开始录音
+    func startRecording() {
+        // 释放上次录音资源
+        audioRecorder?.stop()
+        audioRecorder = nil
+        waveformLevels = []
+        audioLevel = 0.0
+        recordingDuration = 0.0
+        errorMessage = nil
+
+        // 录音文件 URL
+        let url = makeRecordingURL()
+        lastRecordingURL = url
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue
+        ]
+
+        do {
+            let recorder = try AVAudioRecorder(url: url, settings: settings)
+            recorder.isMeteringEnabled = true
+            recorder.prepareToRecord()
+            recorder.record()
+            audioRecorder = recorder
+            isRecording = true
+
+            // 启动定时采样
+            startRecordingTimer()
+        } catch {
+            errorMessage = "录音启动失败：\(error.localizedDescription)"
+            isRecording = false
+        }
+    }
+
+    /// 停止录音并返回文件 URL
+    /// - Returns: 录音文件 URL（失败时为 nil）
+    @discardableResult
+    func stopRecording() -> URL? {
+        guard isRecording else { return nil }
+        audioRecorder?.stop()
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        isRecording = false
+        audioLevel = 0.0
+        let url = audioRecorder?.url
+        audioRecorder = nil
+        return url
+    }
+
+    /// 取消录音（删除文件）
+    func cancelRecording() {
+        guard isRecording else { return }
+        audioRecorder?.stop()
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        isRecording = false
+        audioLevel = 0.0
+        recordingDuration = 0.0
+        waveformLevels = []
+        // 删除文件
+        if let url = audioRecorder?.url {
+            try? FileManager.default.removeItem(at: url)
+        }
+        lastRecordingURL = nil
+        audioRecorder = nil
+    }
+
+    // MARK: - 播放
+
+    /// 播放指定 URL 的音频
+    /// - Parameters:
+    ///   - url: 音频文件 URL
+    ///   - messageId: 关联的消息 ID（可选，用于 UI 高亮）
+    func playAudio(url: URL, messageId: String? = nil) {
+        // 若正在播放同一文件则切换为暂停
+        if isPlaying, audioPlayer?.url == url {
+            pausePlayback()
+            return
+        }
+
+        // 停止当前播放
+        stopPlayback()
+
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.prepareToPlay()
+            player.play()
+            audioPlayer = player
+            playbackDuration = player.duration
+            currentPlayingMessageId = messageId
+            isPlaying = true
+
+            startPlaybackTimer()
+        } catch {
+            errorMessage = "播放失败：\(error.localizedDescription)"
+        }
+    }
+
+    /// 暂停播放
+    func pausePlayback() {
+        audioPlayer?.pause()
+        isPlaying = false
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+    }
+
+    /// 恢复播放
+    func resumePlayback() {
+        audioPlayer?.play()
+        isPlaying = true
+        startPlaybackTimer()
+    }
+
+    /// 停止播放
+    func stopPlayback() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+        isPlaying = false
+        playbackProgress = 0.0
+        playbackDuration = 0.0
+        currentPlayingMessageId = nil
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+    }
+
+    /// 跳转到指定进度（0.0 ~ 1.0）
+    /// - Parameter progress: 进度
+    func seek(to progress: Double) {
+        guard let player = audioPlayer else { return }
+        let target = player.duration * progress
+        player.currentTime = target
+        playbackProgress = target
+    }
+
+    // MARK: - 全部停止
+
+    /// 停止所有播放与录音
+    func stopAll() {
+        if isRecording { stopRecording() }
+        if isPlaying { stopPlayback() }
+        recordingTimer?.invalidate()
+        playbackTimer?.invalidate()
+        recordingTimer = nil
+        playbackTimer = nil
+        try? AVAudioSession.sharedInstance().setActive(false)
+    }
+
+    // MARK: - 计时器
+
+    /// 启动录音计时与采样
+    private func startRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            guard let self, let recorder = self.audioRecorder, recorder.isRecording else { return }
+            recorder.updateMeters()
+
+            // averagePower 返回 -160 ~ 0 dB，归一化为 0 ~ 1
+            let db = recorder.averagePower(forChannel: 0)
+            let level = self.normalizeDBToLevel(db)
+            self.audioLevel = level
+            self.recordingDuration += 0.05
+
+            // 写入波形采样
+            self.waveformLevels.append(level)
+            if self.waveformLevels.count > self.maxWaveformSamples {
+                self.waveformLevels.removeFirst(self.waveformLevels.count - self.maxWaveformSamples)
+            }
+        }
+    }
+
+    /// 启动播放进度计时
+    private func startPlaybackTimer() {
+        playbackTimer?.invalidate()
+        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self, let player = self.audioPlayer else { return }
+            self.playbackProgress = player.currentTime
+            if !player.isPlaying {
+                // 播放结束
+                self.stopPlayback()
+            }
+        }
+    }
+
+    /// 将 dB 值（-160 ~ 0）归一化为 0 ~ 1 的线性值
+    /// - Parameter db: dB 值
+    /// - Returns: 归一化后的音量
+    private func normalizeDBToLevel(_ db: Float) -> Float {
+        // -160 dB → 0，-40 dB → 约 0.5，0 dB → 1
+        let clamped = max(-160, min(0, db))
+        // 简单线性映射 + 平方根曲线增强低音量可视化
+        let normalized = (clamped + 160) / 160
+        return sqrt(normalized)
+    }
+
+    // MARK: - 录音文件 URL
+
+    /// 生成录音文件 URL（临时目录）
+    /// - Returns: 文件 URL
+    private func makeRecordingURL() -> URL {
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileName = "voice_\(Int(Date().timeIntervalSince1970 * 1000)).m4a"
+        return tempDir.appendingPathComponent(fileName)
+    }
+}
+
+// MARK: - VoiceMessage 模型
+
+/// 已录制的语音消息
+///
+/// 由 VoiceChatView 录制完成后构造，加入消息列表用于回放展示。
+/// 字段设计简洁，仅包含 UI 展示必需信息；持久化由调用方决定。
+struct VoiceMessage: Identifiable, Hashable {
+    /// 唯一 ID
+    let id: String
+    /// 音频文件 URL
+    let url: URL
+    /// 时长（秒）
+    let duration: TimeInterval
+    /// 录制时间戳（毫秒级）
+    let timestamp: Int64
+    /// 波形采样快照
+    let waveform: [Float]
+}

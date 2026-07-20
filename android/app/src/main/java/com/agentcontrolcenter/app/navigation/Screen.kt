@@ -3,12 +3,14 @@ package com.agentcontrolcenter.app.navigation
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Storefront
@@ -32,6 +34,8 @@ sealed class Screen(
     data object Compare : Screen("compare", R.string.compare_title, Icons.Default.CompareArrows)
     data object DeviceSync : Screen("device_sync", R.string.device_sync_title, Icons.Default.Sync)
     data object Plugins : Screen("plugins", R.string.plugin_title, Icons.Default.Extension)
+    data object Tasks : Screen("tasks", R.string.nav_tasks, Icons.Default.TaskAlt)
+    data object Mcp : Screen("mcp", R.string.nav_mcp, Icons.Default.Dns)
 
     companion object {
         /** Returns the list of primary tab screens shown in the bottom bar / navigation rail. */

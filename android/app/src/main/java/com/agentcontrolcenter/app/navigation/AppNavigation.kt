@@ -47,6 +47,8 @@ import com.agentcontrolcenter.app.feature.marketplace.AgentMarketScreen
 import com.agentcontrolcenter.app.feature.sync.DeviceSyncScreen
 import com.agentcontrolcenter.app.feature.plugin.PluginScreen
 import com.agentcontrolcenter.app.feature.insights.InsightsScreen
+import com.agentcontrolcenter.app.feature.task.TasksScreen
+import com.agentcontrolcenter.app.feature.mcp.McpScreen
 import com.agentcontrolcenter.app.data.model.MarketplaceAgent
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
@@ -179,7 +181,9 @@ private fun AppNavHost(
                 onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
                 onNavigateToInsights = { navController.navigate(Screen.Insights.route) },
                 onNavigateToDeviceSync = { navController.navigate(Screen.DeviceSync.route) },
-                onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) }
+                onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
+                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
+                onNavigateToMcp = { navController.navigate(Screen.Mcp.route) }
             )
         }
         composable(Screen.Agents.route) { AgentsScreen() }
@@ -205,6 +209,12 @@ private fun AppNavHost(
         }
         composable(Screen.Plugins.route) {
             PluginScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Tasks.route) {
+            TasksScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Mcp.route) {
+            McpScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Compare.route) {
             val compareViewModel: CompareViewModel = hiltViewModel()
