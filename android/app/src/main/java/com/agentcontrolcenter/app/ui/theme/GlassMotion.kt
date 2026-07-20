@@ -1,6 +1,5 @@
 package com.agentcontrolcenter.app.ui.theme
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.LinearEasing
@@ -32,7 +31,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 
-/** Android 17 spring physics — bouncy, natural touch feedback */
+// ---------------------------------------------------------------------------
+// Generic spring physics configurations.
+// These are kept because they are reusable, non-glass-specific animation specs.
+// ---------------------------------------------------------------------------
+
+/** Bouncy spring — natural, overshooting touch feedback */
 val SpringBounce = spring<Float>(
     dampingRatio = Spring.DampingRatioMediumBouncy,
     stiffness = Spring.StiffnessLow
@@ -50,9 +54,11 @@ val SpringExit = spring<Float>(
     stiffness = Spring.StiffnessHigh
 )
 
-/** Elastic enter transition — fade + spring scale (Android 17 entrance).
- *  Computed once (not a `get()`) so every AnimatedVisibility that references it
- *  reuses the same transition instance instead of rebuilding fadeIn + scaleIn. */
+/**
+ * Elastic enter transition — fade + spring scale.
+ * Computed once (not a `get()`) so every AnimatedVisibility that references it
+ * reuses the same transition instance instead of rebuilding fadeIn + scaleIn.
+ */
 val GlassEnterTransition: EnterTransition =
     fadeIn(animationSpec = tween(220, easing = LinearEasing)) +
             scaleIn(initialScale = 0.92f, animationSpec = SpringBounce)
@@ -63,8 +69,8 @@ val GlassExitTransition: ExitTransition =
             scaleOut(targetScale = 0.96f, animationSpec = SpringExit)
 
 /**
- * Continuous subtle float offset (px) — gives glass surfaces "liquid" life.
- * Use with Modifier.graphicsLayer { translationY = it }.
+ * Continuous subtle float offset (px).
+ * Use with `Modifier.graphicsLayer { translationY = it }`.
  */
 @Composable
 fun rememberFloatingOffset(distance: Dp = 4.dp): State<Float> {
@@ -100,8 +106,8 @@ fun rememberMorphCornerShape(
 }
 
 /**
- * Glass press feedback — elastic scale-down on press, spring back on release.
- * Replaces plain alpha/scale for tactile Android 17 feel.
+ * Spring press feedback — elastic scale-down on press, spring back on release.
+ * A generic tactile modifier; no glass-specific (blur / border / translucency) effects.
  */
 fun Modifier.glassPress(
     interactionSource: MutableInteractionSource? = null,
@@ -112,27 +118,22 @@ fun Modifier.glassPress(
     val scale by animateFloatAsState(
         targetValue = if (pressed) pressedScale else 1f,
         animationSpec = if (pressed) SpringBounce else SpringSmooth,
-        label = "glass-press-scale"
+        label = "press-scale"
     )
     this then Modifier.scale(scale)
 }
 
 /**
- * Glass ripple + spring — clickable with Android 17 tactile feedback.
+ * Standard [clickable] with default ripple indication — Liquid Glass disabled.
  */
 fun Modifier.glassClickable(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ): Modifier = composed {
-    val interactionSource = remember { MutableInteractionSource() }
-    this
-        .glassPress(interactionSource)
-        .clickable(
-            enabled = enabled,
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = onClick
-        )
+    this.clickable(
+        enabled = enabled,
+        onClick = onClick
+    )
 }
 
 /** Lerp helper for Dp (avoids extra import noise at call sites) */

@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-07-20
+
+### Breaking — 弃用 Liquid Glass，迁移到 Android 16 Material 3 Expressive
+
+本次版本完全弃用自研的 iOS 风格 Liquid Glass 视觉系统，全面迁移到 Android 16 官方设计语言 Material 3 Expressive。
+
+### Removed
+
+- **GlassBackdrop.kt** — 删除。此前为全屏多层径向渐变"假壁纸"，现已由 M3 Expressive 的 `surfaceDim` / `surfaceBright` 实体 surface 表达层次替代。
+- **theme_liquid_glass 字符串** — 从 4 种语言（en/zh/ja/ko）的 strings.xml 中移除 "Liquid Glass" / "液态玻璃" / "リキッドグラス" / "리퀴드 글래스" 字符串。
+- **虚构的 "Android 17" 注释** — Color.kt 中多处注释虚构 "Android 17 玻璃模糊级别" / "Android 17 灵魂：高光流动"，当前最新为 Android 16，全部移除。
+- **Glass 颜色 token** — 移除 `GlassBlurXs/Sm/Md/Lg/Xl`（重命名为 `BlurXs/Sm/Md/Lg/Xl`）、`GlassShadowSm/Md/Lg/Xl`（重命名为 `ShadowSm/Md/Lg/Xl`）、`GlassShineLight/Dark`、`GlassDispersionLight/Dark`、`GlassShapeXs/Sm/Md/Lg/Xl/Pill/Squircle`、`GlassTintPrimaryLight/Dark`。
+
+### Added
+
+- **MaterialExpressiveTheme**: `Theme.kt` 使用 `MaterialExpressiveTheme` 替代标准 `MaterialTheme`，获得 M3 Expressive 的 35 种形状 token、Spring Motion 默认动效和 Expressive 组件变体。
+- **expressiveColorScheme**: `buildColorScheme()` 使用 `expressiveLightColorScheme()` / `expressiveDarkColorScheme()` 替代标准 `lightColorScheme()` / `darkColorScheme()`，提供 `surfaceBright` / `surfaceDim` 等 M3 Expressive 扩展 token。
+- **Shape.kt**: 新增 Material 3 Expressive 形状系统，定义 15+ 种形状 token（XS 2/4/6/8dp、S 10/12dp、M 14/16dp、L 18/20/24dp、XL 28/32dp、Pill 100dp、Circle），映射到 `AppShapes` 供 `MaterialExpressiveTheme` 使用。
+- **Spring Motion NavHost 转场**: `AppNavigation.kt` 的 NavHost 新增 spring enter/exit/popEnter/popExit 转场动画。进入使用 `DampingRatioMediumBouncy + StiffnessMediumLow`（自然弹入），退出使用 `DampingRatioNoBouncy + StiffnessMedium`（平滑退出）。
+
+### Changed
+
+- **Theme.kt**: `AgentControlCenterTheme` 移除 `isGlass` 硬编码、移除 `GlassBackdrop` 渲染、移除 `CompositionLocalProvider` 中的 Glass 相关 Local。`MaterialExpressiveTheme` 直接包裹 content，surface 为实体色。
+- **MainActivity.kt**: 移除 `LocalIsGlass` / `GlassBackdropGradient*` import，移除 `updateWindowBackground()` 方法，Surface 直接使用 `MaterialTheme.colorScheme.background`。
+- **GlassModifier.kt**: 从 584 行精简到 337 行。所有 Glass* 组件（GlassBox/GlassCard/GlassTopAppBar/GlassNavigationBar/GlassFloatingActionButton/GlassPill/GlassDropdownMenu/GlassModalBottomSheet）改为直接调用对应 M3 标准组件，移除 blur/border/shine/dispersion 效果。函数签名保持不变，确保 20+ 个 Screen 文件无需修改。
+- **GlassMotion.kt**: `glassClickable` 简化为标准 `clickable`（默认 ripple），`glassPress` 保留弹性缩放。Spring specs（SpringBounce/SpringSmooth/SpringExit）保留。
+- **CommandPalette.kt**: 移除 `LocalIsGlass` 和 `glassBackground` 引用，直接使用标准 M3 值。
+- **Color.kt**: Glass 颜色 token 重命名/移除，注释更新为 Android 12+ RenderEffect 语义。
+- **版本号**: Android versionCode 29 → 30 / versionName 3.2.0 → 4.0.0；iOS 同步。
+
 ## [3.2.0] - 2026-07-20
 
 ### Added — Android 专项 UX 改进

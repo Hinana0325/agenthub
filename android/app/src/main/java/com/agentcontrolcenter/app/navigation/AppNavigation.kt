@@ -175,6 +175,11 @@ fun AppNavigation() {
 /**
  * Shared NavHost used by both the tablet (NavigationRail) and phone (BottomBar) layouts.
  * Extracted to avoid duplicating the entire destination graph between the two branches.
+ *
+ * 使用 Android 16 Material 3 Expressive Spring Motion 转场动画：
+ * - 进入：spring(dampingRatio=0.8, stiffness=MediumLow) — 自然弹入
+ * - 退出：spring(dampingRatio=0.9, stiffness=Medium) — 平滑退出
+ * - popEnter/popExit 对称配置，保证返回手势一致
  */
 @Composable
 private fun AppNavHost(
@@ -182,10 +187,44 @@ private fun AppNavHost(
     chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel,
     modifier: Modifier = Modifier
 ) {
+    // M3 Expressive Spring Motion specs
+    val springEnter = androidx.compose.animation.EnterTransition(
+        androidx.compose.animation.core.FadeIn(
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+            )
+        ) + androidx.compose.animation.SlideInHorizontally(
+            initialOffsetX = { it / 8 },
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+            )
+        )
+    )
+    val springExit = androidx.compose.animation.ExitTransition(
+        androidx.compose.animation.core.FadeOut(
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+            )
+        ) + androidx.compose.animation.SlideOutHorizontally(
+            targetOffsetX = { -it / 8 },
+            animationSpec = androidx.compose.animation.core.spring(
+                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+            )
+        )
+    )
+
     NavHost(
         navController = navController,
         startDestination = Screen.Chat.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = { springEnter },
+        exitTransition = { springExit },
+        popEnterTransition = { springEnter },
+        popExitTransition = { springExit }
     ) {
         composable(Screen.Chat.route) {
             ChatScreen(

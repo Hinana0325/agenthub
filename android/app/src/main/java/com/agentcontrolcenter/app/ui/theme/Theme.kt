@@ -3,39 +3,43 @@ package com.agentcontrolcenter.app.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.expressiveDarkColorScheme
+import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Agent Control Center 主题模式：Light / Dark / System（跟随系统）。
- * 视觉风格始终为液态玻璃（liquid glass 常驻），模式只决定深色/浅色基底。
+ *
+ * 基于 Android 16 Material 3 Expressive 设计语言。
+ * 使用 [MaterialExpressiveTheme] + [expressiveLightColorScheme] / [expressiveDarkColorScheme]
+ * 提供 surfaceBright / surfaceDim 等扩展 token，通过实体 surface 表达层次。
  */
 enum class ThemeMode { Light, Dark, System }
 
 /**
- * 根据强调色和主题模式构建 Material3 ColorScheme
+ * 根据强调色和主题模式构建 Expressive ColorScheme。
+ *
+ * 使用 [expressiveLightColorScheme] / [expressiveDarkColorScheme] 替代标准
+ * [lightColorScheme] / [darkColorScheme]，以获得 M3 Expressive 扩展的
+ * surfaceBright / surfaceDim 等 token。
  */
 fun buildColorScheme(
     accent: AccentPalette,
-    isDark: Boolean,
-    isGlass: Boolean = false
+    isDark: Boolean
 ) = if (isDark) {
-    darkColorScheme(
+    expressiveDarkColorScheme(
         primary = accent.primary,
         onPrimary = accent.onPrimary,
         primaryContainer = accent.primaryContainer,
@@ -43,25 +47,10 @@ fun buildColorScheme(
         secondary = accent.secondary,
         secondaryContainer = accent.secondaryContainer,
         tertiary = accent.tertiary,
-        tertiaryContainer = accent.tertiaryContainer,
-        background = if (isGlass) Color.Transparent else DarkBackground,
-        surface = if (isGlass) Color.Transparent else DarkSurface,
-        surfaceVariant = if (isGlass) GlassSurfaceVariantDark else DarkSurfaceVariant,
-        onBackground = DarkOnBackground,
-        onSurface = DarkOnBackground,
-        outline = DarkOutline,
-        outlineVariant = DarkOutlineVariant,
-        surfaceTint = DarkSurfaceTint,
-        // Glass 模式下 surfaceContainer* 必须同步设为半透明玻璃色，否则 AlertDialog /
-        // ModalBottomSheet 等使用 surfaceContainerHigh 的组件会显示为深色实色背景（弹窗黑框）。
-        surfaceContainerLowest = if (isGlass) GlassSurfaceDark.copy(alpha = 0.90f) else Color(0xFF0C0B0F),
-        surfaceContainerLow = if (isGlass) GlassSurfaceDark.copy(alpha = 0.85f) else Color(0xFF1D1B20),
-        surfaceContainer = if (isGlass) GlassSurfaceDark.copy(alpha = 0.80f) else Color(0xFF211F26),
-        surfaceContainerHigh = if (isGlass) GlassSurfaceDark.copy(alpha = 0.75f) else Color(0xFF2B2930),
-        surfaceContainerHighest = if (isGlass) GlassSurfaceDark.copy(alpha = 0.70f) else Color(0xFF36343B)
+        tertiaryContainer = accent.tertiaryContainer
     )
 } else {
-    lightColorScheme(
+    expressiveLightColorScheme(
         primary = accent.primary,
         onPrimary = accent.onPrimary,
         primaryContainer = accent.primaryContainer,
@@ -69,29 +58,9 @@ fun buildColorScheme(
         secondary = accent.secondary,
         secondaryContainer = accent.secondaryContainer,
         tertiary = accent.tertiary,
-        tertiaryContainer = accent.tertiaryContainer,
-        background = if (isGlass) Color.Transparent else LightBackground,
-        surface = if (isGlass) Color.Transparent else LightSurface,
-        surfaceVariant = if (isGlass) GlassSurfaceVariantLight else LightSurfaceVariant,
-        onBackground = LightOnBackground,
-        onSurface = LightOnBackground,
-        outline = LightOutline,
-        outlineVariant = LightOutlineVariant,
-        surfaceTint = LightSurfaceTint,
-        // Glass 模式下 surfaceContainer* 同步设为半透明玻璃色，保持与 surface 一致的透明语义。
-        surfaceContainerLowest = if (isGlass) GlassSurfaceLight.copy(alpha = 0.95f) else Color(0xFFFFFFFF),
-        surfaceContainerLow = if (isGlass) GlassSurfaceLight.copy(alpha = 0.90f) else Color(0xFFF7F2FA),
-        surfaceContainer = if (isGlass) GlassSurfaceLight.copy(alpha = 0.85f) else Color(0xFFF3EDF7),
-        surfaceContainerHigh = if (isGlass) GlassSurfaceLight.copy(alpha = 0.80f) else Color(0xFFECE6F0),
-        surfaceContainerHighest = if (isGlass) GlassSurfaceLight.copy(alpha = 0.75f) else Color(0xFFE6E1E9)
+        tertiaryContainer = accent.tertiaryContainer
     )
 }
-
-// NOTE: The previous multi-accent picker (AccentPalettes) and the custom-theme hex
-// color builder (buildCustomColorScheme / parseHexColor) were removed. The app now
-// uses a single default accent (AccentBlue) and the liquid-glass style is always on,
-// so per-user color customization is no longer needed.
-
 
 /** Map a persisted font-size setting to a multiplier applied to the base typography. */
 private fun fontScaleFor(size: String): Float = when (size) {
@@ -117,6 +86,20 @@ private fun scaleTypography(base: Typography, factor: Float): Typography = Typog
     labelSmall = base.labelSmall.copy(fontSize = base.labelSmall.fontSize * factor, lineHeight = base.labelSmall.lineHeight * factor)
 )
 
+/**
+ * Agent Control Center 主题入口。
+ *
+ * 基于 Android 16 Material 3 Expressive：
+ * - [MaterialExpressiveTheme] 替代标准 [MaterialTheme]
+ * - [expressiveLightColorScheme] / [expressiveDarkColorScheme] 提供 surfaceBright / surfaceDim
+ * - Android 12+ 动态取色（Material You）
+ * - 实体 surface 表达层次，不使用透明/玻璃效果
+ *
+ * @param themeMode Light / Dark / System
+ * @param fontSize small / medium / large
+ * @param dynamicColor Android 12+ 是否启用 Material You 动态取色
+ * @param content 主题包裹的内容
+ */
 @Composable
 fun AgentControlCenterTheme(
     themeMode: ThemeMode = ThemeMode.System,
@@ -129,40 +112,22 @@ fun AgentControlCenterTheme(
         ThemeMode.Dark -> true
         ThemeMode.System -> isSystemInDarkTheme()
     }
-    // Liquid glass is always on; the theme mode only selects the dark/light base.
-    val isGlass = true
     val accent = AccentBlue
     val context = LocalContext.current
 
-    // Material You 动态取色（Android 12+）。
-    // 开启时从系统壁纸提取色板，关闭时使用应用自带的 AccentBlue 调色板。
-    // Glass 模式下仍保留半透明 surfaceContainer，但 primary/secondary 取自动态色板。
+    // Material 3 Expressive ColorScheme
+    // Android 12+ 动态取色优先；否则使用应用自带 AccentBlue + Expressive 基础色板
     val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val dynScheme = if (isDark) {
-            dynamicDarkColorScheme(context)
-        } else {
-            dynamicLightColorScheme(context)
-        }
-        // 覆盖 surface 系列为 Glass 半透明色，保留液态玻璃效果
-        val glassSurface = if (isDark) GlassSurfaceDark else GlassSurfaceLight
-        dynScheme.copy(
-            background = if (isGlass) Color.Transparent else dynScheme.background,
-            surface = if (isGlass) Color.Transparent else dynScheme.surface,
-            surfaceContainerLowest = if (isGlass) glassSurface.copy(alpha = 0.90f) else dynScheme.surfaceContainerLowest,
-            surfaceContainerLow = if (isGlass) glassSurface.copy(alpha = 0.85f) else dynScheme.surfaceContainerLow,
-            surfaceContainer = if (isGlass) glassSurface.copy(alpha = 0.80f) else dynScheme.surfaceContainer,
-            surfaceContainerHigh = if (isGlass) glassSurface.copy(alpha = 0.75f) else dynScheme.surfaceContainerHigh,
-            surfaceContainerHighest = if (isGlass) glassSurface.copy(alpha = 0.70f) else dynScheme.surfaceContainerHighest
-        )
+        if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
-        buildColorScheme(accent, isDark, isGlass)
+        buildColorScheme(accent, isDark)
     }
 
     // Apply the persisted font-size setting by scaling the base typography.
     val typography = scaleTypography(AppTypography, fontScaleFor(fontSize))
 
-    // Edge-to-edge: system will handle status bar/navigation bar appearance
-    val activity = androidx.compose.ui.platform.LocalContext.current as? Activity
+    // Edge-to-edge: system bar appearance follows theme mode
+    val activity = LocalContext.current as? Activity
     if (activity != null) {
         SideEffect {
             val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
@@ -171,23 +136,15 @@ fun AgentControlCenterTheme(
         }
     }
 
-    CompositionLocalProvider(
-        LocalIsGlass provides isGlass,
-        LocalGlassBlurRadius provides GlassBlurMd,
-        LocalGlassTintAlpha provides 0.20f,
-        LocalGlassBorderAlpha provides 0.15f,
-        LocalGlassShineAlpha provides if (isDark) 0.12f else 0.10f,
-        LocalGlassDispersion provides if (isDark) GlassDispersionDark else GlassDispersionLight,
-        LocalGlassShadowElevation provides GlassShadowMd,
-        content = {
-            Box(modifier = Modifier.fillMaxSize()) {
-                GlassBackdrop(isDark = isDark)
-                MaterialTheme(
-                    colorScheme = colorScheme,
-                    typography = typography,
-                    content = content
-                )
-            }
-        }
+    // Material 3 Expressive Theme
+    // 使用 MaterialExpressiveTheme 替代 MaterialTheme，获得：
+    // - 35 种形状 token
+    // - Spring Motion 默认动效
+    // - Expressive 组件变体
+    MaterialExpressiveTheme(
+        colorScheme = colorScheme,
+        typography = typography,
+        shapes = AppShapes,
+        content = content
     )
 }

@@ -26,11 +26,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientBottomDark
-import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientBottomLight
-import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopDark
-import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopLight
-import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.navigation.AppNavigation
 import com.agentcontrolcenter.app.navigation.ShortcutRouter
 import com.agentcontrolcenter.app.feature.onboarding.OnboardingScreen
@@ -124,11 +119,7 @@ class MainActivity : ComponentActivity() {
                 fontSize = settingsState.fontSize,
                 dynamicColor = settingsState.dynamicColor
             ) {
-                val isGlass = LocalIsGlass.current
                 val isDark = isSystemInDarkTheme()
-                SideEffect {
-                    updateWindowBackground(isGlass, isDark)
-                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -238,24 +229,6 @@ class MainActivity : ComponentActivity() {
          * `<extra android:name="shortcut_action">` 保持一致。
          */
         const val EXTRA_SHORTCUT_ACTION = "shortcut_action"
-    }
-
-    /**
-     * 更新窗口背景。
-     *
-     * Glass 模式下，背景视觉由 Compose 端的 [GlassBackdrop] Composable 统一绘制
-     * （渐变 + 动态径向光晕）。这里只给 decorView 设一个与 GlassBackdrop 底色一致的
-     * 纯色兜底，避免闪屏/转场时露出黑色，同时避免与 GlassBackdrop 的渐变叠加导致浑浊。
-     */
-    private fun updateWindowBackground(isGlass: Boolean, isDark: Boolean) {
-        if (isGlass) {
-            // 纯色兜底（取 GlassBackdrop 渐变的底色），不叠加渐变 —— 渐变由 GlassBackdrop 绘制
-            val fallbackColor = if (isDark) GlassBackdropGradientBottomDark else GlassBackdropGradientBottomLight
-            window.decorView.setBackgroundColor(fallbackColor.toArgb())
-        } else {
-            window.decorView.background = null
-            window.setBackgroundDrawable(null)
-        }
     }
 
     /**
