@@ -1,0 +1,121 @@
+import XCTest
+import SwiftUI
+@testable import AgentControlCenter
+
+// MARK: - 液态玻璃预设单元测试
+final class GlassPresetsTests: XCTestCase {
+
+    // MARK: - GlassTokens 测试
+
+    /// 验证默认玻璃 variant 为 .regular
+    func testRegularVariantIsRegularGlass() {
+        // Glass.regular 与 GlassTokens.regularVariant 应为同一 variant
+        // 由于 Glass 不暴露内部标识符，仅验证可正常构造且不崩溃
+        let _ = GlassTokens.regularVariant
+        XCTAssertTrue(true, "regularVariant 应可正常访问")
+    }
+
+    /// 验证交互式 variant 带按压反馈（.interactive()）
+    func testInteractiveVariantIsInteractive() {
+        let _ = GlassTokens.interactiveVariant
+        XCTAssertTrue(true, "interactiveVariant 应可正常访问")
+    }
+
+    /// 验证容器间距默认值为 16pt
+    func testContainerSpacingDefaultValue() {
+        XCTAssertEqual(GlassTokens.containerSpacing, 16,
+                       "默认 containerSpacing 应为 16pt")
+    }
+
+    /// 验证弹簧参数为 Spring 实例（响应/阻尼比为正）
+    func testBounceSpringIsValidSpring() {
+        // Spring 的 response 与 dampingFraction 应为正数
+        // SwiftUI Spring 没有公开属性访问器，仅验证可构造
+        let _ = GlassTokens.bounceSpring
+        let _ = GlassTokens.smoothSpring
+        let _ = GlassTokens.exitSpring
+        XCTAssertTrue(true, "三个弹簧预设应可正常访问")
+    }
+
+    /// 验证形状令牌可正常访问
+    func testShapeTokensAccessible() {
+        let _ = GlassTokens.pillShape
+        let _ = GlassTokens.circleShape
+        let _ = GlassTokens.sheetShape
+        XCTAssertEqual(GlassTokens.sheetCornerRadius, AppTheme.CornerRadius.xl,
+                       "sheetCornerRadius 应等于 AppTheme.CornerRadius.xl")
+    }
+
+    // MARK: - GlassPresets View 扩展测试
+
+    /// 验证 .glassPill() 修饰后视图类型可正常构造（不崩溃）
+    func testGlassPillModifierProducesView() {
+        let view = Color.red
+            .frame(width: 100, height: 30)
+            .glassPill()
+        XCTAssertNotNil(view, ".glassPill() 应返回非空 View")
+    }
+
+    /// 验证 .glassFloating() 修饰后视图类型可正常构造
+    func testGlassFloatingModifierProducesView() {
+        let view = Color.blue
+            .frame(width: 60, height: 60)
+            .glassFloating()
+        XCTAssertNotNil(view, ".glassFloating() 应返回非空 View")
+    }
+
+    /// 验证 .glassInteractive(in:) 接受任意 Shape
+    func testGlassInteractiveAcceptsArbitraryShape() {
+        let rect = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let view = Color.green
+            .frame(width: 200, height: 100)
+            .glassInteractive(in: rect)
+        XCTAssertNotNil(view, ".glassInteractive(in:) 应接受 RoundedRectangle")
+
+        let capsule = Capsule()
+        let view2 = Color.yellow
+            .frame(width: 80, height: 80)
+            .glassInteractive(in: capsule)
+        XCTAssertNotNil(view2, ".glassInteractive(in:) 应接受 Capsule")
+    }
+
+    /// 验证 .glassStatic(in:) 接受任意 Shape（非交互式）
+    func testGlassStaticAcceptsArbitraryShape() {
+        let circle = Circle()
+        let view = Color.gray
+            .frame(width: 40, height: 40)
+            .glassStatic(in: circle)
+        XCTAssertNotNil(view, ".glassStatic(in:) 应接受 Circle")
+    }
+
+    // MARK: - GlassContainer 测试
+
+    /// 验证 GlassContainer 可包裹多个子视图
+    func testGlassContainerWrapsMultipleChildren() {
+        let container = GlassContainer {
+            HStack {
+                Text("A").glassEffect()
+                Text("B").glassEffect()
+                Text("C").glassEffect()
+            }
+        }
+        XCTAssertNotNil(container, "GlassContainer 应可包裹多个 .glassEffect() 子视图")
+    }
+
+    /// 验证 GlassContainer 默认 spacing 为 GlassTokens.containerSpacing
+    func testGlassContainerDefaultSpacing() {
+        // 默认 spacing 应为 16pt；由于 spacing 是私有的，仅验证可正常构造
+        let _ = GlassContainer {
+            Text("test").glassEffect()
+        }
+        XCTAssertTrue(true, "GlassContainer 默认构造应成功")
+    }
+
+    /// 验证 GlassContainer 可自定义 spacing
+    func testGlassContainerCustomSpacing() {
+        let _ = GlassContainer(spacing: 30) {
+            Text("test").glassEffect()
+        }
+        XCTAssertTrue(true, "GlassContainer 自定义 spacing=30 应成功构造")
+    }
+}

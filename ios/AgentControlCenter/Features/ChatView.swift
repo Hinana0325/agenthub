@@ -29,6 +29,8 @@ struct ChatView: View {
     @State private var inputText: String = ""
     /// 是否正在等待 Agent 响应
     @State private var isWaiting: Bool = false
+    /// 输入栏玻璃 morph 命名空间（send ↔ stop 形变过渡）
+    @Namespace private var inputGlassNS
     /// PhotosPicker 选中项
     @State private var photoItem: PhotosPickerItem?
     /// 附件名称
@@ -242,14 +244,20 @@ struct ChatView: View {
                         }
                     }
 
-                // 语音输入按钮
-                voiceInputButton
+                // 语音输入按钮 + 发送/停止按钮：放入同一个 GlassContainer
+                // 使三块玻璃融合为整体，且 send ↔ stop 通过共享 glassEffectID 实现 morph
+                GlassContainer {
+                    voiceInputButton
+                        .glassEffectID("voice", in: inputGlassNS)
 
-                // 发送按钮 / 停止按钮
-                if isWaiting {
-                    stopButton
-                } else {
-                    sendButton
+                    // 发送按钮 / 停止按钮（共享 "action" ID，isWaiting 切换时玻璃形变过渡）
+                    if isWaiting {
+                        stopButton
+                            .glassEffectID("action", in: inputGlassNS)
+                    } else {
+                        sendButton
+                            .glassEffectID("action", in: inputGlassNS)
+                    }
                 }
             }
             .padding(.horizontal, 12)
@@ -330,6 +338,7 @@ struct ChatView: View {
                     .font(.title3)
                     .foregroundStyle(voiceManager.state == .listening ? .red : AppTheme.primaryColor)
             }
+            .glassFloating()
         }
         .disabled(isWaiting)
         .accessibilityLabel(voiceManager.state == .listening ? "停止语音输入" : "语音输入")
@@ -379,6 +388,7 @@ struct ChatView: View {
                     canSend ? AppTheme.primaryColor : Color.gray.opacity(0.3),
                     in: Circle()
                 )
+                .glassFloating()
         }
         .disabled(!canSend)
         .accessibilityLabel("发送")
@@ -396,6 +406,7 @@ struct ChatView: View {
                 .foregroundStyle(.white)
                 .padding(8)
                 .background(Color.red, in: Circle())
+                .glassFloating()
         }
         .accessibilityLabel("停止生成")
     }

@@ -99,18 +99,7 @@ struct CommandPaletteView: View {
             }
         }
         .frame(maxWidth: 560, minHeight: 360, maxHeight: 560)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl))
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xl)
-                .strokeBorder(AppTheme.borderColor, lineWidth: 0.5)
-        )
-        .shadow(
-            color: AppTheme.Shadow.heavy.color,
-            radius: AppTheme.Shadow.heavy.radius,
-            x: AppTheme.Shadow.heavy.x,
-            y: AppTheme.Shadow.heavy.y
-        )
+        .glassInteractive(in: GlassTokens.sheetShape)
         .onAppear {
             isSearchFocused = true
             selectedIndex = 0

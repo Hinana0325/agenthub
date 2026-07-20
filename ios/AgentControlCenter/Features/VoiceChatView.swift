@@ -146,7 +146,7 @@ struct VoiceChatView: View {
         }
     }
 
-    /// 大圆形录制按钮（带脉冲动画）
+    /// 大圆形录制按钮（带脉冲动画 + 液态玻璃）
     private var recordButton: some View {
         Button {
             if appState.voiceChatManager.isRecording {
@@ -169,16 +169,11 @@ struct VoiceChatView: View {
                         )
                 }
 
-                // 主按钮
+                // 主按钮底色（液态玻璃 + 状态色 tint）
                 Circle()
                     .fill(appState.voiceChatManager.isRecording ? AppTheme.errorColor : AppTheme.primaryColor)
                     .frame(width: 80, height: 80)
-                    .shadow(
-                        color: (appState.voiceChatManager.isRecording ? AppTheme.errorColor : AppTheme.primaryColor).opacity(0.4),
-                        radius: 12,
-                        x: 0,
-                        y: 4
-                    )
+                    .glassFloating()
 
                 // 内部图标
                 Image(systemName: appState.voiceChatManager.isRecording ? "stop.fill" : "mic.fill")

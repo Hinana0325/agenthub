@@ -284,9 +284,10 @@ struct ContentView: View {
 
     /// 顶部连接状态条，展示 StatusNotificationManager 的当前状态。
     ///
-    /// - .connecting: 橙色背景 + 旋转图标
-    /// - .connected:  绿色背景 + 勾选图标
-    /// - .error:      红色背景 + 警告图标
+    /// 浮动药丸形态：iOS 26 液态玻璃 + 状态色 tint。
+    /// - .connecting: 橙色 tint + 旋转图标
+    /// - .connected:  绿色 tint + 勾选图标
+    /// - .error:      红色 tint + 警告图标
     /// - .idle:       不显示
     private var statusBar: some View {
         let status = appState.statusNotificationManager.currentStatus
@@ -318,7 +319,8 @@ struct ContentView: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.vertical, AppTheme.Spacing.sm)
-        .background(statusBarColor(for: status))
+        .background(statusBarColor(for: status).opacity(0.6))
+        .glassPill()
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
