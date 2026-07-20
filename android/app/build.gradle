@@ -47,7 +47,7 @@ android {
     // 16KB page size 支持（Android 15+ + 骁龙 8 Gen 3+ 优化）
     // 减少 TLB miss，提升大内存应用性能
     androidResources {
-        noCompress += 'tflite', 'bin', 'so'
+        noCompress += ['tflite', 'bin', 'so']
     }
 
     buildFeatures {
