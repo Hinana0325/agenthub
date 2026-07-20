@@ -3,14 +3,11 @@ package com.agentcontrolcenter.app.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.expressiveDarkColorScheme
-import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -23,44 +20,57 @@ import androidx.core.view.WindowInsetsControllerCompat
  * Agent Control Center 主题模式：Light / Dark / System（跟随系统）。
  *
  * 基于 Android 16 Material 3 Expressive 设计语言。
- * 使用 [MaterialExpressiveTheme] + [expressiveLightColorScheme] / [expressiveDarkColorScheme]
- * 提供 surfaceBright / surfaceDim 等扩展 token，通过实体 surface 表达层次。
+ * 使用扩展的 ColorScheme（surfaceBright / surfaceDim）表达层次，
+ * 实体 surface 替代透明/玻璃效果。
  */
 enum class ThemeMode { Light, Dark, System }
 
 /**
- * 根据强调色和主题模式构建 Expressive ColorScheme。
+ * 构建浅色 ColorScheme，包含 M3 Expressive 扩展 token。
  *
- * 使用 [expressiveLightColorScheme] / [expressiveDarkColorScheme] 替代标准
- * [lightColorScheme] / [darkColorScheme]，以获得 M3 Expressive 扩展的
- * surfaceBright / surfaceDim 等 token。
+ * surfaceBright 用于需要"浮起"感的容器（如卡片、TopAppBar）
+ * surfaceDim 用于需要"凹陷"感的区域（如背景）
  */
-fun buildColorScheme(
-    accent: AccentPalette,
-    isDark: Boolean
-) = if (isDark) {
-    expressiveDarkColorScheme(
-        primary = accent.primary,
-        onPrimary = accent.onPrimary,
-        primaryContainer = accent.primaryContainer,
-        onPrimaryContainer = accent.onPrimaryContainer,
-        secondary = accent.secondary,
-        secondaryContainer = accent.secondaryContainer,
-        tertiary = accent.tertiary,
-        tertiaryContainer = accent.tertiaryContainer
-    )
-} else {
-    expressiveLightColorScheme(
-        primary = accent.primary,
-        onPrimary = accent.onPrimary,
-        primaryContainer = accent.primaryContainer,
-        onPrimaryContainer = accent.onPrimaryContainer,
-        secondary = accent.secondary,
-        secondaryContainer = accent.secondaryContainer,
-        tertiary = accent.tertiary,
-        tertiaryContainer = accent.tertiaryContainer
-    )
-}
+fun buildLightColorScheme(
+    accent: AccentPalette
+) = lightColorScheme(
+    primary = accent.primary,
+    onPrimary = accent.onPrimary,
+    primaryContainer = accent.primaryContainer,
+    onPrimaryContainer = accent.onPrimaryContainer,
+    secondary = accent.secondary,
+    secondaryContainer = accent.secondaryContainer,
+    tertiary = accent.tertiary,
+    tertiaryContainer = accent.tertiaryContainer,
+    // M3 Expressive 扩展：用 surfaceContainer 系列表达层次
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF9FAFB),
+    surfaceContainer = Color(0xFFF3F4F6),
+    surfaceContainerHigh = Color(0xFFE5E7EB),
+    surfaceContainerHighest = Color(0xFFD1D5DB)
+)
+
+/**
+ * 构建深色 ColorScheme，包含 M3 Expressive 扩展 token。
+ */
+fun buildDarkColorScheme(
+    accent: AccentPalette
+) = darkColorScheme(
+    primary = accent.primary,
+    onPrimary = accent.onPrimary,
+    primaryContainer = accent.primaryContainer,
+    onPrimaryContainer = accent.onPrimaryContainer,
+    secondary = accent.secondary,
+    secondaryContainer = accent.secondaryContainer,
+    tertiary = accent.tertiary,
+    tertiaryContainer = accent.tertiaryContainer,
+    // M3 Expressive 扩展：用 surfaceContainer 系列表达层次
+    surfaceContainerLowest = Color(0xFF0D1117),
+    surfaceContainerLow = Color(0xFF161B22),
+    surfaceContainer = Color(0xFF21262D),
+    surfaceContainerHigh = Color(0xFF30363D),
+    surfaceContainerHighest = Color(0xFF3D444D)
+)
 
 /** Map a persisted font-size setting to a multiplier applied to the base typography. */
 private fun fontScaleFor(size: String): Float = when (size) {
@@ -87,13 +97,28 @@ private fun scaleTypography(base: Typography, factor: Float): Typography = Typog
 )
 
 /**
+ * 根据强调色和主题模式构建 ColorScheme。
+ *
+ * 使用扩展的 surfaceContainer 系列表达层次，
+ * 替代旧版透明 surface + Glass 容器方案。
+ */
+fun buildColorScheme(
+    accent: AccentPalette,
+    isDark: Boolean
+) = if (isDark) {
+    buildDarkColorScheme(accent)
+} else {
+    buildLightColorScheme(accent)
+}
+
+/**
  * Agent Control Center 主题入口。
  *
- * 基于 Android 16 Material 3 Expressive：
- * - [MaterialExpressiveTheme] 替代标准 [MaterialTheme]
- * - [expressiveLightColorScheme] / [expressiveDarkColorScheme] 提供 surfaceBright / surfaceDim
+ * 基于 Android 16 Material 3 Expressive 设计语言：
+ * - 扩展 surfaceContainer 系列表达层次（surfaceBright / surfaceDim 语义）
  * - Android 12+ 动态取色（Material You）
- * - 实体 surface 表达层次，不使用透明/玻璃效果
+ * - 实体 surface 替代透明/玻璃效果
+ * - Spring Motion 动效（通过 NavHost 转场和组件动画实现）
  *
  * @param themeMode Light / Dark / System
  * @param fontSize small / medium / large
@@ -116,7 +141,7 @@ fun AgentControlCenterTheme(
     val context = LocalContext.current
 
     // Material 3 Expressive ColorScheme
-    // Android 12+ 动态取色优先；否则使用应用自带 AccentBlue + Expressive 基础色板
+    // Android 12+ 动态取色优先；否则使用应用自带 AccentBlue + 扩展 surfaceContainer
     val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
@@ -136,12 +161,10 @@ fun AgentControlCenterTheme(
         }
     }
 
-    // Material 3 Expressive Theme
-    // 使用 MaterialExpressiveTheme 替代 MaterialTheme，获得：
-    // - 35 种形状 token
-    // - Spring Motion 默认动效
-    // - Expressive 组件变体
-    MaterialExpressiveTheme(
+    // Material 3 Theme with Expressive extensions
+    // 使用扩展 surfaceContainer 系列替代透明 surface，
+    // 形状系统通过 AppShapes 配置，Spring Motion 通过 NavHost 转场实现
+    MaterialTheme(
         colorScheme = colorScheme,
         typography = typography,
         shapes = AppShapes,

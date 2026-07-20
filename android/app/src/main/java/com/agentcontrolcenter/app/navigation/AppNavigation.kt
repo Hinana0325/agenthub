@@ -188,32 +188,29 @@ private fun AppNavHost(
     modifier: Modifier = Modifier
 ) {
     // M3 Expressive Spring Motion specs
-    val springEnter = androidx.compose.animation.EnterTransition(
-        androidx.compose.animation.core.FadeIn(
-            animationSpec = androidx.compose.animation.core.spring(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-            )
-        ) + androidx.compose.animation.SlideInHorizontally(
-            initialOffsetX = { it / 8 },
-            animationSpec = androidx.compose.animation.core.spring(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-            )
+    // 使用公开的 fadeIn/slideInHorizontally + spring animationSpec
+    val springEnter: androidx.compose.animation.EnterTransition = androidx.compose.animation.fadeIn(
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        )
+    ) + androidx.compose.animation.slideInHorizontally(
+        initialOffsetX = { it / 8 },
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
         )
     )
-    val springExit = androidx.compose.animation.ExitTransition(
-        androidx.compose.animation.core.FadeOut(
-            animationSpec = androidx.compose.animation.core.spring(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-            )
-        ) + androidx.compose.animation.SlideOutHorizontally(
-            targetOffsetX = { -it / 8 },
-            animationSpec = androidx.compose.animation.core.spring(
-                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-                stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
-            )
+    val springExit: androidx.compose.animation.ExitTransition = androidx.compose.animation.fadeOut(
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+        )
+    ) + androidx.compose.animation.slideOutHorizontally(
+        targetOffsetX = { -it / 8 },
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
         )
     )
 
