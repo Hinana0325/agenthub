@@ -17,30 +17,14 @@ android {
         applicationId "com.agentcontrolcenter.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 22
-        versionName "2.5.0"
+        versionCode 23
+        versionName "2.5.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Room schema export directory (required by exportSchema = true in AppDatabase).
         // Schemas are checked into version control to enable migration testing.
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
-        }
-
-        // 骁龙优化：只构建 arm64-v8a（骁龙/天玑/Exynos 旗舰均为 ARM64）
-        // x86_64 仅用于模拟器调试，release 不打包以减小 APK 体积
-        ndk {
-            abiFilters 'arm64-v8a', 'x86_64'
-        }
-    }
-
-    // ABI splits — 为 arm64（骁龙设备）生成独立 APK，体积更小、启动更快
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'arm64-v8a', 'x86_64'
-            universalApk true
         }
     }
 
