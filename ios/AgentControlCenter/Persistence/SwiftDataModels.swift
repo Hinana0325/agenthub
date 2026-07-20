@@ -116,8 +116,8 @@ final class AgentConfigEntity {
     var temperature: Float
     /// 最大 token 数
     var maxTokens: Int
-    /// 通信协议类型（AgentProtocol.rawValue：WebSocket / HttpSSE / MCP / Local），默认 webSocket
-    var protocolType: String = "webSocket"
+    /// 通信协议类型（AgentProtocol.rawValue：WebSocket / HttpSSE / MCP / Local），默认 WebSocket
+    var protocolType: String = "WebSocket"
 
     /// 创建 Agent 配置实体
     /// - Parameter protocolType: 通信协议类型 rawValue，默认 "webSocket"（向后兼容已有调用方）

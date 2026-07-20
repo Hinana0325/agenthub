@@ -4,7 +4,7 @@ import Foundation
 // 对应 protocol/schemas/task-schema.json
 
 /// 任务类型
-enum TaskType: String, Codable {
+enum TaskType: String, Codable, CaseIterable {
     case chat = "CHAT"
     case code = "CODE"
     case workflow = "WORKFLOW"

@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 // MARK: - LocalModelManager
 // 对应 Android LocalModelManager — 本地模型发现管理器

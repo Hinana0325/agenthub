@@ -34,6 +34,7 @@ final class TaskManager {
     ///   - input: 任务输入内容
     ///   - sessionId: 关联的会话 ID（可选）
     /// - Returns: 新创建的任务
+    @discardableResult
     func submitTask(
         agentId: String,
         type: TaskType,

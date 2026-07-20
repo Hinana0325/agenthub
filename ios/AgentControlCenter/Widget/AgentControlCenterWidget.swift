@@ -123,21 +123,3 @@ struct AgentWidgetBundle: WidgetBundle {
         AgentControlCenterWidget()
     }
 }
-
-// MARK: - Widget 数据更新辅助
-
-/// 在主 App 中调用此方法更新 Widget 显示
-enum WidgetUpdater {
-    static func updateWidget(
-        lastMessage: String,
-        sessionTitle: String,
-        agentName: String
-    ) {
-        let defaults = UserDefaults(suiteName: "group.com.agentcontrolcenter.app.ios")
-        defaults?.set(true, forKey: "widget_configured")
-        defaults?.set(lastMessage, forKey: "widget_last_message")
-        defaults?.set(sessionTitle, forKey: "widget_session_title")
-        defaults?.set(agentName, forKey: "widget_agent_name")
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-}
