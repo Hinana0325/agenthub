@@ -3,27 +3,34 @@ import SwiftUI
 /// 应用根视图
 /// 使用 NavigationSplitView 提供侧边栏 + 详情区的双栏布局
 struct ContentView: View {
-    // 通过环境获取全局 AppState(@Observable 模型)
     @Environment(AppState.self) private var appState
-    // 当前选中的侧边栏标签
     @State private var selectedTab: SidebarTab = .sessions
 
-    /// 侧边栏标签枚举:会话 / Agent / 任务 / MCP / 设置
+    /// 侧边栏标签枚举：会话 / Agent / 任务 / 工作流 / 插件 / 对比 / MCP / 活动 / 洞察 / 设置
     enum SidebarTab: String, CaseIterable, Identifiable {
         case sessions = "会话"
         case agents = "Agent"
         case tasks = "任务"
+        case workflow = "工作流"
+        case plugins = "插件"
+        case compare = "对比"
         case mcp = "MCP"
+        case activity = "活动"
+        case insights = "洞察"
         case settings = "设置"
         var id: String { rawValue }
 
-        // 每个标签对应的 SF Symbol 图标
         var systemImage: String {
             switch self {
             case .sessions: "bubble.left.and.bubble.right"
             case .agents: "cpu"
             case .tasks: "checklist"
+            case .workflow: "arrow.triangle.branch"
+            case .plugins: "puzzlepiece"
+            case .compare: "arrow.left.arrow.right"
             case .mcp: "network"
+            case .activity: "clock"
+            case .insights: "chart.bar"
             case .settings: "gear"
             }
         }
@@ -31,19 +38,22 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            // 侧边栏:标签列表
             List(SidebarTab.allCases, selection: $selectedTab) { tab in
                 Label(tab.rawValue, systemImage: tab.systemImage)
                     .tag(tab)
             }
             .navigationTitle("Agent Control Center")
         } detail: {
-            // 详情区:根据选中标签切换对应视图
             switch selectedTab {
             case .sessions: SessionsView()
             case .agents: AgentsView()
             case .tasks: TasksView()
+            case .workflow: WorkflowView()
+            case .plugins: PluginView()
+            case .compare: CompareView()
             case .mcp: McpView()
+            case .activity: ActivityView()
+            case .insights: InsightsView()
             case .settings: SettingsView()
             }
         }

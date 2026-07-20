@@ -1,0 +1,261 @@
+import SwiftUI
+
+// MARK: - PluginView
+
+/// 插件管理页面，对应 Android PluginScreen。
+/// 展示已安装插件列表，支持启用/禁用切换和添加新插件。
+struct PluginView: View {
+    @Environment(AppState.self) private var appState
+
+    /// 本地插件列表（DataController 暂无 Plugin CRUD，使用空列表 + 空状态）
+    @State private var plugins: [Plugin] = []
+
+    /// 是否显示添加插件 Sheet
+    @State private var showAddSheet: Bool = false
+
+    var body: some View {
+        Group {
+            if plugins.isEmpty {
+                emptyView
+            } else {
+                pluginList
+            }
+        }
+        .navigationTitle("插件")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            addPluginSheet
+        }
+        .onAppear {
+            loadPlugins()
+        }
+    }
+
+    // MARK: - 空状态
+
+    /// 无插件时的空状态提示
+    private var emptyView: some View {
+        ContentUnavailableView {
+            Label("暂无插件", systemImage: "puzzlepiece")
+        } description: {
+            Text("插件可以扩展 Agent 的能力，如调用外部 API、发送广播或触发工作流。")
+        } actions: {
+            Button("添加插件") {
+                showAddSheet = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    // MARK: - 插件列表
+
+    /// 插件列表视图
+    private var pluginList: some View {
+        List {
+            ForEach($plugins) { $plugin in
+                pluginRow(plugin: $plugin)
+            }
+            .onDelete { indexSet in
+                // 删除插件
+                for index in indexSet {
+                    let pluginId = plugins[index].id
+                    plugins.remove(at: index)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .refreshable {
+            // 模拟下拉刷新
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+    }
+
+    /// 单个插件行
+    private func pluginRow(plugin: Binding<Plugin>) -> some View {
+        HStack(spacing: 12) {
+            // 插件图标
+            Image(systemName: plugin.wrappedValue.icon.isEmpty ? "puzzlepiece.fill" : plugin.wrappedValue.icon)
+                .font(.title3)
+                .foregroundStyle(AppTheme.primaryColor)
+                .frame(width: 40, height: 40)
+                .background(AppTheme.primaryColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+
+            // 插件信息
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(plugin.wrappedValue.name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    // 类型标签
+                    if let action = plugin.wrappedValue.action {
+                        actionTypeBadge(action.type)
+                    }
+
+                    // 版本号
+                    Text("v\(plugin.wrappedValue.version)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                if !plugin.wrappedValue.description.isEmpty {
+                    Text(plugin.wrappedValue.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer()
+
+            // 启用/禁用 Toggle
+            Toggle("", isOn: plugin.isEnabled)
+                .labelsHidden()
+                .tint(AppTheme.primaryColor)
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// 动作类型标签
+    private func actionTypeBadge(_ type: PluginActionType) -> some View {
+        let (text, color) = actionTypeDisplay(type)
+        return Text(text)
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12), in: Capsule())
+    }
+
+    /// 动作类型的显示名称和颜色
+    private func actionTypeDisplay(_ type: PluginActionType) -> (String, Color) {
+        switch type {
+        case .http:      return ("HTTP", .blue)
+        case .broadcast: return ("广播", .orange)
+        case .workflow:  return ("工作流", .purple)
+        case .none:      return ("无动作", .gray)
+        }
+    }
+
+    // MARK: - 添加插件 Sheet
+
+    /// 添加新插件的弹窗
+    private var addPluginSheet: some View {
+        NavigationStack {
+            AddPluginForm { newPlugin in
+                plugins.append(newPlugin)
+                showAddSheet = false
+            }
+            .navigationTitle("添加插件")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showAddSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    // MARK: - 加载插件
+
+    /// 尝试从持久化层加载插件（当前 DataController 未实现 Plugin CRUD，使用空列表）
+    private func loadPlugins() {
+        // DataController 暂未实现 fetchPlugins()，保持空列表
+        // 后续接入后可在此处调用 appState.dataController.fetchPlugins()
+    }
+}
+
+// MARK: - AddPluginForm
+
+/// 添加插件表单
+private struct AddPluginForm: View {
+    /// 插件名称
+    @State private var name: String = ""
+    /// 插件描述
+    @State private var description: String = ""
+    /// 动作类型
+    @State private var actionType: PluginActionType = .http
+    /// 确认回调
+    var onConfirm: (Plugin) -> Void
+
+    /// 是否可以提交
+    private var canSubmit: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("插件名称", text: $name)
+                TextField("插件描述（可选）", text: $description, axis: .vertical)
+                    .lineLimit(2...4)
+            }
+
+            Section {
+                Picker("动作类型", selection: $actionType) {
+                    Text("HTTP 调用").tag(PluginActionType.http)
+                    Text("广播").tag(PluginActionType.broadcast)
+                    Text("工作流").tag(PluginActionType.workflow)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("类型")
+            } footer: {
+                Text(actionTypeDescription)
+                    .font(.caption)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("添加") {
+                    let action: PluginAction
+                    switch actionType {
+                    case .http:
+                        action = .httpCall(.init(url: "https://example.com/api"))
+                    case .broadcast:
+                        action = .broadcast(.init(action: "custom.action"))
+                    case .workflow:
+                        action = .workflow(.init(promptTemplate: "{query}"))
+                    case .none:
+                        action = nil
+                    }
+
+                    let plugin = Plugin(
+                        id: UUID().uuidString,
+                        name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                        icon: "puzzlepiece.fill",
+                        isEnabled: true,
+                        action: action
+                    )
+                    onConfirm(plugin)
+                }
+                .disabled(!canSubmit)
+            }
+        }
+    }
+
+    /// 动作类型说明文字
+    private var actionTypeDescription: String {
+        switch actionType {
+        case .http:
+            return "通过 HTTP 请求调用外部 API，支持自定义 URL、请求头和请求体。"
+        case .broadcast:
+            return "向应用内发送广播通知，可用于触发其他组件响应。"
+        case .workflow:
+            return "生成提示词模板交由 Agent 执行，适用于流程化任务。"
+        case .none:
+            return ""
+        }
+    }
+}

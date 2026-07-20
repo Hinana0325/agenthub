@@ -1,0 +1,189 @@
+import Foundation
+
+// MARK: - LocalModelManager
+// 对应 Android LocalModelManager — 本地模型发现管理器
+//
+// 职责：自动发现局域网或本机运行的 Ollama / LM Studio / llama.cpp 端点
+// 通过并发探测默认端口列表，收集可用的本地推理服务及其模型列表
+
+/// 本地模型发现管理器
+/// 自动发现局域网或本机运行的 Ollama / LM Studio / llama.cpp 端点
+@Observable
+final class LocalModelManager {
+
+    /// 已发现的本地端点
+    var discoveredEndpoints: [DiscoveredEndpoint] = []
+
+    /// 是否正在扫描中
+    var isScanning: Bool = false
+
+    /// 默认扫描的本地端点列表
+    ///
+    /// 覆盖本机回环地址和常见的局域网网关地址（192.168.1.100）
+    /// 可根据实际网络环境在后续版本中支持自定义扫描范围
+    static let defaultEndpoints: [(name: String, url: String, type: DiscoveredEndpoint.EndpointType)] = [
+        ("Ollama", "http://localhost:11434", .ollama),
+        ("Ollama (Lan)", "http://192.168.1.100:11434", .ollama),
+        ("LM Studio", "http://localhost:1234", .lmStudio),
+        ("LM Studio (Lan)", "http://192.168.1.100:1234", .lmStudio),
+        ("llama.cpp", "http://localhost:8080", .llamaCpp),
+    ]
+
+    // MARK: - 扫描
+
+    /// 并发扫描所有默认端点
+    ///
+    /// 使用 `withTaskGroup` 对所有预设端点发起并发探测，
+    /// 仅收集返回可用模型的端点。扫描期间 `isScanning` 为 `true`，
+    /// 扫描结束后更新 `discoveredEndpoints`。
+    func scan() async {
+        isScanning = true
+        var results: [DiscoveredEndpoint] = []
+
+        await withTaskGroup(of: DiscoveredEndpoint?.self) { group in
+            for endpoint in Self.defaultEndpoints {
+                group.addTask {
+                    let models = await self.fetchModels(from: endpoint.url, type: endpoint.type)
+                    // 仅当成功获取到至少一个模型时才认为端点可用
+                    guard !models.isEmpty else { return nil }
+                    return DiscoveredEndpoint(
+                        id: "\(endpoint.type.rawValue)-\(endpoint.url)",
+                        name: endpoint.name,
+                        url: endpoint.url,
+                        type: endpoint.type,
+                        models: models,
+                        isAvailable: true
+                    )
+                }
+            }
+
+            for await result in group {
+                if let result { results.append(result) }
+            }
+        }
+
+        discoveredEndpoints = results
+        isScanning = false
+    }
+
+    // MARK: - 模型获取路由
+
+    /// 根据端点类型路由到对应 API 获取模型列表
+    private func fetchModels(from url: String, type: DiscoveredEndpoint.EndpointType) async -> [LocalModel] {
+        switch type {
+        case .ollama:
+            return await fetchOllamaModels(from: url)
+        case .lmStudio:
+            return await fetchLmStudioModels(from: url)
+        case .llamaCpp:
+            return await fetchLlamaCppModels(from: url)
+        }
+    }
+
+    // MARK: - Ollama
+
+    /// Ollama: GET /api/tags
+    ///
+    /// 返回格式：
+    /// ```json
+    /// { "models": [{ "name": "llama3:8b", "size": 4661224676 }] }
+    /// ```
+    private func fetchOllamaModels(from url: String) async -> [LocalModel] {
+        guard let url = URL(string: "\(url)/api/tags") else { return [] }
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+
+        // Ollama API 响应结构
+        struct OllamaResponse: Codable {
+            let models: [OllamaModel]?
+            struct OllamaModel: Codable {
+                let name: String
+                let size: Int64?
+            }
+        }
+
+        guard let resp = try? JSONDecoder().decode(OllamaResponse.self, from: data),
+              let models = resp.models else { return [] }
+
+        return models.map { LocalModel(id: $0.name, name: $0.name, size: formatSize($0.size)) }
+    }
+
+    // MARK: - LM Studio
+
+    /// LM Studio: GET /v1/models（兼容 OpenAI 格式）
+    ///
+    /// 返回格式：
+    /// ```json
+    /// { "data": [{ "id": "meta-llama/Llama-3-8B-Instruct-q4" }] }
+    /// ```
+    private func fetchLmStudioModels(from url: String) async -> [LocalModel] {
+        guard let url = URL(string: "\(url)/v1/models") else { return [] }
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+
+        // LM Studio 兼容 OpenAI /v1/models 响应结构
+        struct LmStudioResponse: Codable {
+            let data: [LmModel]?
+            struct LmModel: Codable {
+                let id: String
+            }
+        }
+
+        guard let resp = try? JSONDecoder().decode(LmStudioResponse.self, from: data),
+              let models = resp.data else { return [] }
+
+        return models.map { LocalModel(id: $0.id, name: $0.id, size: nil) }
+    }
+
+    // MARK: - llama.cpp
+
+    /// llama.cpp: GET /health
+    ///
+    /// llama.cpp 的 /health 端点不返回模型列表，仅用于确认服务可用性。
+    /// 成功时返回一个占位模型条目，表示服务已就绪。
+    private func fetchLlamaCppModels(from url: String) async -> [LocalModel] {
+        guard let url = URL(string: "\(url)/health") else { return [] }
+        guard let (_, response) = try? await URLSession.shared.data(from: url),
+              let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+        // llama.cpp health 端点不返回模型列表，仅确认可用
+        return [LocalModel(id: "default", name: "默认模型", size: nil)]
+    }
+
+    // MARK: - 工具方法
+
+    /// 将字节数格式化为人类可读的 GB 字符串
+    /// - Parameter bytes: 文件大小（字节数），nil 时返回 nil
+    /// - Returns: 格式化后的字符串，如 "4.3 GB"
+    private func formatSize(_ bytes: Int64?) -> String? {
+        guard let bytes else { return nil }
+        let gb = Double(bytes) / 1_073_741_824.0
+        return String(format: "%.1f GB", gb)
+    }
+
+    // MARK: - 数据模型
+
+    /// 已发现的本地推理端点
+    struct DiscoveredEndpoint: Identifiable, Codable {
+        let id: String
+        let name: String
+        let url: String
+        let type: EndpointType
+        var models: [LocalModel]
+        var isAvailable: Bool
+
+        /// 端点类型枚举
+        enum EndpointType: String, Codable, CaseIterable {
+            case ollama = "Ollama"
+            case lmStudio = "LM Studio"
+            case llamaCpp = "llama.cpp"
+        }
+    }
+
+    /// 本地模型信息
+    struct LocalModel: Identifiable, Codable {
+        let id: String
+        let name: String
+        /// 模型文件大小（格式化后的可读字符串，如 "4.3 GB"），部分端点无法获取时为 nil
+        let size: String?
+    }
+}

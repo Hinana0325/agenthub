@@ -135,6 +135,19 @@ final class DataController {
         return entities.map { $0.toMessage() }
     }
 
+    /// 删除指定消息。
+    /// - Parameter id: 消息 ID
+    func deleteMessage(id: String) {
+        let targetId = id
+        let descriptor = FetchDescriptor<MessageEntity>(
+            predicate: #Predicate { $0.id == targetId }
+        )
+        if let entity = try? context.fetch(descriptor).first {
+            context.delete(entity)
+            save()
+        }
+    }
+
     /// 删除指定会话的全部消息。
     /// - Parameter sessionId: 会话 ID
     func deleteMessages(sessionId: String) {
