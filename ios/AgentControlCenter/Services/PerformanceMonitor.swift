@@ -3,6 +3,7 @@ import Observation
 
 /// 性能监控
 /// 对应 Android PerformanceMonitor — 记录消息延迟、连接质量、内存使用等
+/// 集成 Apple Silicon 硬件检测和优化
 @Observable
 final class PerformanceMonitor {
 
@@ -20,6 +21,13 @@ final class PerformanceMonitor {
         var uptimeMinutes: Int = 0
         /// 活跃连接数
         var activeConnections: Int = 0
+        // 硬件信息
+        var chipType: String = "Unknown"
+        var neuralEngineTOPS: Float = 0
+        var cpuCores: Int = 0
+        var totalMemoryGB: Double = 0
+        var aiAcceleration: String = "Unknown"
+        var thermalStatus: String = "Unknown"
     }
 
     /// 当前指标
@@ -34,14 +42,40 @@ final class PerformanceMonitor {
     /// 定时刷新定时器（每 5 秒更新一次指标）
     private var timer: Timer?
 
+    /// 硬件信息缓存
+    private var hardwareInfo: AppleSoCDetector.HardwareInfo?
+
     /// 初始化并启动监控
     init() {
+        initializeHardware()
         startMonitoring()
     }
 
     /// 析构时清理定时器
     deinit {
         timer?.invalidate()
+    }
+
+    // MARK: - 硬件初始化
+
+    /// 初始化硬件检测和优化配置
+    private func initializeHardware() {
+        let info = AppleSoCDetector.detect()
+        hardwareInfo = info
+
+        metrics.chipType = info.chipType.rawValue
+        metrics.neuralEngineTOPS = info.neuralEngineTOPS
+        metrics.cpuCores = info.cpuCores
+        metrics.totalMemoryGB = info.totalMemoryGB
+
+        let optimizerConfig = AppleOptimizer.shared.config
+        if optimizerConfig.useNeuralEngine {
+            metrics.aiAcceleration = "Neural Engine + Metal"
+        } else if optimizerConfig.useMetalAcceleration {
+            metrics.aiAcceleration = "Metal GPU"
+        } else {
+            metrics.aiAcceleration = "CPU only"
+        }
     }
 
     // MARK: - 公开接口
@@ -67,6 +101,17 @@ final class PerformanceMonitor {
     /// - Parameter count: 当前活跃连接数
     func updateConnectionCount(_ count: Int) {
         metrics.activeConnections = count
+    }
+
+    /// 获取硬件摘要（用于设置页面显示）
+    func getHardwareSummary() -> String {
+        return AppleOptimizer.shared.hardwareSummary()
+    }
+
+    /// 获取端侧推理配置建议
+    func getInferenceRecommendation() -> AppleSoCDetector.InferenceConfig? {
+        guard let info = hardwareInfo else { return nil }
+        return AppleSoCDetector.recommendInferenceConfig(info: info)
     }
 
     // MARK: - 私有方法
@@ -109,6 +154,16 @@ final class PerformanceMonitor {
             metrics.connectionQuality = "fair"
         } else {
             metrics.connectionQuality = "poor"
+        }
+
+        // 热状态更新
+        let thermalState = ProcessInfo.processInfo.thermalState
+        switch thermalState {
+        case .nominal: metrics.thermalStatus = "Normal"
+        case .fair: metrics.thermalStatus = "Fair"
+        case .serious: metrics.thermalStatus = "Throttling"
+        case .critical: metrics.thermalStatus = "Critical"
+        @unknown default: metrics.thermalStatus = "Unknown"
         }
     }
 }

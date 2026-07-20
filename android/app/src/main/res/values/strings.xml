@@ -518,4 +518,19 @@
     <string name="hardware_recommended_quantization">Recommended Quantization</string>
     <string name="hardware_max_context">Max Context Length</string>
     <string name="hardware_not_snapdragon">Not a Snapdragon device — optimizations are inactive</string>
+
+    <!-- Multi-vendor SoC Support -->
+    <string name="vendor_qualcomm">Qualcomm Snapdragon</string>
+    <string name="vendor_mediatek">MediaTek Dimensity</string>
+    <string name="vendor_samsung">Samsung Exynos</string>
+    <string name="vendor_google">Google Tensor</string>
+    <string name="vendor_apple">Apple Silicon</string>
+    <string name="vendor_unknown">Unknown Vendor</string>
+    <string name="accelerator_hexagon">Hexagon NPU</string>
+    <string name="accelerator_apu">MediaTek APU</string>
+    <string name="accelerator_samsung_npu">Samsung NPU</string>
+    <string name="accelerator_tpu">Google TPU</string>
+    <string name="accelerator_neural_engine">Apple Neural Engine</string>
+    <string name="hardware_ai_tops">AI Compute (TOPS)</string>
+    <string name="hardware_vendor">Chip Vendor</string>
 </resources>

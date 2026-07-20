@@ -17,8 +17,8 @@ android {
         applicationId "com.agentcontrolcenter.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 21
-        versionName "2.4.0"
+        versionCode 22
+        versionName "2.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Room schema export directory (required by exportSchema = true in AppDatabase).

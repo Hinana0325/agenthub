@@ -1,6 +1,6 @@
 package com.agentcontrolcenter.app.localmodel
 
-import com.agentcontrolcenter.app.core.hardware.SnapdragonOptimizer
+import com.agentcontrolcenter.app.core.hardware.SoCOptimizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -193,8 +193,8 @@ class LocalModelManager {
             put("model", model.id)
             put("messages", messages)
             put("stream", false)
-            // 骁龙优化：注入硬件调优参数
-            put("options", JSONObject(SnapdragonOptimizer.getOllamaOptions()))
+            // SoC 优化：注入硬件调优参数
+            put("options", JSONObject(SoCOptimizer.getOllamaOptions()))
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")
@@ -226,8 +226,8 @@ class LocalModelManager {
             put("model", model.id)
             put("messages", messages)
             put("stream", true)
-            // 骁龙优化：注入硬件调优参数
-            put("options", JSONObject(SnapdragonOptimizer.getOllamaOptions()))
+            // SoC 优化：注入硬件调优参数
+            put("options", JSONObject(SoCOptimizer.getOllamaOptions()))
         }
 
         val conn = openConnection("${model.endpoint}/api/chat")

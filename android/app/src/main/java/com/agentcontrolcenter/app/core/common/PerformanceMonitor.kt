@@ -1,9 +1,8 @@
 package com.agentcontrolcenter.app.core.common
 
 import android.content.Context
-import android.os.Debug
-import com.agentcontrolcenter.app.core.hardware.SnapdragonHardwareDetector
-import com.agentcontrolcenter.app.core.hardware.SnapdragonOptimizer
+import com.agentcontrolcenter.app.core.hardware.SoCHardwareDetector
+import com.agentcontrolcenter.app.core.hardware.SoCOptimizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +15,9 @@ data class PerformanceMetrics(
     val totalMessages: Long = 0,
     val uptimeMinutes: Long = 0,
     val socModel: String = "Unknown",
-    val isSnapdragon: Boolean = false,
+    val socVendor: String = "Unknown",
+    val aiAccelerator: String = "Unknown",
+    val aiTops: Float = 0f,
     val npuAcceleration: Boolean = false,
     val thermalStatus: String = "Unknown",
     val cpuCores: Int = 0,
@@ -30,23 +31,22 @@ object PerformanceMonitor {
     private val latencySamples = mutableListOf<Long>()
     private val startTime = System.currentTimeMillis()
     private var totalMessageCount = 0L
-    private var hardwareInfo: SnapdragonHardwareDetector.HardwareInfo? = null
+    private var hardwareInfo: SoCHardwareDetector.HardwareInfo? = null
 
-    /**
-     * 初始化硬件检测。应在 Application.onCreate() 中调用。
-     */
     fun initializeHardware(context: Context) {
-        SnapdragonOptimizer.initialize(context)
-        val info = SnapdragonHardwareDetector.detect(context)
+        SoCOptimizer.initialize(context)
+        val info = SoCHardwareDetector.detect(context)
         hardwareInfo = info
 
         _metrics.update {
             it.copy(
                 socModel = info.socModel,
-                isSnapdragon = info.isSnapdragon,
+                socVendor = info.vendor.displayName,
+                aiAccelerator = info.aiAccelerator.displayName,
+                aiTops = info.aiTops,
                 cpuCores = info.cpuCores,
                 totalMemoryMB = info.totalMemoryMB,
-                npuAcceleration = SnapdragonOptimizer.getNNApiConfig()?.enableNNAPI == true
+                npuAcceleration = SoCOptimizer.config.value.nnApiAccelerationEnabled
             )
         }
     }
@@ -86,22 +86,14 @@ object PerformanceMonitor {
         val runtime = Runtime.getRuntime()
         val usedMemoryMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
 
-        // 获取热状态
-        val thermal = if (hardwareInfo?.isSnapdragon == true) {
-            val throttled = SnapdragonOptimizer.shouldThrottle()
-            when {
-                !throttled -> "Normal"
-                else -> "Throttling"
-            }
+        val thermal = if (hardwareInfo?.vendor != SoCHardwareDetector.SoCVendor.OTHER) {
+            if (SoCOptimizer.shouldThrottle()) "Throttling" else "Normal"
         } else {
             "N/A"
         }
 
         _metrics.update {
-            it.copy(
-                memoryUsageMB = usedMemoryMB,
-                thermalStatus = thermal
-            )
+            it.copy(memoryUsageMB = usedMemoryMB, thermalStatus = thermal)
         }
     }
 
@@ -121,31 +113,20 @@ object PerformanceMonitor {
         }
     }
 
-    /** Public refresh: updates uptime, avg latency, and memory. Call periodically. */
     fun refresh(context: Context) {
         updateMemoryUsage(context)
         updateMetrics()
     }
 
-    /**
-     * 获取硬件摘要（用于设置页面显示）。
-     */
-    fun getHardwareSummary(): String {
-        return SnapdragonOptimizer.getHardwareSummary()
-    }
+    fun getHardwareSummary(): String = SoCOptimizer.getHardwareSummary()
 
-    /**
-     * 获取端侧推理配置建议。
-     */
-    fun getInferenceRecommendation(): SnapdragonHardwareDetector.InferenceConfig? {
+    fun getInferenceRecommendation(): SoCHardwareDetector.InferenceConfig? {
         val info = hardwareInfo ?: return null
-        return SnapdragonHardwareDetector.recommendInferenceConfig(info)
+        return SoCHardwareDetector.recommendInferenceConfig(info)
     }
 
     fun reset() {
-        synchronized(latencySamples) {
-            latencySamples.clear()
-        }
+        synchronized(latencySamples) { latencySamples.clear() }
         totalMessageCount = 0
         _metrics.update { PerformanceMetrics() }
     }
