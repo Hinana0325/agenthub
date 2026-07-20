@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 import javax.inject.Singleton
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
@@ -24,11 +25,19 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
         private val E2E_ENABLED = booleanPreferencesKey("e2e_enabled")
         private val E2E_KEY = stringPreferencesKey("e2e_key")
         private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val ANALYTICS_ENABLED = booleanPreferencesKey("analytics_enabled")
+        private val FEATURE_FLAG_OVERRIDES = stringPreferencesKey("feature_flag_overrides")
+        private val AUTO_BACKUP_SCHEDULE = stringPreferencesKey("auto_backup_schedule")
 
         private const val DEFAULT_THEME = "system"
         private const val DEFAULT_FONT_SIZE = "medium"
         private const val DEFAULT_E2E_ENABLED = false
         private const val DEFAULT_E2E_KEY = ""
+        private const val DEFAULT_ANALYTICS_ENABLED = true
+        private const val DEFAULT_FEATURE_FLAG_OVERRIDES = "{}"
+        // P3-3: 自动备份调度默认 MANUAL（手动），避免在用户未感知时占用后台资源。
+        // 取值与 BackupManager.BackupSchedule.storageValue 对齐：daily / weekly / manual。
+        private const val DEFAULT_AUTO_BACKUP_SCHEDULE = "manual"
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
@@ -76,5 +85,94 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
     suspend fun setE2eKey(key: String) {
         val encrypted = if (key.isBlank()) key else KeystoreManager.encrypt(key)
         context.dataStore.edit { it[E2E_KEY] = encrypted }
+    }
+
+    // ── Analytics ──
+    // 隐私优先的本地埋点开关。默认开启，用户可在设置页关闭。
+    // 关闭后 AnalyticsManager 不再写入 ring buffer，已记录的事件仍可通过设置页导出。
+
+    /** 是否启用本地埋点（默认 true）。 */
+    val analyticsEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[ANALYTICS_ENABLED] ?: DEFAULT_ANALYTICS_ENABLED
+    }
+
+    /**
+     * 设置埋点开关。
+     *
+     * @param enabled true 启用本地埋点，false 禁用
+     */
+    suspend fun setAnalyticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[ANALYTICS_ENABLED] = enabled }
+    }
+
+    // ── Feature Flag Overrides ──
+    // Feature Flag 用户覆盖存储为 JSON 字符串，key 为枚举名，value 为布尔值。
+    // 未在 map 中出现的标志使用 [FeatureFlagManager.FeatureFlag.defaultEnabled]。
+    // 使用 JSON 字符串而非单个 boolean key 是因为需要区分「未设置」与「显式设为 false」。
+
+    /**
+     * Feature Flag 用户覆盖（JSON 字符串），由 [FeatureFlagManager] 解析。
+     * 返回空字符串表示尚无任何覆盖。
+     */
+    val featureFlagOverrides: Flow<Map<String, Boolean>> = context.dataStore.data.map { prefs ->
+        val json = prefs[FEATURE_FLAG_OVERRIDES] ?: DEFAULT_FEATURE_FLAG_OVERRIDES
+        parseOverrides(json)
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * 覆盖整个 Feature Flag 覆盖表。
+     *
+     * @param overrides 标志名到布尔值的映射
+     */
+    suspend fun setFeatureFlagOverrides(overrides: Map<String, Boolean>) {
+        val json = JSONObject().apply {
+            overrides.forEach { (key, value) -> put(key, value) }
+        }.toString()
+        context.dataStore.edit { it[FEATURE_FLAG_OVERRIDES] = json }
+    }
+
+    /**
+     * 将 JSON 字符串解析为标志覆盖表。
+     * 解析失败时返回空 map（容错，避免损坏的存储数据阻塞应用启动）。
+     */
+    private fun parseOverrides(json: String): Map<String, Boolean> {
+        if (json.isBlank()) return emptyMap()
+        return try {
+            val obj = JSONObject(json)
+            buildMap {
+                val keys = obj.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    put(key, obj.getBoolean(key))
+                }
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    // ── Auto Backup (P3-3) ──
+    // 自动备份调度，存储为字符串以保持前向兼容：新增枚举值时无需 schema 迁移。
+    // 取值与 com.agentcontrolcenter.app.data.backup.BackupManager.BackupSchedule.storageValue 对齐。
+
+    /**
+     * 自动备份调度（默认 MANUAL）。
+     *
+     * 取值：`daily` / `weekly` / `manual`，由 [BackupManager] 解析为
+     * [com.agentcontrolcenter.app.data.backup.BackupManager.BackupSchedule] 枚举。
+     */
+    val autoBackupSchedule: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[AUTO_BACKUP_SCHEDULE] ?: DEFAULT_AUTO_BACKUP_SCHEDULE
+    }
+
+    /**
+     * 设置自动备份调度。
+     *
+     * @param schedule 调度字符串，应取自
+     * [com.agentcontrolcenter.app.data.backup.BackupManager.BackupSchedule.storageValue]，
+     * 非法值由枚举的 `fromStorageValue` 回退为 MANUAL。
+     */
+    suspend fun setAutoBackup(schedule: String) {
+        context.dataStore.edit { it[AUTO_BACKUP_SCHEDULE] = schedule }
     }
 }

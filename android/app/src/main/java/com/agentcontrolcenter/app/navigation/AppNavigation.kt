@@ -23,11 +23,13 @@ import androidx.compose.material3.Text
 import com.agentcontrolcenter.app.ui.theme.GlassNavigationBar
 import com.agentcontrolcenter.app.ui.theme.GlassNavigationRail
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -62,6 +64,25 @@ fun AppNavigation() {
     val currentDestination = navBackStackEntry?.destination
     val adaptive = currentAdaptiveConfig()
     val chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel = hiltViewModel()
+
+    // P3-5: 观察 Launcher 快捷方式请求，导航到对应目的地后消费
+    val pendingShortcutAction by ShortcutRouter.pendingAction.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingShortcutAction) {
+        val action = pendingShortcutAction ?: return@LaunchedEffect
+        val targetRoute = when (action) {
+            ShortcutRouter.Action.NEW_CHAT -> Screen.Chat.route
+            ShortcutRouter.Action.NEW_AGENT -> Screen.Agents.route
+            ShortcutRouter.Action.SETTINGS -> Screen.Settings.route
+        }
+        navController.navigate(targetRoute) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+        ShortcutRouter.consume()
+    }
 
     if (adaptive.shouldShowRail) {
         Row(modifier = Modifier.fillMaxSize()) {

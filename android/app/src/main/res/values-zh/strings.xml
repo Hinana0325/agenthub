@@ -428,4 +428,9 @@
     <string name="a11y_agent_item">Agent：%s，%s</string>
     <string name="a11y_offline_banner">未连接到任何 Agent</string>
     <string name="a11y_empty_chat">暂无消息。发送消息开始聊天。</string>
+
+    <!-- P3-5: Launcher Shortcuts -->
+    <string name="shortcut_new_chat">新对话</string>
+    <string name="shortcut_new_agent">新 Agent</string>
+    <string name="shortcut_settings">设置</string>
 </resources>

@@ -67,6 +67,12 @@ struct AgentControlCenterApp: App {
 
         // Register background task scheduler
         registerBackgroundTasks()
+
+        // P3-5: 绑定 IntentRouter 到 AppState
+        // IntentRouter 监听 NotificationCenter 中的 App Intent 通知，
+        // 将快捷方式导航目标转发到 appState.pendingShortcutDestination。
+        // 若冷启动期间 Intent 已触发，暂存的目标会在此回放。
+        IntentRouter.shared.bind(to: appState)
     }
 
     /// 注册 BGTaskScheduler 后台任务。

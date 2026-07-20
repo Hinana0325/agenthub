@@ -1,0 +1,41 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["before 6am on Monday"],
+  "labels": ["dependencies"],
+  "assignees": ["Hinana0325"],
+  "commitMessagePrefix": "deps:",
+  "commitMessageTopic": "{{depName}}",
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "minor/patch dependencies",
+      "automerge": false
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "labels": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchFileNames": ["android/variables.gradle"],
+      "groupName": "android gradle dependencies"
+    },
+    {
+      "matchFileNames": ["android/build.gradle"],
+      "groupName": "android gradle plugins"
+    }
+  ],
+  "gradle": {
+    "enabled": true,
+    "fileMatch": ["^android/variables\\.gradle$", "^android/build\\.gradle$", "^android/app/build\\.gradle$"]
+  },
+  "swift": {
+    "enabled": true,
+    "fileMatch": ["^ios/project\\.yml$"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}

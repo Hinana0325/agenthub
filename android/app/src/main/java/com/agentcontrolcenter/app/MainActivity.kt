@@ -32,6 +32,7 @@ import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopDark
 import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopLight
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.navigation.AppNavigation
+import com.agentcontrolcenter.app.navigation.ShortcutRouter
 import com.agentcontrolcenter.app.feature.onboarding.OnboardingScreen
 import com.agentcontrolcenter.app.feature.settings.SettingsViewModel
 import com.agentcontrolcenter.app.ui.theme.AgentControlCenterTheme
@@ -49,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  * - Edge-to-edge 全面屏
  * - 启动 Foreground Service 后台保活
  * - Android Share Sheet 处理
+ * - P3-5: Launcher 静态快捷方式路由（`shortcut_action` extra）
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -168,6 +170,9 @@ class MainActivity : ComponentActivity() {
 
         // 处理通知回复
         handleReplyIntent(intent)
+
+        // P3-5: 处理 Launcher 快捷方式
+        handleShortcutIntent(intent)
     }
 
     /**
@@ -194,10 +199,44 @@ class MainActivity : ComponentActivity() {
         shareHandled = false
         // Share will be handled by LaunchedEffect in setContent
         handleReplyIntent(intent)
+        // P3-5: 处理 Launcher 快捷方式（应用已在前台时通过 onNewIntent 投递）
+        handleShortcutIntent(intent)
     }
 
     private fun startForegroundService() {
         AgentConnectionService.start(this, "Agent Control Center")
+    }
+
+    /**
+     * P3-5: 处理 Launcher 静态快捷方式 Intent。
+     *
+     * 从 Intent extra 中读取 `shortcut_action`，解析为 [ShortcutRouter.Action]
+     * 并提交到 [ShortcutRouter]，由 Compose 层的 [AppNavigation] 观察并执行导航。
+     *
+     * 支持的动作：
+     * - `new_chat`  → 导航到 Chat
+     * - `new_agent` → 导航到 Agents
+     * - `settings`  → 导航到 Settings
+     *
+     * 处理后立即移除 extra，避免 Activity 重建（如旋转）时重复触发。
+     *
+     * @param intent 启动 Activity 的 Intent（onCreate 或 onNewIntent 传入）
+     */
+    private fun handleShortcutIntent(intent: Intent?) {
+        val raw = intent?.getStringExtra(EXTRA_SHORTCUT_ACTION) ?: return
+        val action = ShortcutRouter.Action.fromRaw(raw) ?: return
+        ShortcutRouter.route(action)
+        intent.removeExtra(EXTRA_SHORTCUT_ACTION)
+    }
+
+    companion object {
+        /**
+         * Launcher 快捷方式携带的 Intent extra 键。
+         *
+         * 与 `res/xml/shortcuts.xml` 中每个 `<intent>` 的
+         * `<extra android:name="shortcut_action">` 保持一致。
+         */
+        const val EXTRA_SHORTCUT_ACTION = "shortcut_action"
     }
 
     /**

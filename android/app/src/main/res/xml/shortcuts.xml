@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    P3-5: Launcher 静态快捷方式（Static Shortcuts）
+
+    定义 3 个长按应用图标时弹出的快捷方式：
+    1. new_chat   — 新建聊天，导航到 Chat 页面
+    2. new_agent  — 新建 Agent，导航到 Agents 页面
+    3. settings   — 设置，导航到 Settings 页面
+
+    每个快捷方式通过 Intent extra `shortcut_action` 携带目标动作标识，
+    MainActivity 在 onCreate / onNewIntent 中读取并路由到对应 Compose 目的地。
+
+    命名空间：必须使用 `http://schemas.android.com/apk/res/android` 与
+    `http://schemas.android.com/apk/res-auto`，前者用于系统属性（shortcutId 等），
+    后者用于 shortcut 库扩展属性（如 shortcutShortLabel 等 string 引用）。
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 新建聊天：启动 MainActivity 并携带 shortcut_action=new_chat -->
+    <shortcut
+        android:shortcutId="new_chat"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_new_chat"
+        android:shortcutLongLabel="@string/shortcut_new_chat"
+        android:shortcutDisabledMessage="@string/shortcut_new_chat">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.agentcontrolcenter.app"
+            android:targetClass="com.agentcontrolcenter.app.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="new_chat" />
+        </intent>
+    </shortcut>
+
+    <!-- 新建 Agent：启动 MainActivity 并携带 shortcut_action=new_agent -->
+    <shortcut
+        android:shortcutId="new_agent"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/shortcut_new_agent"
+        android:shortcutLongLabel="@string/shortcut_new_agent"
+        android:shortcutDisabledMessage="@string/shortcut_new_agent">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.agentcontrolcenter.app"
+            android:targetClass="com.agentcontrolcenter.app.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="new_agent" />
+        </intent>
+    </shortcut>
+
+    <!-- 设置：启动 MainActivity 并携带 shortcut_action=settings -->
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_settings"
+        android:shortcutShortLabel="@string/shortcut_settings"
+        android:shortcutLongLabel="@string/shortcut_settings"
+        android:shortcutDisabledMessage="@string/shortcut_settings">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.agentcontrolcenter.app"
+            android:targetClass="com.agentcontrolcenter.app.MainActivity">
+            <extra
+                android:name="shortcut_action"
+                android:value="settings" />
+        </intent>
+    </shortcut>
+
+</shortcuts>

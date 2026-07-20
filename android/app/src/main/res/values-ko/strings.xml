@@ -435,4 +435,9 @@
     <string name="vendor_samsung">Samsung</string>
     <string name="vendor_google">Google</string>
     <string name="vendor_apple">Apple</string>
+
+    <!-- P3-5: Launcher Shortcuts -->
+    <string name="shortcut_new_chat">새 대화</string>
+    <string name="shortcut_new_agent">새 Agent</string>
+    <string name="shortcut_settings">설정</string>
 </resources>

@@ -75,6 +75,34 @@ final class AppState {
     /// 数据分析管理器（聚合使用统计与洞察）
     let dataInsightsManager: DataInsightsManager
 
+    /// P3-5: 待处理的快捷方式导航目标。
+    ///
+    /// 由 `IntentRouter` 在收到 App Intent 通知时设置，
+    /// 由 `ContentView` 观察并消费（导航后清空）。
+    ///
+    /// - Note: 值为 `nil` 时表示无待处理请求；非 `nil` 时 ContentView 应立即导航并置回 `nil`
+    var pendingShortcutDestination: AppShortcutDestination?
+
+    /// 云备份/恢复管理器（P3-3）
+    ///
+    /// 与 `chatRepository` 的区别：
+    /// - `chatRepository` 是单会话级别的 JSON 导出/导入（`exportSession` / `importSession`）
+    /// - `backupManager` 是应用级完整快照（sessions + messages + agentConfigs + settings），
+    ///   并支持基于 `KeychainManager` 的硬件级加密备份
+    let backupManager: BackupManager
+
+    /// 隐私优先的本地埋点管理器（P3-1，对应 Android AnalyticsManager）
+    ///
+    /// 纯本地埋点，不集成第三方 SDK。事件写入内存 ring buffer（最多 1000 条），
+    /// 可通过设置页导出为 JSON。用户可在设置页关闭埋点。
+    let analyticsManager: AnalyticsManager
+
+    /// Feature Flag 管理器（P3-2，对应 Android FeatureFlagManager）
+    ///
+    /// 为每个功能标志提供默认值（开发中的功能默认关闭），
+    /// 支持用户通过设置页覆盖默认值，覆盖持久化到 UserDefaults。
+    let featureFlagManager: FeatureFlagManager
+
     /// 创建应用状态并初始化全部依赖
     init() {
         dataController = DataController()
@@ -102,5 +130,10 @@ final class AppState {
             sessionManager: sessionManager,
             dataController: dataController
         )
+        // BackupManager 依赖 dataController
+        backupManager = BackupManager(dataController: dataController)
+        // P3-1 / P3-2: 埋点系统与 Feature Flag 系统
+        analyticsManager = AnalyticsManager()
+        featureFlagManager = FeatureFlagManager()
     }
 }

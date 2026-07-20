@@ -535,4 +535,9 @@
     <string name="accelerator_neural_engine">Apple Neural Engine</string>
     <string name="hardware_ai_tops">AI Compute (TOPS)</string>
     <string name="hardware_vendor">Chip Vendor</string>
+
+    <!-- P3-5: Launcher Shortcuts -->
+    <string name="shortcut_new_chat">New Chat</string>
+    <string name="shortcut_new_agent">New Agent</string>
+    <string name="shortcut_settings">Settings</string>
 </resources>

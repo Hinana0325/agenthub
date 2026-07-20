@@ -157,6 +157,45 @@ struct ContentView: View {
         }
         // 首次启动注册命令面板的运行时动作
         .task { registerCommandActions() }
+        // P3-5: 观察 App Intent / 快捷方式触发的导航请求
+        .onChange(of: appState.pendingShortcutDestination) { _, destination in
+            handleShortcutDestination(destination)
+        }
+        // P3-5: 应用启动时检查是否有冷启动期间暂存的快捷方式目标
+        .task {
+            if let destination = appState.pendingShortcutDestination {
+                handleShortcutDestination(destination)
+            }
+        }
+    }
+
+    // MARK: - P3-5: 快捷方式导航
+
+    /// 处理来自 App Intent / Siri 的快捷方式导航请求。
+    ///
+    /// 将 [AppShortcutDestination] 映射到 [SidebarTab] 并调用 [navigate(to:)]，
+    /// 导航完成后清空 `appState.pendingShortcutDestination` 防止重复触发。
+    ///
+    /// 映射关系：
+    /// - `.newChat`  → `.sessions`（会话页面，即聊天入口）
+    /// - `.newAgent` → `.agents`（Agent 页面）
+    /// - `.settings` → `.settings`（设置页面）
+    ///
+    /// - Parameter destination: 快捷方式导航目标，`nil` 时无操作
+    private func handleShortcutDestination(_ destination: AppShortcutDestination?) {
+        guard let destination else { return }
+        let targetTab: SidebarTab
+        switch destination {
+        case .newChat:
+            targetTab = .sessions
+        case .newAgent:
+            targetTab = .agents
+        case .settings:
+            targetTab = .settings
+        }
+        navigate(to: targetTab)
+        // 消费完毕，清空待处理目标
+        appState.pendingShortcutDestination = nil
     }
 
     // MARK: - 命令面板动作注册

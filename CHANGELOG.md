@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-07-20
+
+### Added — P3 长期演进
+
+- **Analytics 埋点系统**: 双端新增 `AnalyticsManager`（Android Hilt Singleton / iOS @Observable），纯本地 ring buffer（1000 条），支持事件类型枚举（SCREEN_VIEW / BUTTON_CLICK / AGENT_CONNECT 等），JSON 导出，隐私优先不集成第三方 SDK。可通过设置开关启用/禁用。
+- **Feature Flag 系统**: 双端新增 `FeatureFlagManager`（Android Hilt Singleton / iOS @Observable），支持 9 个功能标志（WORKFLOW_ENGINE / MARKETPLACE / DEVICE_SYNC / INSIGHTS / COMPARE_MODE / MCP_SERVERS / CUSTOM_THEME / VOICE_INPUT / E2E_ENCRYPTION），DEVICE_SYNC 默认关闭（开发中），其余默认开启。用户可通过 DataStore / UserDefaults 覆盖默认值。
+- **云备份/恢复增强**: 双端新增 `BackupManager`，支持明文和加密备份（KeystoreManager / KeychainManager AES-256-GCM），`BackupData` 包含 sessions / messages / agentConfigs / settings 完整快照，`BackupSchedule` 枚举（DAILY / WEEKLY / MANUAL）。
+- **Renovate 依赖自动化**: 新增 `.github/renovate.json`（schedule: before 6am on Monday，minor/patch 分组，major 需 approval）和 `.github/dependabot.yml`（gradle + github-actions 生态，weekly）。
+- **Android Shortcuts**: 新增 `shortcuts.xml`（3 个静态快捷方式：新建聊天/新建 Agent/设置），`ShortcutRouter` 桥接 Activity 与 Compose 导航，2 个矢量图标 drawable。
+- **iOS App Intents**: 新增 `AgentControlCenterIntents.swift`（3 个 AppIntent + AppShortcutsProvider），`IntentRouter.swift` 监听通知并路由，`ShortcutRelay` 处理冷启动暂存。
+- **韩文翻译补齐**: shortcuts 相关字符串。
+
+### Changed
+
+- **版本号**: Android versionCode 26 → 27 / versionName 2.8.0 → 3.0.0；iOS 同步。
+- **SettingsDataStore**: 新增 `analyticsEnabled` / `autoBackupSchedule` / `featureFlagOverrides` Flow 和对应 setter。
+- **AgentControlCenterApplication**: 初始化 AnalyticsManager，记录 app_launch 事件。
+- **AndroidManifest**: MainActivity 添加 shortcuts meta-data。
+- **AppState (iOS)**: 新增 analyticsManager / featureFlagManager / backupManager / pendingShortcutDestination。
+- **ContentView (iOS)**: 监听 pendingShortcutDestination 并路由。
+
 ## [2.8.0] - 2026-07-20
 
 ### Security

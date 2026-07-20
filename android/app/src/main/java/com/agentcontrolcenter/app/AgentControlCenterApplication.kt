@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app
 
 import android.app.Application
+import com.agentcontrolcenter.app.core.analytics.AnalyticsManager
 import com.agentcontrolcenter.app.core.common.PerformanceMonitor
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -11,11 +12,22 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 @HiltAndroidApp
 class AgentControlCenterApplication : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * 埋点管理器 — 通过 Hilt 注入。
+     *
+     * Hilt 在 [super.onCreate] 返回后完成字段注入，因此在 onCreate 中
+     * 引用 [analyticsManager] 即可触发 @Singleton 的惰性初始化（首次访问时构造）。
+     * 后续 ViewModel / Service 通过 Hilt 注入时复用同一实例。
+     */
+    @Inject
+    lateinit var analyticsManager: AnalyticsManager
 
     override fun onCreate() {
         super.onCreate()
@@ -30,6 +42,12 @@ class AgentControlCenterApplication : Application() {
         appScope.launch {
             PerformanceMonitor.initializeHardware(this@AgentControlCenterApplication)
         }
+
+        // 初始化 AnalyticsManager — Hilt 在 super.onCreate() 返回后已完成
+        // @Inject 字段注入（@Singleton 实例此时已创建）。此处记录应用启动事件，
+        // 埋点开关由 AnalyticsManager 内部从 SettingsDataStore 异步同步，
+        // 关闭时此事件不会写入 ring buffer。
+        analyticsManager.logEvent("app_launch")
     }
 
     /**
