@@ -131,7 +131,7 @@ class McpViewModel @Inject constructor(
             } else {
                 current.servers + normalized
             }
-            copyAndPersist(it.copy(servers = newServers, showForm = false, editingServer = null))
+            copyAndPersist(current.copy(servers = newServers, showForm = false, editingServer = null))
         }
     }
 
