@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-07-20
+
+### Added
+
+- **HTTP 重试与指数退避**: Android `OpenAIHttpTransport` 和 iOS `OpenAIHTTPTransport` 新增 3 次重试机制，对 5xx 服务端错误和网络异常进行指数退避重试（1s/2s/4s），4xx 客户端错误不重试。
+- **WebSocket 主动心跳**: Android 和 iOS 的 `WebSocketTransport` 新增每 30 秒主动发送 ping 帧，检测连接活性，避免长连接假死。
+- **Android 通知权限请求**: `MainActivity` 新增 `POST_NOTIFICATIONS` 运行时权限主动请求（Android 13+），此前仅声明权限但从未请求，导致通知被静默丢弃。
+- **Onboarding 首次启动引导**: 双端新增 3 页引导（欢迎/多设备协同/安全与隐私），通过 DataStore/`@AppStorage` 的 `onboarding_completed` 标记控制是否显示。
+
+### Changed
+
+- **iOS 版本号**: `CFBundleShortVersionString` 2.6.0 → 2.7.0 / `MARKETING_VERSION` 2.6.0 → 2.7.0 / `CURRENT_PROJECT_VERSION` 24 → 25。
+- **Android 版本号**: versionCode 24 → 25 / versionName 2.6.0 → 2.7.0。
+- **SettingsDataStore**: 新增 `onboardingCompleted` Flow 和 `setOnboardingCompleted()` 方法。
+- **SettingsViewModel**: 新增 `onboardingCompleted` StateFlow 和 `markOnboardingCompleted()` 方法。
+- **MainActivity**: Onboarding 未完成时显示引导页，完成后再加载 AppNavigation 和 share intent 处理。
+
 ## [2.6.0] - 2026-07-20
 
 ### Security

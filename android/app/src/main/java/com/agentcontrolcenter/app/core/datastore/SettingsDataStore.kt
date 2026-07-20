@@ -23,6 +23,7 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
         private val FONT_SIZE = stringPreferencesKey("font_size")
         private val E2E_ENABLED = booleanPreferencesKey("e2e_enabled")
         private val E2E_KEY = stringPreferencesKey("e2e_key")
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
 
         private const val DEFAULT_THEME = "system"
         private const val DEFAULT_FONT_SIZE = "medium"
@@ -38,12 +39,21 @@ class SettingsDataStore @javax.inject.Inject constructor(@ApplicationContext pri
         prefs[FONT_SIZE] ?: DEFAULT_FONT_SIZE
     }
 
+    /** 是否已完成首次启动引导 */
+    val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[ONBOARDING_COMPLETED] ?: false
+    }
+
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { it[THEME_MODE] = mode }
     }
 
     suspend fun setFontSize(size: String) {
         context.dataStore.edit { it[FONT_SIZE] = size }
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { it[ONBOARDING_COMPLETED] = completed }
     }
 
     // ── E2E Encryption ──

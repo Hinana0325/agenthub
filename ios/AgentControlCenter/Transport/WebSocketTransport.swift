@@ -115,8 +115,28 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
             )
             emit(.connected(serverUrl: config.serverUrl, agentType: config.type))
 
+            // 启动心跳任务：每 30 秒发送 ping 帧检测连接活性。
+            // 若 send 抛异常（连接已断），receiveLoop 也会失败并触发重连。
+            let heartbeatTask = Task {
+                while !Task.isCancelled && connectionState.isConnected {
+                    try? await Task.sleep(nanoseconds: 30_000_000_000)
+                    guard !Task.isCancelled else { break }
+                    let pingFrame: [String: Any] = ["type": "ping"]
+                    if let data = try? JSONSerialization.data(withJSONObject: pingFrame) {
+                        do {
+                            try await webSocketTask?.send(.data(data))
+                        } catch {
+                            // 心跳发送失败意味着连接已断，
+                            // 退出心跳循环，让 receiveLoop 触发重连
+                            break
+                        }
+                    }
+                }
+            }
+
             // 开始接收消息循环
             await receiveLoop()
+            heartbeatTask.cancel()
 
         } catch {
             isConnecting = false

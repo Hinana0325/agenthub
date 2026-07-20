@@ -204,39 +204,76 @@ class OpenAIHttpTransport(
                 "max_tokens" to config.maxTokens
             )
             var streamSucceeded = false
-            try {
-                client.preparePost(url) {
-                    header("Authorization", "Bearer ${config.apiKey}")
-                    header("Content-Type", "application/json")
-                    setBody(gson.toJson(requestBody))
-                }.execute { response ->
-                    if (response.status != HttpStatusCode.OK) {
-                        val errBody = response.bodyAsText().take(2000)
-                        _events.send(AgentEvent.Error("HTTP ${response.status.value}: $errBody"))
-                        _connectionState.value = _connectionState.value.copy(isConnected = false)
-                        return@execute
+            // HTTP 重试：对可重试错误（5xx / 网络异常 / 超时）进行指数退避重试。
+            // 不可重试：4xx 客户端错误（含 401/403/400 等）、CancellationException。
+            var attempt = 0
+            val maxAttempts = 3
+            var lastError: String? = null
+            while (attempt < maxAttempts && !streamSucceeded) {
+                attempt++
+                try {
+                    client.preparePost(url) {
+                        header("Authorization", "Bearer ${config.apiKey}")
+                        header("Content-Type", "application/json")
+                        setBody(gson.toJson(requestBody))
+                    }.execute { response ->
+                        if (response.status != HttpStatusCode.OK) {
+                            val errBody = response.bodyAsText().take(2000)
+                            val code = response.status.value
+                            // 4xx 客户端错误不重试（凭据/请求格式问题，重试无用）
+                            if (code in 400..499) {
+                                _events.send(AgentEvent.Error("HTTP $code: $errBody"))
+                                _connectionState.value = _connectionState.value.copy(isConnected = false)
+                                return@execute
+                            }
+                            // 5xx 服务端错误：可重试
+                            if (attempt < maxAttempts) {
+                                lastError = "HTTP $code (retry $attempt/$maxAttempts)"
+                            } else {
+                                _events.send(AgentEvent.Error("HTTP $code: $errBody"))
+                                _connectionState.value = _connectionState.value.copy(isConnected = false)
+                            }
+                            return@execute
+                        }
+                        // Stream the SSE response line-by-line as it arrives instead of
+                        // buffering the whole body with bodyAsText() — that would defeat
+                        // the point of streaming and delay first-token latency.
+                        parseStream(response.bodyAsChannel())
+                        streamSucceeded = true
                     }
-                    // Stream the SSE response line-by-line as it arrives instead of
-                    // buffering the whole body with bodyAsText() — that would defeat
-                    // the point of streaming and delay first-token latency.
-                    parseStream(response.bodyAsChannel())
-                    streamSucceeded = true
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 网络异常 / 超时：可重试
+                    if (attempt < maxAttempts) {
+                        lastError = "${e.message ?: e.javaClass.simpleName} (retry $attempt/$maxAttempts)"
+                    } else {
+                        _events.send(AgentEvent.Error(e.message ?: "Request failed"))
+                    }
                 }
-                // 3. 流结束后，把累加的助手回复写入历史。此调用覆盖三种流结束情况：
-                //    - SSE 流中收到 `data: [DONE]`（flushData 返回 false，循环退出）
-                //    - 流自然结束（channel 关闭，while 退出）
-                //    - 非 SSE 整包回退（emitFull 路径）
-                //    若累加器为空（HTTP 非 200 / 请求失败），不会写入历史。
-                saveAssistantResponse(sessionId)
-                // 4. 通知上层流式响应已结束，使其重置 isStreaming 状态。
-                //    仅在流成功完成时发送（HTTP 非 200 已通过 Error 事件通知上层）。
-                if (streamSucceeded) {
-                    _events.send(AgentEvent.StreamComplete)
+                // 指数退避：1s, 2s, 4s...（仅在还有下一次尝试时等待）
+                if (!streamSucceeded && attempt < maxAttempts) {
+                    val backoff = (1000L * (1 shl (attempt - 1))).coerceAtMost(8000L)
+                    try {
+                        kotlinx.coroutines.delay(backoff)
+                    } catch (_: CancellationException) {
+                        throw kotlinx.coroutines.CancellationException()
+                    }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _events.send(AgentEvent.Error(e.message ?: "Request failed"))
+            }
+            // 3. 流结束后，把累加的助手回复写入历史。此调用覆盖三种流结束情况：
+            //    - SSE 流中收到 `data: [DONE]`（flushData 返回 false，循环退出）
+            //    - 流自然结束（channel 关闭，while 退出）
+            //    - 非 SSE 整包回退（emitFull 路径）
+            //    若累加器为空（HTTP 非 200 / 请求失败），不会写入历史。
+            saveAssistantResponse(sessionId)
+            // 4. 通知上层流式响应已结束，使其重置 isStreaming 状态。
+            //    仅在流成功完成时发送（HTTP 非 200 已通过 Error 事件通知上层）。
+            if (streamSucceeded) {
+                _events.send(AgentEvent.StreamComplete)
+            } else if (lastError != null) {
+                // 所有重试均失败，发送最终错误
+                _events.send(AgentEvent.Error("Request failed after $maxAttempts attempts: $lastError"))
             }
         }
     }

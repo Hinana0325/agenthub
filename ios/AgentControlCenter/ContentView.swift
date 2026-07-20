@@ -14,6 +14,9 @@ struct ContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    /// 是否显示首次启动引导
+    @AppStorage("onboarding_completed") private var onboardingCompleted = false
+
     /// 主题偏好（rawValue 与 `SettingsView.AppThemePreference` 一致）
     @AppStorage("theme") private var themeRaw = AppTheme.ThemePreference.system.rawValue
 
@@ -118,7 +121,12 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if sizeClass == .regular {
+            if !onboardingCompleted {
+                // 首次启动：显示引导页面
+                OnboardingView {
+                    withAnimation { onboardingCompleted = true }
+                }
+            } else if sizeClass == .regular {
                 splitView
             } else {
                 compactView

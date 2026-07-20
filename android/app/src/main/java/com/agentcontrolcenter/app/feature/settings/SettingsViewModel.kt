@@ -55,6 +55,17 @@ class SettingsViewModel @Inject constructor(
     val agentConfigs: StateFlow<List<AgentConfig>> = repository.getAllConfigs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** 是否已完成首次启动引导（用于控制 Onboarding 页面显示） */
+    val onboardingCompleted: StateFlow<Boolean> = dataStore.onboardingCompleted
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    /** 标记 Onboarding 已完成 */
+    fun markOnboardingCompleted() {
+        viewModelScope.launch {
+            dataStore.setOnboardingCompleted(true)
+        }
+    }
+
     init {
         viewModelScope.launch {
             dataStore.themeMode.collect { mode ->

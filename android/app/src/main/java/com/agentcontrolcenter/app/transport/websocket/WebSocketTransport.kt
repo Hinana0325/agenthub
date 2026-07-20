@@ -162,11 +162,36 @@ class WebSocketTransport(
                     )
                     _events.send(AgentEvent.Connected(serverUrl, _connectionState.value.agentType))
 
+                    // 启动心跳协程：每 30 秒发送 ping 帧检测连接活性。
+                    // 服务端回复 pong 或忽略，我们不依赖回复。
+                    // 若 send 抛异常（连接已断），receiveLoop 的 incoming
+                    // 迭代也会失败并触发重连。
+                    val heartbeatJob = scope.launch {
+                        while (currentCoroutineContext().isActive) {
+                            delay(30_000)
+                            try {
+                                val pingFrame = JsonObject().apply {
+                                    addProperty("type", "ping")
+                                }
+                                sessionMutex.withLock {
+                                    session?.send(Frame.Text(gson.toJson(pingFrame)))
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                // 心跳发送失败意味着连接已断，
+                                // 退出心跳循环，让 receiveLoop 触发重连
+                                break
+                            }
+                        }
+                    }
+
                     for (frame in incoming) {
                         if (frame is Frame.Text) {
                             handleMessage(frame.readText())
                         }
                     }
+                    heartbeatJob.cancel()
                 }
 
                 _events.send(AgentEvent.Disconnected())

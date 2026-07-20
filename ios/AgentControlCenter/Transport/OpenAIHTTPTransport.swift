@@ -126,66 +126,111 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
-        // 发送请求并解析 SSE 流
-        let (bytes, response) = try await session.bytes(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            emit(.error(message: "Invalid response"))
-            return
-        }
+        // HTTP 重试：对可重试错误（5xx / 网络异常 / 超时）进行指数退避重试。
+        // 不可重试：4xx 客户端错误、CancellationException。
+        let maxAttempts = 3
+        var attempt = 0
+        var streamSucceeded = false
+        var lastErrorMessage: String?
 
-        if httpResponse.statusCode != 200 {
-            emit(.error(message: "HTTP \(httpResponse.statusCode)"))
-            return
-        }
-
-        // SSE 流式解析
-        var responseAccumulator = ""
-        var dataBuffer = ""
-
-        for try await line in bytes.lines {
-            // SSE 注释行 (以 : 开头)
-            if line.hasPrefix(":") { continue }
-
-            // 空行：派发已累积的 data 并重置
-            if line.isEmpty {
-                if !dataBuffer.isEmpty {
-                    if dataBuffer == "[DONE]" {
-                        break
+        while attempt < maxAttempts && !streamSucceeded {
+            attempt += 1
+            do {
+                let (bytes, response) = try await session.bytes(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    if attempt < maxAttempts {
+                        lastErrorMessage = "Invalid response (retry \(attempt)/\(maxAttempts))"
+                    } else {
+                        emit(.error(message: "Invalid response"))
                     }
+                    continue
+                }
+
+                let statusCode = httpResponse.statusCode
+                if statusCode != 200 {
+                    // 4xx 客户端错误不重试
+                    if (400...499).contains(statusCode) {
+                        emit(.error(message: "HTTP \(statusCode)"))
+                        return
+                    }
+                    // 5xx 服务端错误：可重试
+                    if attempt < maxAttempts {
+                        lastErrorMessage = "HTTP \(statusCode) (retry \(attempt)/\(maxAttempts))"
+                    } else {
+                        emit(.error(message: "HTTP \(statusCode)"))
+                    }
+                    continue
+                }
+
+                // SSE 流式解析
+                var responseAccumulator = ""
+                var dataBuffer = ""
+
+                for try await line in bytes.lines {
+                    // SSE 注释行 (以 : 开头)
+                    if line.hasPrefix(":") { continue }
+
+                    // 空行：派发已累积的 data 并重置
+                    if line.isEmpty {
+                        if !dataBuffer.isEmpty {
+                            if dataBuffer == "[DONE]" {
+                                break
+                            }
+                            if let delta = parseDelta(dataBuffer) {
+                                responseAccumulator += delta
+                                emit(.messageReceived(content: delta, isDelta: true))
+                            }
+                            dataBuffer = ""
+                        }
+                        continue
+                    }
+
+                    // data: 行
+                    if line.hasPrefix("data:") {
+                        let payload = line.dropFirst(5).drop(while: { $0 == " " })
+                        if dataBuffer.isEmpty {
+                            dataBuffer = String(payload)
+                        } else {
+                            dataBuffer += "\n" + payload
+                        }
+                    }
+                }
+
+                // 处理最后缓冲的数据
+                if !dataBuffer.isEmpty && dataBuffer != "[DONE]" {
                     if let delta = parseDelta(dataBuffer) {
                         responseAccumulator += delta
                         emit(.messageReceived(content: delta, isDelta: true))
                     }
-                    dataBuffer = ""
                 }
-                continue
-            }
 
-            // data: 行
-            if line.hasPrefix("data:") {
-                let payload = line.dropFirst(5).drop(while: { $0 == " " })
-                if dataBuffer.isEmpty {
-                    dataBuffer = String(payload)
+                // 保存助手回复到历史
+                if !responseAccumulator.isEmpty {
+                    appendHistory(sessionId: sessionId, role: "assistant", content: responseAccumulator)
+                }
+                streamSucceeded = true
+                emit(.streamComplete)
+
+            } catch {
+                // 网络异常 / 超时：可重试
+                if attempt < maxAttempts {
+                    lastErrorMessage = "\(error.localizedDescription) (retry \(attempt)/\(maxAttempts))"
                 } else {
-                    dataBuffer += "\n" + payload
+                    emit(.error(message: error.localizedDescription))
                 }
             }
-        }
 
-        // 处理最后缓冲的数据
-        if !dataBuffer.isEmpty && dataBuffer != "[DONE]" {
-            if let delta = parseDelta(dataBuffer) {
-                responseAccumulator += delta
-                emit(.messageReceived(content: delta, isDelta: true))
+            // 指数退避：1s, 2s, 4s...
+            if !streamSucceeded && attempt < maxAttempts {
+                let backoff = min(UInt64(1_000_000_000 * (1 << (attempt - 1))), 8_000_000_000)
+                try? await Task.sleep(nanoseconds: backoff)
             }
         }
 
-        // 保存助手回复到历史
-        if !responseAccumulator.isEmpty {
-            appendHistory(sessionId: sessionId, role: "assistant", content: responseAccumulator)
+        // 所有重试均失败
+        if !streamSucceeded && lastErrorMessage != nil {
+            emit(.error(message: "Request failed after \(maxAttempts) attempts: \(lastErrorMessage!)"))
         }
-
-        emit(.streamComplete)
     }
 
     // MARK: - Disconnect / Shutdown

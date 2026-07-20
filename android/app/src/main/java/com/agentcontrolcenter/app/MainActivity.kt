@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,9 +32,11 @@ import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopDark
 import com.agentcontrolcenter.app.ui.theme.GlassBackdropGradientTopLight
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.navigation.AppNavigation
+import com.agentcontrolcenter.app.feature.onboarding.OnboardingScreen
 import com.agentcontrolcenter.app.feature.settings.SettingsViewModel
 import com.agentcontrolcenter.app.ui.theme.AgentControlCenterTheme
 import com.agentcontrolcenter.app.ui.theme.ThemeMode
+import com.agentcontrolcenter.app.core.datastore.SettingsDataStore
 import com.agentcontrolcenter.app.runtime.notification.StatusNotificationManager
 import com.agentcontrolcenter.app.runtime.notification.LocalNotificationManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -58,6 +63,21 @@ class MainActivity : ComponentActivity() {
      * 保证回复文本被转发到 ChatViewModel 发送（而非被永久丢弃）。
      */
     private var pendingReplyText by mutableStateOf<String?>(null)
+
+    /**
+     * 通知权限请求 launcher。
+     *
+     * Android 13+ (API 33) 需要 POST_NOTIFICATIONS 运行时权限。
+     * 此 launcher 在 onCreate 中注册，首次启动时自动触发请求。
+     * 用户拒绝后不重复打扰；通知发送时 LocalNotificationManager 会静默跳过。
+     */
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        // 无论授予还是拒绝都不做额外处理。
+        // 授予 → LocalNotificationManager.notify() 正常工作
+        // 拒绝 → LocalNotificationManager.notify() 静默跳过，不崩溃
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 安装 Splash Screen（必须在 super.onCreate 之前）
@@ -93,6 +113,10 @@ class MainActivity : ComponentActivity() {
                 "dark" -> ThemeMode.Dark
                 else -> ThemeMode.System
             }
+
+            // Onboarding：首次启动时显示引导页面
+            val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle(initialValue = true)
+
             AgentControlCenterTheme(
                 themeMode = themeMode,
                 fontSize = settingsState.fontSize
@@ -106,30 +130,62 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppNavigation()
+                    if (!onboardingCompleted) {
+                        OnboardingScreen(
+                            onComplete = {
+                                settingsViewModel.markOnboardingCompleted()
+                            }
+                        )
+                    } else {
+                        AppNavigation()
+                    }
                 }
             }
 
-            // Handle share intent via ChatViewModel
-            val chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel = hiltViewModel()
-            LaunchedEffect(intent) {
-                handleShareIntent(intent, chatViewModel)
-            }
+            // Handle share intent via ChatViewModel (only when onboarding is done)
+            if (onboardingCompleted) {
+                val chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel = hiltViewModel()
+                LaunchedEffect(intent) {
+                    handleShareIntent(intent, chatViewModel)
+                }
 
-            // Critical 1 修复：消费通知内联回复文本，转发给 ChatViewModel 发送。
-            // pendingReplyText 由 handleReplyIntent 在 onCreate/onNewIntent 中写入。
-            LaunchedEffect(pendingReplyText) {
-                val replyText = pendingReplyText ?: return@LaunchedEffect
-                chatViewModel.handleNotificationReply(replyText)
-                pendingReplyText = null
+                // Critical 1 修复：消费通知内联回复文本，转发给 ChatViewModel 发送。
+                // pendingReplyText 由 handleReplyIntent 在 onCreate/onNewIntent 中写入。
+                LaunchedEffect(pendingReplyText) {
+                    val replyText = pendingReplyText ?: return@LaunchedEffect
+                    chatViewModel.handleNotificationReply(replyText)
+                    pendingReplyText = null
+                }
             }
         }
 
         // 启动前台服务保持后台连接
         startForegroundService()
 
+        // Android 13+ 主动请求通知权限（POST_NOTIFICATIONS）。
+        // 此前仅声明权限但从未请求，导致通知在 Android 13+ 上被静默丢弃。
+        requestNotificationPermission()
+
         // 处理通知回复
         handleReplyIntent(intent)
+    }
+
+    /**
+     * 请求 POST_NOTIFICATIONS 运行时权限（Android 13+）。
+     *
+     * 仅在以下条件全部满足时请求：
+     * - 设备运行 Android 13 (API 33) 或更高
+     * - 当前尚未授予该权限
+     * 用户拒绝后不重复打扰。
+     */
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permission = android.Manifest.permission.POST_NOTIFICATIONS
+            val granted = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                notificationPermissionLauncher.launch(permission)
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
