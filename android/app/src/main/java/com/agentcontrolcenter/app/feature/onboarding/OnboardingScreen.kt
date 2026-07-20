@@ -15,7 +15,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cpu
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
@@ -50,7 +50,7 @@ fun OnboardingScreen(
 ) {
     val pages = listOf(
         OnboardingPage(
-            icon = Icons.Default.Cpu,
+            icon = Icons.Default.Memory,
             title = "欢迎来到 Agent Control Center",
             description = "统一管理本地与远程 AI Agent，支持 Ollama、LM Studio、OpenAI 等多种后端，在手机上实现端侧 AI 推理与控制。"
         ),
