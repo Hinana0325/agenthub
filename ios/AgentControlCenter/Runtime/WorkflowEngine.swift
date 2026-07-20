@@ -326,7 +326,9 @@ final class WorkflowEngine {
             }
 
             // 等待第一个完成
-            let first = await group.next()!
+            guard let first = await group.next() else {
+                return .timedOut
+            }
 
             // 关闭 transport 以终止事件流，使另一个任务尽快完成
             transport.shutdown()

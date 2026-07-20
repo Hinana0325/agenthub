@@ -136,11 +136,12 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
                 case .string(let text):
                     handleText(text)
                 case .none:
-                    break
+                    break  // webSocketTask 已关闭
                 @unknown default:
                     break
                 }
             } catch {
+                if webSocketTask == nil { break }  // transport 已关闭，退出循环
                 await handleDisconnect(reason: error.localizedDescription)
                 break
             }

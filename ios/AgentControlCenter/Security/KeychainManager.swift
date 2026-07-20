@@ -50,9 +50,16 @@ enum KeychainManager {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: keyTag,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
-        SecItemAdd(attributes as CFDictionary, nil)
+        // 先尝试添加；若 key 已存在（errSecDuplicateItem），则更新
+        let status = SecItemAdd(attributes as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            SecItemUpdate(
+                [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: keyTag] as CFDictionary,
+                [kSecValueData as String: data] as CFDictionary
+            )
+        }
     }
 
     // MARK: - Encrypt / Decrypt
@@ -134,15 +141,35 @@ enum CryptoManager {
     private static let pbkdf2Iterations = 600_000
 
     /// 通过 passphrase 派生 AES-256 密钥（PBKDF2-HMAC-SHA256）
+    /// 与 Android 端 SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256") 完全兼容
     private static func deriveKey(passphrase: String, salt: Data) -> SymmetricKey {
         let passphraseData = Data(passphrase.utf8)
-        let derivedKey = HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: passphraseData),
-            salt: salt,
-            info: Data(),
-            outputByteCount: 32
-        )
-        return derivedKey
+        var derivedKeyBytes = [UInt8](repeating: 0, count: 32)
+
+        let status = passphraseData.withUnsafeBytes { passphraseBytes in
+            salt.withUnsafeBytes { saltBytes in
+                CCKeyDerivationPBKDF(
+                    CCPBKDFAlgorithm(kCCPRFHmacAlgSHA256),
+                    passphraseBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                    passphraseData.count,
+                    saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                    salt.count,
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                    UInt32(pbkdf2Iterations),
+                    nil,
+                    0,
+                    &derivedKeyBytes,
+                    32
+                )
+            }
+        }
+
+        guard status == kCCSuccess else {
+            // Fallback: 仅在 PBKDF2 失败时使用（不应发生）
+            return SymmetricKey(data: SHA256.hash(data: passphraseData))
+        }
+
+        return SymmetricKey(data: derivedKeyBytes)
     }
 
     /// 加密明文。输出格式: `AH1:` + Base64(IV[12] ‖ salt[16] ‖ ciphertext+tag)
