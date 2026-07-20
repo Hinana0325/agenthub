@@ -1,6 +1,8 @@
 package com.agentcontrolcenter.app.navigation
 
 import com.agentcontrolcenter.app.R
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -23,6 +25,7 @@ import androidx.compose.material3.Text
 import com.agentcontrolcenter.app.ui.theme.GlassNavigationBar
 import com.agentcontrolcenter.app.ui.theme.GlassNavigationRail
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -39,6 +42,9 @@ import androidx.navigation.compose.rememberNavController
 import com.agentcontrolcenter.app.feature.activity.ActivityScreen
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.adaptive.shouldShowRail
+import com.agentcontrolcenter.app.ui.components.PredictiveBackWrapper
+import com.agentcontrolcenter.app.ui.components.LocalNavAnimatedVisibilityScope
+import com.agentcontrolcenter.app.ui.components.LocalSharedTransitionScope
 import com.agentcontrolcenter.app.feature.agents.AgentsScreen
 import com.agentcontrolcenter.app.feature.chat.ChatScreen
 import com.agentcontrolcenter.app.feature.sessions.SessionsScreen
@@ -84,61 +90,27 @@ fun AppNavigation() {
         ShortcutRouter.consume()
     }
 
-    if (adaptive.shouldShowRail) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            GlassNavigationRail(
-                header = { Spacer(modifier = Modifier.height(24.dp)) }
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Screen.getTabs().forEach { screen ->
-                    val selected = currentDestination?.hierarchy?.any {
-                        it.route == screen.route
-                    } == true
-                    NavigationRailItem(
-                        selected = selected,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
-                        label = { Text(text = stringResource(screen.stringResId)) },
-                        colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
-            }
-
-            Scaffold(
-                modifier = Modifier.weight(1f),
-                contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top)
-            ) { paddingValues ->
-                AppNavHost(
-                    navController = navController,
-                    chatViewModel = chatViewModel,
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-        }
-    } else {
-        Scaffold(
-            contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
-            bottomBar = {
-                GlassNavigationBar {
+    // E1: 用 PredictiveBackWrapper 包裹整个顶层导航容器，
+    // 让预测性返回手势（Android 14+）触发当前页面缩放 + 淡出动画。
+    // - 栈底（previousBackStackEntry == null）时禁用，交还给系统处理（如退出 App）。
+    // - 手势进行中：内容随手指滑动缩小到 0.9、淡出到 0.7。
+    // - 手势提交：淡出到 0 后执行 popBackStack。
+    // - 手势取消：spring 平滑恢复到原始状态。
+    PredictiveBackWrapper(
+        enabled = navController.previousBackStackEntry != null,
+        onBack = { navController.popBackStack() }
+    ) {
+        if (adaptive.shouldShowRail) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                GlassNavigationRail(
+                    header = { Spacer(modifier = Modifier.height(24.dp)) }
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Screen.getTabs().forEach { screen ->
                         val selected = currentDestination?.hierarchy?.any {
                             it.route == screen.route
                         } == true
-                        NavigationBarItem(
+                        NavigationRailItem(
                             selected = selected,
                             onClick = {
                                 navController.navigate(screen.route) {
@@ -150,8 +122,8 @@ fun AppNavigation() {
                                 }
                             },
                             icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
-                            label = { Text(text = stringResource(screen.stringResId), style = MaterialTheme.typography.labelSmall) },
-                            colors = NavigationBarItemDefaults.colors(
+                            label = { Text(text = stringResource(screen.stringResId)) },
+                            colors = NavigationRailItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer,
@@ -161,13 +133,58 @@ fun AppNavigation() {
                         )
                     }
                 }
+
+                Scaffold(
+                    modifier = Modifier.weight(1f),
+                    contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top)
+                ) { paddingValues ->
+                    AppNavHost(
+                        navController = navController,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                }
             }
-        ) { paddingValues ->
-            AppNavHost(
-                navController = navController,
-                chatViewModel = chatViewModel,
-                modifier = Modifier.padding(paddingValues)
-            )
+        } else {
+            Scaffold(
+                contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
+                bottomBar = {
+                    GlassNavigationBar {
+                        Screen.getTabs().forEach { screen ->
+                            val selected = currentDestination?.hierarchy?.any {
+                                it.route == screen.route
+                            } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
+                                label = { Text(text = stringResource(screen.stringResId), style = MaterialTheme.typography.labelSmall) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+                    }
+                }
+            ) { paddingValues ->
+                AppNavHost(
+                    navController = navController,
+                    chatViewModel = chatViewModel,
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
         }
     }
 }
@@ -180,7 +197,13 @@ fun AppNavigation() {
  * - 进入：spring(dampingRatio=0.8, stiffness=MediumLow) — 自然弹入
  * - 退出：spring(dampingRatio=0.9, stiffness=Medium) — 平滑退出
  * - popEnter/popExit 对称配置，保证返回手势一致
+ *
+ * E2: 通过 SharedTransitionLayout 包裹 NavHost，为页面间共享元素动画提供
+ * SharedTransitionScope；每个 composable 内通过 CompositionLocalProvider
+ * 向下传递当前页面的 AnimatedVisibilityScope（即 composable lambda 的 this），
+ * 供 Modifier.sharedBounds() 使用。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AppNavHost(
     navController: androidx.navigation.NavHostController,
@@ -214,68 +237,106 @@ private fun AppNavHost(
         )
     )
 
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Chat.route,
-        modifier = modifier,
-        enterTransition = { springEnter },
-        exitTransition = { springExit },
-        popEnterTransition = { springEnter },
-        popExitTransition = { springExit }
-    ) {
-        composable(Screen.Chat.route) {
-            ChatScreen(
-                viewModel = chatViewModel,
+    // SharedTransitionLayout 的 content lambda 接收者为 SharedTransitionScope，
+    // 因此 `this` 即为共享元素动画作用域，通过 CompositionLocal 向下传递。
+    SharedTransitionLayout(modifier = modifier) {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            NavHost(
                 navController = navController,
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
-            )
-        }
-        composable(Screen.Sessions.route) { SessionsScreen(chatViewModel) }
-        composable(Screen.Activity.route) { ActivityScreen() }
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateToAgents = { navController.navigate(Screen.Agents.route) },
-                onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
-                onNavigateToInsights = { navController.navigate(Screen.Insights.route) },
-                onNavigateToDeviceSync = { navController.navigate(Screen.DeviceSync.route) },
-                onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
-                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
-                onNavigateToMcp = { navController.navigate(Screen.Mcp.route) }
-            )
-        }
-        composable(Screen.Agents.route) { AgentsScreen() }
-        composable(Screen.Marketplace.route) {
-            AgentMarketScreen(
-                onInstall = { agent ->
-                    val config = AgentConfig(
-                        id = agent.id,
-                        name = agent.name,
-                        type = agent.type,
-                        serverUrl = agent.serverUrl
-                    )
-                    chatViewModel.installMarketplaceAgent(config)
-                },
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.Insights.route) {
-            InsightsScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.DeviceSync.route) {
-            DeviceSyncScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Plugins.route) {
-            PluginScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Tasks.route) {
-            TasksScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Mcp.route) {
-            McpScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.Compare.route) {
-            val compareViewModel: CompareViewModel = hiltViewModel()
-            CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
+                startDestination = Screen.Chat.route,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { springEnter },
+                exitTransition = { springExit },
+                popEnterTransition = { springEnter },
+                popExitTransition = { springExit }
+            ) {
+                composable(Screen.Chat.route) {
+                    // composable lambda 的 this 是 AnimatedContentScope，
+                    // 它实现了 AnimatedVisibilityScope，可直接 provides。
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        ChatScreen(
+                            viewModel = chatViewModel,
+                            navController = navController,
+                            onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                        )
+                    }
+                }
+                composable(Screen.Sessions.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        SessionsScreen(chatViewModel)
+                    }
+                }
+                composable(Screen.Activity.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        ActivityScreen()
+                    }
+                }
+                composable(Screen.Settings.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        SettingsScreen(
+                            onNavigateToAgents = { navController.navigate(Screen.Agents.route) },
+                            onNavigateToMarketplace = { navController.navigate(Screen.Marketplace.route) },
+                            onNavigateToInsights = { navController.navigate(Screen.Insights.route) },
+                            onNavigateToDeviceSync = { navController.navigate(Screen.DeviceSync.route) },
+                            onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
+                            onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
+                            onNavigateToMcp = { navController.navigate(Screen.Mcp.route) }
+                        )
+                    }
+                }
+                composable(Screen.Agents.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        AgentsScreen()
+                    }
+                }
+                composable(Screen.Marketplace.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        AgentMarketScreen(
+                            onInstall = { agent ->
+                                val config = AgentConfig(
+                                    id = agent.id,
+                                    name = agent.name,
+                                    type = agent.type,
+                                    serverUrl = agent.serverUrl
+                                )
+                                chatViewModel.installMarketplaceAgent(config)
+                            },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                }
+                composable(Screen.Insights.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        InsightsScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+                composable(Screen.DeviceSync.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        DeviceSyncScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+                composable(Screen.Plugins.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        PluginScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+                composable(Screen.Tasks.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        TasksScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+                composable(Screen.Mcp.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        McpScreen(onBack = { navController.popBackStack() })
+                    }
+                }
+                composable(Screen.Compare.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        val compareViewModel: CompareViewModel = hiltViewModel()
+                        CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
+                    }
+                }
+            }
         }
     }
 }

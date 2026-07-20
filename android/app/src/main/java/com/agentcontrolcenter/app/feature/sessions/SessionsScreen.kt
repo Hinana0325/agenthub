@@ -33,6 +33,7 @@ import com.agentcontrolcenter.app.feature.chat.ChatViewModel
 import com.agentcontrolcenter.app.feature.chat.MessageBubble
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.components.sharedBounds
 import java.text.SimpleDateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -615,6 +616,7 @@ private fun SessionListItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .sharedBounds("session_${session.id}")
             .semantics {
                 contentDescription = "Session: ${session.title.ifEmpty { "untitled" }}, ${session.messageCount} messages"
             }
@@ -689,6 +691,7 @@ private fun SessionCard(
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
+            .sharedBounds("session_${session.id}")
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .semantics {
                 contentDescription = "Session: ${session.title.ifEmpty { "untitled" }}, ${session.messageCount} messages"

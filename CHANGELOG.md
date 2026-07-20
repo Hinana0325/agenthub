@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-07-20
+
+### Added — Android 16 深化适配
+
+- **PredictiveBackHandler**: 新增 `PredictiveBackWrapper.kt`，使用 `PredictiveBackHandler`（基于 `Flow<BackEventCompat>`）实现预测性返回手势。返回手势进行中，当前页面跟随手指缩放到 0.9 + 淡出到 0.7；手势完成时 spring 淡出后执行 `popBackStack`；手势取消时 spring 弹回原状。`AppNavigation.kt` 用 `PredictiveBackWrapper` 包裹 Scaffold。
+- **SharedTransitionLayout**: `AppNavigation.kt` 用 `SharedTransitionLayout` 包裹 NavHost，通过 `CompositionLocalProvider` 向下传递 `SharedTransitionScope` 和 `AnimatedVisibilityScope`。新增 `SharedTransitionContext.kt`（两个 CompositionLocal）和 `SharedElementModifier.kt`（`Modifier.sharedBounds(key)` 扩展）。`SessionsScreen.kt` 会话列表项添加 `sharedBounds("session_${id}")` 标记，为列表→详情共享元素动画奠定基础。
+- **ExpressiveLoadingIndicator**: 新增 M3 Expressive 风格加载指示器，三个圆点交错缩放和淡入淡出（600ms 周期，200ms 间隔），替代标准 `CircularProgressIndicator`。同时提供 `ExpressiveSkeletonList` 骨架屏列表。
+
+### Changed
+
+- **build.gradle**: 新增 `androidx.compose.animation:animation` 依赖（SharedTransitionLayout 所需）。
+- **版本号**: Android versionCode 30 → 31 / versionName 4.0.0 → 4.1.0；iOS 同步。
+
 ## [4.0.0] - 2026-07-20
 
 ### Breaking — 弃用 Liquid Glass，迁移到 Android 16 Material 3 Expressive
