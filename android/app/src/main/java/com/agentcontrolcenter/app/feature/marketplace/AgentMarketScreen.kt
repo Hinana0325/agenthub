@@ -27,6 +27,7 @@ import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.theme.GlassCard
 import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
 import java.text.NumberFormat
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,8 +63,12 @@ fun AgentMarketScreen(
         isLoading = false
     }
 
-    // Debounced search — re-fetch from API when query changes
+    // Debounced search — re-fetch from API when query changes.
+    // 真正的防抖实现：searchQuery 每次变化都会取消上一个 LaunchedEffect 协程，
+    // 因此 delay(300) 只有在用户停止输入 300ms 后才会真正执行后续网络请求，
+    // 避免每次按键都触发一次 API 调用。
     LaunchedEffect(searchQuery) {
+        delay(300)
         if (searchQuery.length < 2 && searchQuery.isNotEmpty()) return@LaunchedEffect
         isLoading = true
         errorMessage = null

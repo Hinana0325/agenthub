@@ -61,9 +61,11 @@ struct TasksView: View {
                                     }
                                 }
                             }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
                 .listStyle(.insetGrouped)
+                .animation(.easeInOut(duration: 0.25), value: tasks.count)
                 // 下拉刷新(P1-13):重新从 DataController 加载任务列表
                 .refreshable {
                     await refreshTasks()
@@ -93,6 +95,7 @@ struct TasksView: View {
             // 创建任务 Sheet
             .sheet(isPresented: $showingCreateSheet) {
                 CreateTaskSheet { task in
+                    HapticFeedback.success()
                     // 同时保存到内存层和持久化层
                     appState.taskManager.submitTask(
                         agentId: task.agentId,
@@ -147,6 +150,7 @@ struct TasksView: View {
 
     /// 删除任务：同时从内存层和持久化层移除
     private func deleteTask(_ task: AgentTask) {
+        HapticFeedback.medium()
         // 从 TaskManager 内存中删除
         appState.taskManager.deleteTask(task.id)
         // 从 DataController 持久化层删除

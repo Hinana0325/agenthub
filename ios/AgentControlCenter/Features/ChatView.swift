@@ -597,6 +597,7 @@ struct ChatView: View {
 
     /// 删除指定消息
     private func deleteMessage(_ message: Message) {
+        HapticFeedback.medium()
         appState.dataController.deleteMessage(id: message.id)
         messages.removeAll { $0.id == message.id }
     }
@@ -696,6 +697,7 @@ struct ChatView: View {
             // 流结束：把累积文本固化为一条助手消息
             finalizeAssistantMessage(sessionId: sessionId)
         case .error(let message):
+            HapticFeedback.error()
             // 错误不固化为助手消息，更新最后一条用户消息状态为 failed
             if let lastUserMsg = messages.last(where: { $0.role == .user }),
                let idx = messages.firstIndex(where: { $0.id == lastUserMsg.id }) {
@@ -720,6 +722,7 @@ struct ChatView: View {
 
     /// 流式结束：把累积文本固化为一条助手消息并持久化
     private func finalizeAssistantMessage(sessionId: String) {
+        HapticFeedback.success()
         let content = streamingText.isEmpty ? "(无回复)" : streamingText
         let msg = Message(
             id: UUID().uuidString,
@@ -742,6 +745,7 @@ struct ChatView: View {
 
     /// 发送消息：创建用户消息 → 通过传输层发送 → 由事件流异步接收回复
     private func sendMessage() {
+        HapticFeedback.light()
         // 检查是否为斜杠命令
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.hasPrefix("/") {

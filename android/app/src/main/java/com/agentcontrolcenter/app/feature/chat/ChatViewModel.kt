@@ -84,7 +84,9 @@ data class ChatUiState(
     val comparePending: Boolean = false,
     // Reply state
     val replyingToMessageId: String? = null,
-    val replyingToMessageContent: String? = null
+    val replyingToMessageContent: String? = null,
+    // 操作结果反馈（用于 Snackbar 展示：复制/删除/清空等）
+    val lastAction: String? = null
 )
 
 
@@ -504,7 +506,13 @@ class ChatViewModel @Inject constructor(
                 repository.deleteMessagesBySession(id)
             }
         }
-        _uiState.update { it.copy(messages = emptyList(), errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                messages = emptyList(),
+                errorMessage = null,
+                lastAction = "聊天已清空"
+            )
+        }
     }
 
     fun dismissWizard() {
@@ -610,6 +618,7 @@ class ChatViewModel @Inject constructor(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Agent Control Center Message", text)
         clipboard.setPrimaryClip(clip)
+        _uiState.update { it.copy(lastAction = "已复制到剪贴板") }
     }
 
     /**
@@ -619,9 +628,19 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             repository.deleteMessage(messageId)
             _uiState.update { state ->
-                state.copy(messages = state.messages.filter { it.id != messageId })
+                state.copy(
+                    messages = state.messages.filter { it.id != messageId },
+                    lastAction = "消息已删除"
+                )
             }
         }
+    }
+
+    /**
+     * 清除 lastAction，避免配置变更（如旋转屏）后 Snackbar 重复弹出。
+     */
+    fun clearLastAction() {
+        _uiState.update { it.copy(lastAction = null) }
     }
 
     /**

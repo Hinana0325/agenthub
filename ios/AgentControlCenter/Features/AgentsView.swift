@@ -69,6 +69,7 @@ struct AgentsView: View {
                         .contentShape(Rectangle())
                         // 点击设为活跃
                         .onTapGesture {
+                            HapticFeedback.medium()
                             appState.agentManager.setActive(agentId: agent.id)
                         }
                         // 长按上下文菜单：编辑 / 删除
@@ -91,6 +92,7 @@ struct AgentsView: View {
                         // 左滑：设为活跃
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
+                                HapticFeedback.medium()
                                 appState.agentManager.setActive(agentId: agent.id)
                             } label: {
                                 Label("设为活跃", systemImage: "star.fill")
@@ -106,10 +108,12 @@ struct AgentsView: View {
                                 Label("删除", systemImage: "trash")
                             }
                         }
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
             }
             .listStyle(.insetGrouped)
+            .animation(.easeInOut(duration: 0.25), value: appState.agentManager.agents.count)
             .navigationTitle("Agent")
             // 空状态占位视图
             .overlay {
@@ -212,6 +216,7 @@ struct AgentsView: View {
 
     /// 从持久化层和运行时管理器中移除指定 Agent
     private func deleteAgent(_ agent: Agent) {
+        HapticFeedback.heavy()
         // 从 SwiftData 中删除持久化配置
         appState.dataController.deleteAgentConfig(agent.id)
         // 从 AgentManager 中注销运行时实例

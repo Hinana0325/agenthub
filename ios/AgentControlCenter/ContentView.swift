@@ -161,6 +161,13 @@ struct ContentView: View {
         .onChange(of: appState.pendingShortcutDestination) { _, destination in
             handleShortcutDestination(destination)
         }
+        // U1: Tab 切换时触发选择反馈
+        .onChange(of: selectedTab) { _, _ in
+            HapticFeedback.selection()
+        }
+        .onChange(of: selectedCompactTab) { _, _ in
+            HapticFeedback.selection()
+        }
         // P3-5: 应用启动时检查是否有冷启动期间暂存的快捷方式目标
         .task {
             if let destination = appState.pendingShortcutDestination {

@@ -86,6 +86,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val adaptive = currentAdaptiveConfig()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 判断用户是否在列表底部附近：当用户主动向上滚动阅读历史消息时，
     // 不应强制把视图拉回底部。以「最后可见 item 接近末尾」作为底部判定。
@@ -127,42 +128,64 @@ fun ChatScreen(
         }
     }
 
+    // 监听操作结果（复制/删除/清空）并通过 Snackbar 给用户即时反馈。
+    // 展示后立即清除 lastAction，避免配置变更后重复弹出。
+    LaunchedEffect(uiState.lastAction) {
+        val action = uiState.lastAction
+        if (!action.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(
+                message = action,
+                withDismissAction = true
+            )
+            viewModel.clearLastAction()
+        }
+    }
+
     // Voice Chat Mode overlay
     val voiceChatManager = viewModel.getVoiceChatManager()
-    if (uiState.isVoiceChatMode && voiceChatManager != null) {
-        VoiceChatOverlay(
-            voiceManager = voiceChatManager,
-            lastUserText = uiState.voiceChatLastUserText,
-            lastAgentText = uiState.voiceChatLastAgentText,
-            onExit = { viewModel.exitVoiceChatMode() },
-            onSendMessage = { text ->
-                viewModel.updateInput(text)
-                viewModel.sendMessage()
-            }
-        )
-    } else {
-        // Box ensures SearchOverlay floats on top of the main layout instead of
-        // stacking below it (which caused the "Agent Control Center" title to overlap with the search bar).
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (adaptive.shouldShowSidebar) {
-                TabletChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
-            } else {
-                PhoneChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
-            }
+    // 最外层 Box 用于承载内容以及底部 Snackbar，确保操作反馈浮于所有布局之上
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isVoiceChatMode && voiceChatManager != null) {
+            VoiceChatOverlay(
+                voiceManager = voiceChatManager,
+                lastUserText = uiState.voiceChatLastUserText,
+                lastAgentText = uiState.voiceChatLastAgentText,
+                onExit = { viewModel.exitVoiceChatMode() },
+                onSendMessage = { text ->
+                    viewModel.updateInput(text)
+                    viewModel.sendMessage()
+                }
+            )
+        } else {
+            // Box ensures SearchOverlay floats on top of the main layout instead of
+            // stacking below it (which caused the "Agent Control Center" title to overlap with the search bar).
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (adaptive.shouldShowSidebar) {
+                    TabletChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
+                } else {
+                    PhoneChatLayout(uiState, listState, viewModel, onNavigateToSettings, adaptive)
+                }
 
-            // Search overlay — rendered on top of the main layout
-            if (uiState.isSearchActive) {
-                SearchOverlay(
-                    query = uiState.searchQuery,
-                    results = uiState.searchResults,
-                    onQueryChange = { viewModel.searchMessages(it) },
-                    onResultClick = { msg ->
-                        viewModel.closeSearch()
-                    },
-                    onClose = { viewModel.closeSearch() }
-                )
+                // Search overlay — rendered on top of the main layout
+                if (uiState.isSearchActive) {
+                    SearchOverlay(
+                        query = uiState.searchQuery,
+                        results = uiState.searchResults,
+                        onQueryChange = { viewModel.searchMessages(it) },
+                        onResultClick = { msg ->
+                            viewModel.closeSearch()
+                        },
+                        onClose = { viewModel.closeSearch() }
+                    )
+                }
             }
         }
+
+        // Snackbar 宿主：展示复制/删除/清空等操作的结果反馈
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 

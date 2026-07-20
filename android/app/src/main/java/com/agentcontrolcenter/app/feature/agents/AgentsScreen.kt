@@ -468,6 +468,14 @@ private fun AgentFormDialog(
     var temperature by remember { mutableStateOf(agent.temperature.toString()) }
     var maxTokens by remember { mutableStateOf(agent.maxTokens.toString()) }
 
+    // ── 实时字段验证：每次输入变化时重新计算，错误状态即时反馈 ──
+    val isNameError = name.isBlank()
+    val isServerUrlError = serverUrl.isBlank() ||
+        (!serverUrl.startsWith("http://") && !serverUrl.startsWith("https://"))
+    val isApiKeyError = apiKey.length < 10
+    // 所有字段验证通过时才允许保存
+    val isFormValid = !isNameError && !isServerUrlError && !isApiKeyError
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (agent.serverUrl.isBlank()) stringResource(R.string.new_agent) else stringResource(R.string.btn_edit) + " " + agent.name) },
@@ -480,7 +488,11 @@ private fun AgentFormDialog(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.label_name)) },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = isNameError,
+                    supportingText = if (isNameError) {
+                        { Text("请输入名称") }
+                    } else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -489,7 +501,16 @@ private fun AgentFormDialog(
                     label = { Text(stringResource(R.string.label_server_url)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    isError = isServerUrlError,
+                    supportingText = if (isServerUrlError) {
+                        {
+                            Text(
+                                if (serverUrl.isBlank()) "请输入服务器地址"
+                                else "地址必须以 http:// 或 https:// 开头"
+                            )
+                        }
+                    } else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -498,7 +519,11 @@ private fun AgentFormDialog(
                     label = { Text(stringResource(R.string.label_api_key)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    isError = isApiKeyError,
+                    supportingText = if (isApiKeyError) {
+                        { Text("API Key 似乎太短了") }
+                    } else null
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 TypeSelector(
@@ -554,7 +579,7 @@ private fun AgentFormDialog(
                         maxTokens = maxTokens.toIntOrNull() ?: 4096
                     ))
                 },
-                enabled = name.isNotBlank()
+                enabled = isFormValid
             ) {
                 Text(stringResource(R.string.btn_save))
             }

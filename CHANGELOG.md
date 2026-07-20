@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-07-20
+
+### Added — UX 用户体验改进
+
+- **Loading Skeleton 组件**: 双端新增骨架屏组件（Android `SkeletonBox.kt` + `SkeletonListItems.kt` / iOS `SkeletonView.swift`），包含 `SessionSkeletonItem` / `MessageSkeletonItem` / `AgentCardSkeletonItem` 三种列表项骨架屏，shimmer 动画。
+- **统一 ErrorView**: 双端新增 `ErrorStateView` 组件（Android `ErrorStateView.kt` / iOS `ErrorStateView.swift`），包含错误图标、标题、描述和可选重试按钮。
+- **iOS 触觉反馈接入**: `HapticFeedback.swift` 此前已封装 7 种触觉反馈但全项目零调用，本次在 5 个文件中接入 14 处调用：ChatView（发送/接收/错误/删除）、AgentsView（连接/删除）、SessionsView（创建/删除/置顶）、TasksView（完成/删除）、ContentView（Tab 切换）。
+- **ChatScreen Snackbar 反馈**: Android ChatScreen 新增 `SnackbarHostState`，复制消息/删除消息/清空聊天操作后显示 Snackbar 反馈。ChatViewModel 新增 `lastAction` 状态字段。
+- **搜索防抖**: Android Marketplace 搜索新增 300ms debounce，避免每次按键触发 API 调用。
+- **Agent 表单实时验证**: Android `AgentFormDialog` 新增字段级实时验证：name（非空）、serverUrl（格式校验）、apiKey（长度校验），错误时字段边框变红 + supportingText 提示，保存按钮需所有验证通过。
+- **iOS 列表项动画**: SessionsView / TasksView / AgentsView 列表项增删添加 `.transition(.move(edge: .trailing).combined(with: .opacity))` + `.animation(.easeInOut(duration: 0.25))`。
+
+### Changed
+
+- **版本号**: Android versionCode 27 → 28 / versionName 3.0.0 → 3.1.0；iOS 同步。
+
 ## [3.0.0] - 2026-07-20
 
 ### Added — P3 长期演进

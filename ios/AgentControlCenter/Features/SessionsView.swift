@@ -43,6 +43,7 @@ struct SessionsView: View {
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         // 滑动:删除会话
                         Button(role: .destructive) {
+                            HapticFeedback.medium()
                             // 先更新内存状态(SessionManager)
                             appState.sessionManager.deleteSession(session.id)
                             // 同步删除持久化层的消息记录与会话本体,避免 App 重启后数据残留
@@ -54,6 +55,7 @@ struct SessionsView: View {
 
                         // 滑动:切换置顶状态
                         Button {
+                            HapticFeedback.selection()
                             // 更新内存状态(SessionManager)
                             appState.sessionManager.togglePin(session.id)
                             // 持久化置顶状态:从 sessionManager 取回最新 session 对象后整体 upsert
@@ -78,9 +80,11 @@ struct SessionsView: View {
                         }
                         .tint(.blue)
                     }
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .listStyle(.insetGrouped)
+            .animation(.easeInOut(duration: 0.25), value: filteredSessions.count)
             .navigationTitle("会话")
             // 会话列表搜索(P2-5):按标题/摘要过滤
             .searchable(text: $searchText, prompt: "搜索会话")
@@ -88,6 +92,7 @@ struct SessionsView: View {
                 // 工具栏:新建会话(使用默认标题 "新对话")
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        HapticFeedback.light()
                         // 先创建内存会话(SessionManager)
                         let session = appState.sessionManager.createSession()
                         // 同步保存到 SwiftData,确保 App 重启后会话不丢失
