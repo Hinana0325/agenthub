@@ -7,6 +7,7 @@ import com.agentcontrolcenter.app.core.database.dao.AgentConfigDao
 import com.agentcontrolcenter.app.core.database.dao.MessageDao
 import com.agentcontrolcenter.app.core.database.dao.PluginDao
 import com.agentcontrolcenter.app.core.database.dao.SessionDao
+import com.agentcontrolcenter.app.core.database.dao.TaskDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,4 +26,5 @@ object DatabaseModule {
     @Provides fun provideAgentConfigDao(db: AppDatabase): AgentConfigDao = db.agentConfigDao()
     @Provides fun provideActivityDao(db: AppDatabase): ActivityDao = db.activityDao()
     @Provides fun providePluginDao(db: AppDatabase): PluginDao = db.pluginDao()
+    @Provides fun provideTaskDao(db: AppDatabase): TaskDao = db.taskDao()
 }
