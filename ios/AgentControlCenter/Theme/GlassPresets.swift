@@ -101,13 +101,43 @@ extension View {
     ///   - tint: 玻璃 tint 颜色（建议带 opacity）
     ///   - shape: 玻璃裁剪形状
     /// - Returns: 应用了 tint 玻璃效果的视图
+    ///
+    /// 黑框修复: 原 iOS 18 / Xcode 16 回退用 `shape.fill(.ultraThinMaterial)` 作基底，
+    /// 再叠加 `shape.fill(tint)`。问题：当 `tint == .clear`（如 ChatView 非录音态语音按钮）
+    /// 或 tint 低 opacity（如 `Color.gray.opacity(0.3)` 禁用态）时，tint 无法遮盖
+    /// `.ultraThinMaterial` 的暗色基底，深色模式下显示为黑色圆圈/药丸（"黑框" bug）。
+    ///
+    /// 修复策略（按 tint alpha 分级）：
+    /// - alpha < 0.01（透明）：不绘制任何 background，保持按钮自身样式，避免暗色基底透出
+    /// - 0.01 ≤ alpha < 0.5（低 opacity）：tint 提升到 0.6 opacity 作为单一 fill，
+    ///   不画 ultraThinMaterial，避免暗色基底与 tint 混合后偏黑
+    /// - alpha ≥ 0.5（高 opacity）：保留原 ultraThinMaterial + tint 叠加，tint 足以遮盖基底
     @ViewBuilder
     func glassTinted<S: Shape>(_ tint: Color, in shape: S) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant.tint(tint), in: shape)
         } else {
-            // R4: iOS 18 回退 —— tint 色块叠加在 ultraThinMaterial 之上
+            tintedFallback(tint, in: shape)
+        }
+        #else
+        // Xcode 16 构建 — Glass API 不可用，使用 tint 分级回退
+        tintedFallback(tint, in: shape)
+        #endif
+    }
+
+    /// `glassTinted` 的 iOS 18 / Xcode 16 回退实现 — 按 tint alpha 分级避免黑框。
+    @ViewBuilder
+    private func tintedFallback<S: Shape>(_ tint: Color, in shape: S) -> some View {
+        let alpha = tint.cgColor?.alpha ?? 1.0
+        if alpha < 0.01 {
+            // 透明 tint：不绘制 background，避免 ultraThinMaterial 暗色基底形成黑框
+            self
+        } else if alpha < 0.5 {
+            // 低 opacity tint：tint 提升到 0.6 opacity 作为单一 fill
+            self.background(tint.opacity(0.6), in: shape)
+        } else {
+            // 高 opacity tint：保留原 ultraThinMaterial + tint 叠加
             self.background {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
@@ -115,15 +145,6 @@ extension View {
                 }
             }
         }
-        #else
-        // Xcode 16 构建 — Glass API 不可用，使用 ultraThinMaterial + tint 回退
-        self.background {
-            ZStack {
-                shape.fill(.ultraThinMaterial)
-                shape.fill(tint)
-            }
-        }
-        #endif
     }
 
     /// 玻璃 morph ID 兼容包装 —— 用于 `GlassEffectContainer` 内子视图间的形变过渡
