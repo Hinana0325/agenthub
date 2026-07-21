@@ -10,8 +10,11 @@ android {
     namespace "com.agentcontrolcenter.app"
     // D3: AGP 9 要求 compileSdk 用字面量（不再接受 rootProject.ext.xxx 引用，
     // 否则报 "does not specify compileSdk in build.gradle"）。minSdk/targetSdk 同理。
-    compileSdk 36
-    buildToolsVersion '36.0.0'
+    // D3: compileSdk 37 — androidx.hilt:hilt-navigation-compose:1.4.0
+    // 与 androidx.hilt:hilt-lifecycle-viewmodel-compose:1.4.0 强制要求 compileSdk 37+。
+    // targetSdk 仍保持 36（runtime 行为不变）。
+    compileSdk 37
+    buildToolsVersion '37.0.0'
 
     lint {
         checkReleaseBuilds false

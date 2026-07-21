@@ -4,7 +4,7 @@ ext {
     // Dependabot 升级 Kotlin 时只改 build.gradle 不会改本文件 —— 需手动同步。
     kotlinVersion = '2.4.10'
     minSdkVersion = 24
-    compileSdkVersion = 36
+    compileSdkVersion = 37
     targetSdkVersion = 36
 
     // Compose
