@@ -4,7 +4,10 @@ import Foundation
 // 对应 protocol/schemas/event-schema.json
 
 /// Agent 实时事件。判别联合，通过 type 字段区分。
-enum AgentEvent {
+///
+/// `Sendable` — 关联值均为 `String` / `Bool` / `AgentType` 等 Sendable 类型，
+/// 允许事件在 Transport actor 与 MainActor 之间安全传递。
+enum AgentEvent: Sendable {
     case connected(serverUrl: String, agentType: AgentType)
     case disconnected(reason: String = "")
     case messageReceived(content: String, isDelta: Bool = false)
@@ -14,7 +17,7 @@ enum AgentEvent {
 }
 
 /// Agent 连接状态
-struct AgentConnectionState: Equatable {
+struct AgentConnectionState: Equatable, Sendable {
     var isConnected: Bool = false
     var serverUrl: String = ""
     var agentType: AgentType = .hermes

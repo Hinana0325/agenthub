@@ -16,9 +16,17 @@ enum GlassTokens {
     // MARK: - Glass Variant
 
     /// 默认玻璃 variant（透镜感最自然，适用于大多数浮动控件）
+    ///
+    /// R3: `Glass` 类型本身为 iOS 26+ API，故该属性需标注 `@available(iOS 26, *)`。
+    /// iOS 18 调用点应通过 `if #available(iOS 26, *)` 守卫后再访问此属性，
+    /// 回退分支使用 `.ultraThinMaterial` 等普通材质（见 GlassPresets.swift）。
+    @available(iOS 26, *)
     static let regularVariant: Glass = .regular
 
     /// 交互式玻璃 variant（带按压反馈，适用于可点击的浮动按钮 / 药丸）
+    ///
+    /// R3: 同上，`Glass` 类型仅 iOS 26+ 可用。
+    @available(iOS 26, *)
     static let interactiveVariant: Glass = .regular.interactive()
 
     // MARK: - 间距

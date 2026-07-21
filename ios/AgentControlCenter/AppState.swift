@@ -8,6 +8,12 @@ import Observation
 ///
 /// 聚合应用运行所需的全部核心服务，通过 `@Observable` 暴露给 SwiftUI 视图树。
 /// 子视图通过 `@Environment(AppState.self)` 获取依赖，无需手动传递。
+///
+/// `@MainActor` 隔离保证 SwiftUI 视图树对 `AppState` 的读取均在主线程，
+/// 避免视图更新时发生数据竞争。内部持有的 I/O 类型管理器
+/// （McpClient / VoiceChatManager 等）仍可在自己的 actor / Task 中工作，
+/// 仅为 AppState 自身属性访问加主线程约束。
+@MainActor
 @Observable
 final class AppState {
 
@@ -82,6 +88,16 @@ final class AppState {
     ///
     /// - Note: 值为 `nil` 时表示无待处理请求；非 `nil` 时 ContentView 应立即导航并置回 `nil`
     var pendingShortcutDestination: AppShortcutDestination?
+
+    /// 命令面板显示绑定。
+    ///
+    /// 由 App 级 `.commands { CommandMenu }` 中的 ⌘K 快捷键触发，
+    /// 由 `ContentView` 观察并通过 `.sheet` 弹出 `CommandPaletteView`。
+    /// 这样比之前在 ContentView 内部用隐藏 Button + keyboardShortcut 更符合 HIG：
+    /// - 系统菜单栏会显示快捷键
+    /// - VoiceOver 可访问
+    /// - 不依赖透明零尺寸按钮 hack
+    var showCommandPalette: Bool = false
 
     /// 云备份/恢复管理器（P3-3）
     ///

@@ -102,7 +102,7 @@ final class McpClient: @unchecked Sendable {
             params: params
         )
 
-        guard let url = URL(string: server.transportUrl) else { return nil }
+        guard let url = URLValidator.validate(server.transportUrl, allowLocalhost: true) else { return nil }
         guard let response = await sendRequest(url: url, apiKey: server.apiKey, request: request) else {
             return nil
         }
@@ -145,7 +145,7 @@ final class McpClient: @unchecked Sendable {
             params: nil
         )
 
-        guard let url = URL(string: server.transportUrl) else { return nil }
+        guard let url = URLValidator.validate(server.transportUrl, allowLocalhost: true) else { return nil }
         guard let response = await sendRequest(url: url, apiKey: server.apiKey, request: request) else {
             return nil
         }
@@ -201,7 +201,7 @@ final class McpClient: @unchecked Sendable {
             params: params
         )
 
-        guard let url = URL(string: server.transportUrl) else { return nil }
+        guard let url = URLValidator.validate(server.transportUrl, allowLocalhost: true) else { return nil }
         guard let response = await sendRequest(url: url, apiKey: server.apiKey, request: request) else {
             return nil
         }
@@ -355,7 +355,7 @@ final class McpClient: @unchecked Sendable {
     ///   - seconds: 超时秒数
     ///   - operation: 要执行的异步操作（返回可空结果）
     /// - Returns: 操作完成返回其结果；超时返回 nil
-    private func withTimeout<T>(
+    private func withTimeout<T: Sendable>(
         seconds: TimeInterval,
         operation: @escaping @Sendable () async -> T?
     ) async -> T? {

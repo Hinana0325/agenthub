@@ -1,0 +1,132 @@
+name: Build & Test (iOS)
+
+on:
+  push:
+    branches: [main]
+    tags: ['ios-v*']
+    paths:
+      - 'ios/**'
+      - '.github/workflows/build-ios.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/build-ios.yml'
+
+jobs:
+  build:
+    name: Build & Unit Test (iOS)
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      # R2: 回退到 Xcode 16.x + iOS 18 模拟器 — macos-15 runner 不含 Xcode 26，
+      # 原 26.0 配置会导致 xcode-select 失败，CI 永远跑不起来。
+      # Liquid Glass 作为 iOS 26 增量特性通过 if #available(iOS 26, *) 守卫，
+      # 在 iOS 18 模拟器上走回退分支，不影响构建验证。
+      XCODE_VERSION: "16.4"
+      IOS_SIMULATOR: "iPhone 16"
+      IOS_VERSION: "18.4"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # R2: 列出可用 Xcode 版本便于排查，并尝试选择指定版本；
+          # 若指定版本不存在，降级到 /Applications 下最新的 16.x。
+          echo "Available Xcode versions:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          TARGET="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          if [ -d "$TARGET" ]; then
+            sudo xcode-select -s "$TARGET"
+          else
+            # 降级：选择最新的 Xcode 16.x
+            LATEST=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+            if [ -n "$LATEST" ]; then
+              echo "Xcode_${XCODE_VERSION} not found, falling back to $LATEST"
+              sudo xcode-select -s "$LATEST/Contents/Developer"
+            else
+              echo "::error::No suitable Xcode 16.x found on runner"
+              exit 1
+            fi
+          fi
+
+      - name: Show Xcode & SDK versions
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i ios
+          # R2: 列出可用模拟器，便于排查 destination 不匹配问题
+          xcrun simctl list devices available | grep -E "iPhone|iOS" || true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/.build
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build (Debug, simulator)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AgentControlCenter.xcodeproj \
+            -scheme AgentControlCenter \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${IOS_SIMULATOR},OS=${IOS_VERSION}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SENTRY_DSN="" \
+            build | tee build.log | xcpretty --color
+
+      - name: Test (Debug, simulator)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AgentControlCenter.xcodeproj \
+            -scheme AgentControlCenter \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=${IOS_SIMULATOR},OS=${IOS_VERSION}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SENTRY_DSN="" \
+            test | tee test.log | xcpretty --color --report junit
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            ios/build/reports/
+            ios/test.log
+            ios/build.log
+          if-no-files-found: ignore
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-logs
+          path: |
+            ios/build.log
+            ios/test.log
+          if-no-files-found: ignore

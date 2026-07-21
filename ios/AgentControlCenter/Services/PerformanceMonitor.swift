@@ -4,6 +4,7 @@ import Observation
 /// 性能监控
 /// 对应 Android PerformanceMonitor — 记录消息延迟、连接质量、内存使用等
 /// 集成 Apple Silicon 硬件检测和优化
+@MainActor
 @Observable
 final class PerformanceMonitor {
 
@@ -117,9 +118,14 @@ final class PerformanceMonitor {
     // MARK: - 私有方法
 
     /// 启动定时监控（每 5 秒刷新一次指标）
+    ///
+    /// Timer 由 MainActor 调度（本类为 @MainActor），回调在 main RunLoop 上触发，
+    /// 因此闭包内通过 `MainActor.assumeIsolated` 同步访问 self。
     private func startMonitoring() {
         timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.updateMetrics()
+            MainActor.assumeIsolated {
+                self?.updateMetrics()
+            }
         }
     }
 

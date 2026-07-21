@@ -62,16 +62,18 @@ struct AgentsView: View {
                 // MARK: 所有 Agent
                 Section("所有 Agent") {
                     ForEach(appState.agentManager.agents) { agent in
-                        AgentRow(
-                            agent: agent,
-                            isActive: agent.id == appState.agentManager.activeAgent?.id
-                        )
-                        .contentShape(Rectangle())
-                        // 点击设为活跃
-                        .onTapGesture {
+                        // HIG：交互行应使用 Button 而非 onTapGesture，
+                        // 这样 VoiceOver / 大字体 / 系统滑动手势才能正确处理
+                        Button {
                             HapticFeedback.medium()
                             appState.agentManager.setActive(agentId: agent.id)
+                        } label: {
+                            AgentRow(
+                                agent: agent,
+                                isActive: agent.id == appState.agentManager.activeAgent?.id
+                            )
                         }
+                        .buttonStyle(.plain)
                         // 长按上下文菜单：编辑 / 删除
                         .contextMenu {
                             Button {
@@ -126,35 +128,37 @@ struct AgentsView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    HStack(spacing: 16) {
-                        // 更多操作菜单：导入 / 导出
-                        Menu {
-                            Button {
-                                showingImporter = true
-                            } label: {
-                                Label("导入", systemImage: "square.and.arrow.down")
-                            }
-                            Button {
-                                exportConfigs()
-                            } label: {
-                                Label("导出所有", systemImage: "square.and.arrow.up")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .accessibilityLabel("更多操作")
-                        }
-
-                        // 添加 Agent 按钮
+                // HIG：单个 ToolbarItem(.primaryAction) 应只承载一个主操作。
+                // 拆分为两个 .topBarTrailing 让系统分别为其渲染玻璃 chrome。
+                ToolbarItem(placement: .topBarTrailing) {
+                    // 更多操作菜单：导入 / 导出
+                    Menu {
                         Button {
-                            editingAgent = nil
-                            editingConfig = nil
-                            showingFormSheet = true
+                            showingImporter = true
                         } label: {
-                            Image(systemName: "plus")
+                            Label("导入", systemImage: "square.and.arrow.down")
                         }
-                        .accessibilityLabel("添加 Agent")
+                        Button {
+                            exportConfigs()
+                        } label: {
+                            Label("导出所有", systemImage: "square.and.arrow.up")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .accessibilityLabel("更多操作")
                     }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    // 添加 Agent 按钮
+                    Button {
+                        editingAgent = nil
+                        editingConfig = nil
+                        showingFormSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("添加 Agent")
                 }
             }
             // MARK: Sheet: 添加/编辑表单

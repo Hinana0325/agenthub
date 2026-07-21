@@ -16,6 +16,10 @@ import Observation
 /// - Android 使用 StateFlow + Map<String, Session>，iOS 使用 @Observable + [Session]
 /// - iOS 版增加了 title、isPinned、sortedSessions 等 UI 友好属性
 /// - 数据模型复用 Models/Session.swift 中的 Session 结构体
+///
+/// `@MainActor` 隔离保证 `sessions` / `activeSessionId` 等响应式状态的读写
+/// 均在主线程进行，避免 SwiftUI 视图读取时发生数据竞争。
+@MainActor
 @Observable
 final class SessionManager {
 
@@ -79,6 +83,16 @@ final class SessionManager {
         guard let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
         var session = sessions[index]
         session.messageCount += 1
+        session.updatedAt = Int64(Date().timeIntervalSince1970 * 1000)
+        sessions[index] = session
+    }
+
+    /// 递减会话消息计数（删除消息时调用，最低为 0）
+    /// - Parameter sessionId: 会话 ID
+    func decrementMessageCount(_ sessionId: String) {
+        guard let index = sessions.firstIndex(where: { $0.id == sessionId }) else { return }
+        var session = sessions[index]
+        session.messageCount = max(0, session.messageCount - 1)
         session.updatedAt = Int64(Date().timeIntervalSince1970 * 1000)
         sessions[index] = session
     }

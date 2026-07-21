@@ -19,6 +19,10 @@ import Observation
 /// - Android 版通过 Room TaskDao 持久化任务到数据库
 /// - iOS 版当前使用内存存储，后续可通过 SwiftData / CoreData 补齐持久化
 /// - 数据模型复用 Models/Task.swift 中的 AgentTask / TaskType / TaskStatus
+///
+/// `@MainActor` 隔离保证 `tasks` 等响应式状态的读写均在主线程进行，
+/// 避免 SwiftUI 视图读取时发生数据竞争。
+@MainActor
 @Observable
 final class TaskManager {
 

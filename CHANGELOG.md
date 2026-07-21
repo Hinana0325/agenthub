@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0] - 2026-07-21
+
+### Fixed — iOS 26 Liquid Glass 升级 PR 修复
+
+修复 `19208f2` PR 的多个阻断性问题，使 Liquid Glass 工作可在 iOS 18 基线上正确构建与运行。
+
+- **部署目标回退**: iOS 26.0 → iOS 18.0。原 PR 将 `IPHONEOS_DEPLOYMENT_TARGET` 从 17.0 直接跳到 26.0，会切断 30-40% 用户。`project.yml` 三个 target 全部回退；`xcodeVersion` 26.0 → 16.0。
+- **CI 配置修复**: `build-ios.yml` 原 `XCODE_VERSION: "26.0"` / `IOS_VERSION: "26.0"` 在 `macos-15` runner 上不存在（Xcode 26 需要 macOS 26 Tahoe），CI 永远跑不起来。改为 `XCODE_VERSION: "16.4"` / `IOS_VERSION: "18.4"`，并加入 Xcode 选择降级逻辑（找不到指定版本时自动选最新 16.x）和模拟器列表输出便于排查。
+- **Liquid Glass API 守卫**: `Theme/GlassTokens.swift` 中 `regularVariant` / `interactiveVariant` 标注 `@available(iOS 26, *)`；`Theme/GlassPresets.swift` 全部 View 扩展（`glassPill` / `glassFloating` / `glassInteractive` / `glassStatic`）改为 `@ViewBuilder` + `if #available(iOS 26, *)` 双分支，iOS 18 回退到 `.ultraThinMaterial`；`Theme/GlassContainer.swift` 的 `body` 同样双分支，iOS 18 直接渲染内容。
+- **新增兼容包装**: `glassTinted(_:in:)` 包装 `Glass.tint(_:)` + `.glassEffect(_:in:)` 用于状态条 / 录音 / 发送 / 停止等带 tint 的浮动控件；`glassMorphID(_:in:)` 包装 `.glassEffectID(_:in:)` 用于 `GlassEffectContainer` 内的 morph 形变，iOS 18 回退为无 morph。
+- **调用点全量替换**: `ContentView` / `ChatView` / `VoiceChatView` / `WorkflowView` / `CompareView` 中所有直接 `.glassEffect(GlassTokens.interactiveVariant.tint(...), in: shape)` 调用改为 `.glassTinted(...)`；所有 `.glassEffectID(...)` 改为 `.glassMorphID(...)`。`CommandPaletteView` 已使用 `.glassInteractive` 包装，无需改动。
+- **测试兼容**: `GlassPresetsTests.swift` 中 `regularVariant` / `interactiveVariant` 访问测试标注 `@available(iOS 26, *)`；`GlassContainer` 子视图测试改用 `.glassPill()` 包装（避免直接调用 iOS 26 `.glassEffect()`）；新增 `glassTinted` 构造性测试。
+
+### Changed — Swift/SwiftUI 审计改进（SW-M2/M3/M4/M6/M7）
+
+- **SW-M2 `.onAppear → .task`**: 7 个 View 的数据加载 `.onAppear` 改为 `.task`，由 SwiftUI 管理生命周期（视图销毁时自动取消）。涉及 `PluginView` / `TasksView` / `McpView` / `DeviceSyncView` / `ActivityView` / `SettingsView` / `ChatView`。纯动画 `.onAppear` 保留不动。
+- **SW-M3 `try?` → Logger**: 4 个 Service 的静默 `try?` 改为 `do/catch` + `os.Logger` 上报。涉及 `WorkflowEngine` / `ChatRepository` / `LocalModelManager` / `CollaborationManager`。
+- **SW-M4 `DateFormatter` → `FormatStyle`**: 7 个文件的 `DateFormatter` / `ISO8601DateFormatter` 改为 `Date.FormatStyle` / `Date.ISO8601FormatStyle` / `ParseStrategy`。涉及 `ChatRepository` / `CollaborationManager` / `DeviceSyncManager` / `BackupManager` / `DataInsightsManager` / `DeviceSyncView` / `AppTheme`。
+- **SW-M6 CollaborationManager 异步 I/O**: `sessionStore` 计算属性拆分为 `nonisolated static func loadSessionStore(from:)` / `writeSessionStore(_:to:)`；`saveSessionToStore` / `removeFromStore` 改用 `Task.detached(priority: .utility)` 避免阻塞 MainActor。
+- **SW-M7 移除冗余 MainActor.run**: `WorkflowView` / `ChatView`（2 处）/ `CompareView` / `TasksView` 中 `await MainActor.run { }` 包装移除（Task 闭包已通过 `@MainActor` View 状态继承隔离）。`LocalNotificationManager` / `PluginExecutor` 的 MainActor.run 保留（这些类本身非 `@MainActor`）。
+
+### Changed — 版本号
+
+- **版本号**: `version.properties` / `project.yml`（3 个 target）/ `Info.plist` 同步 4.5.0 → 4.6.0 / build 35 → 36（基于远程 v4.5.0 递增，本版本为 iOS 26 PR 修复 + Swift/SwiftUI 审计改进）。
+- **README 修订**: `ios/README.md` 关键配置表与「最低部署目标」小节更新为 iOS 18.0 基线 + Liquid Glass iOS 26 增量特性描述；Xcode 26.0 → 16.0；macOS 26.0 → 14.0；并发检查 minimal → complete；ATS「允许任意加载」→「允许本地网络」；后台模式移除 remote-notification；版本号 2.1.3 (build 1) → 4.6.0 (build 36)；玻璃引擎文件表与组件表反映新增的 `glassTinted` / `glassMorphID` 包装。
+
 ## [4.5.0] - 2026-07-21
 
 ### Added — 折叠屏 + Toolbar + Live Updates + 对比度

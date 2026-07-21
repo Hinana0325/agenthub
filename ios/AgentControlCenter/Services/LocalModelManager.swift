@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 // MARK: - LocalModelManager
 // 对应 Android LocalModelManager — 本地模型发现管理器
@@ -9,11 +10,15 @@ import Observation
 
 /// 本地模型发现管理器
 /// 自动发现局域网或本机运行的 Ollama / LM Studio / llama.cpp 端点
+@MainActor
 @Observable
 final class LocalModelManager {
 
     /// 已发现的本地端点
     var discoveredEndpoints: [DiscoveredEndpoint] = []
+
+    /// SW-M3: 端点探测日志器（网络失败是预期行为，记 debug；JSON 解析失败记 warning）
+    private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "LocalModelManager")
 
     /// 是否正在扫描中
     var isScanning: Bool = false
@@ -43,7 +48,12 @@ final class LocalModelManager {
 
         await withTaskGroup(of: DiscoveredEndpoint?.self) { group in
             for endpoint in Self.defaultEndpoints {
-                group.addTask {
+                // [weak self] 避免循环引用：LocalModelManager 是 @MainActor 类，
+                // 若扫描期间被释放（虽然实际不会，因为 AppState 持有），闭包不会延长其生命周期。
+                // fetchModels 标记为 nonisolated，可在 group.addTask（非 MainActor 上下文）中直接调用，
+                // 无需 await 跨隔离跳转。
+                group.addTask { [weak self] in
+                    guard let self else { return nil }
                     let models = await self.fetchModels(from: endpoint.url, type: endpoint.type)
                     // 仅当成功获取到至少一个模型时才认为端点可用
                     guard !models.isEmpty else { return nil }
@@ -70,7 +80,9 @@ final class LocalModelManager {
     // MARK: - 模型获取路由
 
     /// 根据端点类型路由到对应 API 获取模型列表
-    private func fetchModels(from url: String, type: DiscoveredEndpoint.EndpointType) async -> [LocalModel] {
+    ///
+    /// `nonisolated`：纯 URL 抓取，不访问实例状态，可从任意 actor 调用。
+    private nonisolated func fetchModels(from url: String, type: DiscoveredEndpoint.EndpointType) async -> [LocalModel] {
         switch type {
         case .ollama:
             return await fetchOllamaModels(from: url)
@@ -89,7 +101,7 @@ final class LocalModelManager {
     /// ```json
     /// { "models": [{ "name": "llama3:8b", "size": 4661224676 }] }
     /// ```
-    private func fetchOllamaModels(from url: String) async -> [LocalModel] {
+    private nonisolated func fetchOllamaModels(from url: String) async -> [LocalModel] {
         guard let url = URL(string: "\(url)/api/tags") else { return [] }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -103,10 +115,15 @@ final class LocalModelManager {
             }
         }
 
-        guard let resp = try? JSONDecoder().decode(OllamaResponse.self, from: data),
-              let models = resp.models else { return [] }
-
-        return models.map { LocalModel(id: $0.name, name: $0.name, size: formatSize($0.size)) }
+        // SW-M3: 网络层成功但 JSON 解析失败，说明服务返回了非预期格式，应记录
+        do {
+            let resp = try JSONDecoder().decode(OllamaResponse.self, from: data)
+            guard let models = resp.models else { return [] }
+            return models.map { LocalModel(id: $0.name, name: $0.name, size: Self.formatSize($0.size)) }
+        } catch {
+            Self.logger.warning("fetchOllamaModels: 响应解析失败 (\(url.absoluteString)): \(error.localizedDescription)")
+            return []
+        }
     }
 
     // MARK: - LM Studio
@@ -117,7 +134,7 @@ final class LocalModelManager {
     /// ```json
     /// { "data": [{ "id": "meta-llama/Llama-3-8B-Instruct-q4" }] }
     /// ```
-    private func fetchLmStudioModels(from url: String) async -> [LocalModel] {
+    private nonisolated func fetchLmStudioModels(from url: String) async -> [LocalModel] {
         guard let url = URL(string: "\(url)/v1/models") else { return [] }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -130,10 +147,15 @@ final class LocalModelManager {
             }
         }
 
-        guard let resp = try? JSONDecoder().decode(LmStudioResponse.self, from: data),
-              let models = resp.data else { return [] }
-
-        return models.map { LocalModel(id: $0.id, name: $0.id, size: nil) }
+        // SW-M3: 网络层成功但 JSON 解析失败，应记录
+        do {
+            let resp = try JSONDecoder().decode(LmStudioResponse.self, from: data)
+            guard let models = resp.data else { return [] }
+            return models.map { LocalModel(id: $0.id, name: $0.id, size: nil) }
+        } catch {
+            Self.logger.warning("fetchLmStudioModels: 响应解析失败 (\(url.absoluteString)): \(error.localizedDescription)")
+            return []
+        }
     }
 
     // MARK: - llama.cpp
@@ -142,7 +164,7 @@ final class LocalModelManager {
     ///
     /// llama.cpp 的 /health 端点不返回模型列表，仅用于确认服务可用性。
     /// 成功时返回一个占位模型条目，表示服务已就绪。
-    private func fetchLlamaCppModels(from url: String) async -> [LocalModel] {
+    private nonisolated func fetchLlamaCppModels(from url: String) async -> [LocalModel] {
         guard let url = URL(string: "\(url)/health") else { return [] }
         guard let (_, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
@@ -155,7 +177,7 @@ final class LocalModelManager {
     /// 将字节数格式化为人类可读的 GB 字符串
     /// - Parameter bytes: 文件大小（字节数），nil 时返回 nil
     /// - Returns: 格式化后的字符串，如 "4.3 GB"
-    private func formatSize(_ bytes: Int64?) -> String? {
+    private static func formatSize(_ bytes: Int64?) -> String? {
         guard let bytes else { return nil }
         let gb = Double(bytes) / 1_073_741_824.0
         return String(format: "%.1f GB", gb)

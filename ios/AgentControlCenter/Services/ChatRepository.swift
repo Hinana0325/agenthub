@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 // MARK: - 类型别名
 
@@ -35,8 +36,8 @@ struct ChatBackup: Codable {
     ///   - messages: 消息列表
     init(session: ChatSession, messages: [ChatMessage]) {
         self.version = "1.0"
-        let formatter = ISO8601DateFormatter()
-        self.exportedAt = formatter.string(from: Date())
+        // SW-M4: 使用现代 .iso8601 FormatStyle 替代 ISO8601DateFormatter
+        self.exportedAt = Date().formatted(.iso8601)
         self.session = session
         self.messages = messages
     }
@@ -80,6 +81,9 @@ final class ChatRepository {
 
     /// 当前已加载的会话列表（从磁盘读取后缓存在内存中）
     private(set) var loadedSessions: [ChatSession] = []
+
+    /// SW-M3: 统一日志器，便于在 Console.app 中按 subsystem 筛选
+    private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "ChatRepository")
 
     // MARK: - 路径计算
 
@@ -149,20 +153,34 @@ final class ChatRepository {
     /// 若索引文件不存在或解析失败，返回空数组。
     /// - Returns: 会话列表（按 `updatedAt` 降序排列）
     func loadSessions() -> [ChatSession] {
+        // SW-M3: 文件不存在视为首次运行，静默返回空数组；解码失败需记录
         guard let data = try? Data(contentsOf: sessionsFileURL) else {
             return []
         }
         let decoder = JSONDecoder()
-        let sessions = (try? decoder.decode([ChatSession].self, from: data)) ?? []
-        return sessions.sorted { $0.updatedAt > $1.updatedAt }
+        do {
+            let sessions = try decoder.decode([ChatSession].self, from: data)
+            return sessions.sorted { $0.updatedAt > $1.updatedAt }
+        } catch {
+            Self.logger.warning("loadSessions: 解码会话索引失败: \(error.localizedDescription)")
+            return []
+        }
     }
 
     /// 将会话列表写入磁盘索引文件
     private func saveSessionsToDisk(_ sessions: [ChatSession]) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(sessions) else { return }
-        try? data.write(to: sessionsFileURL, options: .atomic)
+        do {
+            let data = try encoder.encode(sessions)
+            do {
+                try data.write(to: sessionsFileURL, options: .atomic)
+            } catch {
+                Self.logger.error("saveSessionsToDisk: 写入索引文件失败: \(error.localizedDescription)")
+            }
+        } catch {
+            Self.logger.error("saveSessionsToDisk: 编码会话列表失败: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - 消息持久化
@@ -184,9 +202,17 @@ final class ChatRepository {
     func saveMessages(_ messages: [ChatMessage], forSessionId sessionId: String) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(messages) else { return }
-        let url = messagesFileURL(forSessionId: sessionId)
-        try? data.write(to: url, options: .atomic)
+        do {
+            let data = try encoder.encode(messages)
+            let url = messagesFileURL(forSessionId: sessionId)
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                Self.logger.error("saveMessages: 写入会话 \(sessionId) 消息文件失败: \(error.localizedDescription)")
+            }
+        } catch {
+            Self.logger.error("saveMessages: 编码会话 \(sessionId) 消息失败: \(error.localizedDescription)")
+        }
     }
 
     /// 从磁盘加载指定会话的全部消息。
@@ -196,12 +222,18 @@ final class ChatRepository {
     /// - Returns: 消息列表（按 `timestamp` 升序排列）
     func loadMessages(sessionId: String) -> [ChatMessage] {
         let url = messagesFileURL(forSessionId: sessionId)
+        // SW-M3: 文件不存在视为新会话，静默返回空；解码失败需记录
         guard let data = try? Data(contentsOf: url) else {
             return []
         }
         let decoder = JSONDecoder()
-        let messages = (try? decoder.decode([ChatMessage].self, from: data)) ?? []
-        return messages.sorted { $0.timestamp < $1.timestamp }
+        do {
+            let messages = try decoder.decode([ChatMessage].self, from: data)
+            return messages.sorted { $0.timestamp < $1.timestamp }
+        } catch {
+            Self.logger.warning("loadMessages: 解码会话 \(sessionId) 消息失败: \(error.localizedDescription)")
+            return []
+        }
     }
 
     // MARK: - 删除
@@ -243,7 +275,14 @@ final class ChatRepository {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(backup) else { return nil }
+        // SW-M3: 编码失败与写入失败均记录日志，便于排查「导出无文件」类问题
+        let data: Data
+        do {
+            data = try encoder.encode(backup)
+        } catch {
+            Self.logger.error("exportSession: 编码备份失败 (\(session.id)): \(error.localizedDescription)")
+            return nil
+        }
 
         let timestamp = Int(Date().timeIntervalSince1970)
         let filename = "\(session.id)_\(timestamp).json"
@@ -252,6 +291,7 @@ final class ChatRepository {
             try data.write(to: fileURL, options: .atomic)
             return fileURL
         } catch {
+            Self.logger.error("exportSession: 写入导出文件失败 (\(session.id)): \(error.localizedDescription)")
             return nil
         }
     }
@@ -278,21 +318,25 @@ final class ChatRepository {
         }
 
         guard let data = try? Data(contentsOf: url) else {
+            Self.logger.warning("importSession: 读取导入文件失败: \(url.path)")
             return nil
         }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        guard let backup = try? decoder.decode(ChatBackup.self, from: data) else {
+        do {
+            let backup = try decoder.decode(ChatBackup.self, from: data)
+            return persistImportedBackup(backup)
+        } catch {
+            Self.logger.warning("importSession: 解码备份文件失败: \(error.localizedDescription)")
             return nil
         }
+    }
 
-        // 写入会话索引
+    /// 将已解析的备份结构写入本地存储（从 importSession 抽出，便于复用）
+    private func persistImportedBackup(_ backup: ChatBackup) -> ChatSession {
         saveSession(backup.session)
-
-        // 写入消息
         saveMessages(backup.messages, forSessionId: backup.session.id)
-
         return backup.session
     }
 

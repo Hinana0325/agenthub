@@ -69,8 +69,11 @@ struct VoiceChatView: View {
                     .disabled(messages.isEmpty)
                 }
             }
-            .alert("提示", isPresented: .constant(errorMessage != nil)) {
-                Button("确定", role: .cancel) { errorMessage = nil }
+            .alert(String(localized: "common.notice"), isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button(String(localized: "common.ok"), role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "")
             }
@@ -170,10 +173,17 @@ struct VoiceChatView: View {
                 }
 
                 // 主按钮底色（液态玻璃 + 状态色 tint）
+                // HIG (iOS 26 Liquid Glass)：不透明 Circle 会遮挡玻璃采样，
+                // 改为对 Button 整体应用 glassEffect(.tint(stateColor))，
+                // 玻璃会保留 lensing 效果并叠加状态色
+                // R4: 改用 glassTinted 包装，iOS 18 走 ultraThinMaterial + tint 色块回退
                 Circle()
-                    .fill(appState.voiceChatManager.isRecording ? AppTheme.errorColor : AppTheme.primaryColor)
+                    .fill(Color.clear)
                     .frame(width: 80, height: 80)
-                    .glassFloating()
+                    .glassTinted(
+                        appState.voiceChatManager.isRecording ? AppTheme.errorColor : AppTheme.primaryColor,
+                        in: GlassTokens.circleShape
+                    )
 
                 // 内部图标
                 Image(systemName: appState.voiceChatManager.isRecording ? "stop.fill" : "mic.fill")
@@ -312,7 +322,7 @@ struct VoiceChatView: View {
         durationTimer = nil
         guard let url = appState.voiceChatManager.stopRecording(),
               FileManager.default.fileExists(atPath: url.path) else {
-            errorMessage = "录音文件无效，请重试。"
+            errorMessage = String(localized: "error.recording.invalid")
             currentDuration = 0
             return
         }
@@ -395,10 +405,12 @@ private struct VoiceMessageRow: View {
                 togglePlayback()
             } label: {
                 Image(systemName: isCurrentPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 36))
+                    .font(.system(size: 44))
                     .foregroundStyle(AppTheme.primaryColor)
+                    .frame(width: 44, height: 44)  // HIG：触控目标 ≥ 44×44pt
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(isCurrentPlaying ? "暂停" : "播放")
 
             // 迷你波形 + 时长 + 进度
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {

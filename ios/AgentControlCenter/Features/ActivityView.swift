@@ -102,7 +102,8 @@ struct ActivityView: View {
                 }
             }
         }
-        .onAppear {
+        // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
+        .task {
             generateSampleActivities()
         }
     }

@@ -22,7 +22,10 @@ struct SettingsView: View {
 
     // ============ 端到端加密 ============
     @AppStorage("encryptionEnabled") private var encryptionEnabled: Bool = false
-    @AppStorage("encryptionPassphrase") private var passphrase: String = ""
+    // 出于安全考虑，passphrase 不再存 UserDefaults（明文 plist），
+    // 改为 Keychain 存储（ThisDeviceOnly，不随 iCloud 备份迁移）。
+    // 用 @State 持有内存副本，onChange 时写回 Keychain。
+    @State private var passphrase: String = ""
     @State private var showPassphrase: Bool = false
 
     // ============ 数据管理 ============
@@ -57,8 +60,8 @@ struct SettingsView: View {
                 dangerZoneSection
             }
             .navigationTitle("设置")
-            // 根据用户主题偏好设置 preferredColorScheme
-            .preferredColorScheme(preferredColorSchemeBinding)
+            // HIG：preferredColorScheme 应只在根视图 ContentView 设置一次。
+            // 在子视图重复设置会导致 sheet 切换时闪烁，并与其他场景的配色冲突。
             // 清除数据二次确认
             .alert("确认清除所有数据?", isPresented: $showingClearConfirm) {
                 Button("取消", role: .cancel) {}
@@ -82,6 +85,20 @@ struct SettingsView: View {
             ) { result in
                 handleImportResult(result)
             }
+            // SW-M2: 使用 .task 替代 .onAppear — Keychain 读取虽是同步 API，
+            // 但 .task 由 SwiftUI 管理生命周期，统一所有视图数据加载入口
+            .task {
+                // 从 Keychain 加载 E2E passphrase 到内存 @State
+                passphrase = KeychainManager.loadPassphrase()
+            }
+            .onChange(of: passphrase) { _, newValue in
+                // 写回 Keychain。空串视为清除。
+                if newValue.isEmpty {
+                    KeychainManager.clearPassphrase()
+                } else {
+                    KeychainManager.savePassphrase(newValue)
+                }
+            }
             // 剪贴板复制提示
             .overlay {
                 if showKeyCopiedToast {
@@ -99,14 +116,7 @@ struct SettingsView: View {
 
     // MARK: - 计算属性
 
-    /// 将主题偏好映射为 ColorScheme，用于 .preferredColorScheme()
-    private var preferredColorSchemeBinding: ColorScheme? {
-        switch theme {
-        case .light: return .light
-        case .dark: return .dark
-        case .system: return nil
-        }
-    }
+    // preferredColorSchemeBinding 已移除：preferredColorScheme 统一由根视图 ContentView 设置
 
     // MARK: - 功能分区
 
@@ -187,6 +197,7 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.borderless)
+                    .accessibilityLabel(showPassphrase ? "隐藏密码" : "显示密码")
                 }
 
                 // 操作按钮行
@@ -313,10 +324,14 @@ struct SettingsView: View {
 
     // MARK: - 加密操作
 
-    /// 复制密码短语到剪贴板
+    /// 复制密码短语到剪贴板，30 秒后自动失效（防止永久驻留被其他 app 读取）
     private func copyPassphraseToClipboard() {
         guard !passphrase.isEmpty else { return }
-        UIPasteboard.general.string = passphrase
+        let pb = UIPasteboard.general
+        pb.setItems(
+            [[UIPasteboard.typeAutomatic: passphrase]],
+            options: [.expirationDate: Date().addingTimeInterval(30)]
+        )
         showKeyCopiedToast = true
     }
 
@@ -325,12 +340,21 @@ struct SettingsView: View {
         passphrase = ""
     }
 
-    /// 从剪贴板导入密码短语
+    /// 从剪贴板导入密码短语。仅接受长度 ≥ 8 的非空字符串，避免误把无关内容设为密钥。
     private func importPassphraseFromClipboard() {
-        guard let clipboardString = UIPasteboard.general.string, !clipboardString.isEmpty else {
+        guard let clipboardString = UIPasteboard.general.string,
+              !clipboardString.isEmpty else {
+            return
+        }
+        // 长度校验，防止用户误把短字符串或纯空格设为 E2E 主密钥
+        guard clipboardString.count >= 8 else {
+            importAlertMessage = "剪贴板内容过短，密码短语至少 8 字符"
+            showImportAlert = true
             return
         }
         passphrase = clipboardString
+        // 立即清除剪贴板，防止后续被其他 app 读取
+        UIPasteboard.general.items = []
     }
 
     // MARK: - 数据导出

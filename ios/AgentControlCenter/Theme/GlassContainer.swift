@@ -38,6 +38,13 @@ struct GlassContainer<Content: View>: View {
     }
 
     var body: some View {
-        GlassEffectContainer(spacing: spacing, content: content)
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: spacing, content: content)
+        } else {
+            // R3: iOS 18 回退 —— 无 Liquid Glass 容器概念，
+            // 直接渲染内容。子视图若调用 glassPill/glassFloating 等扩展，
+            // 会自动走各自的 ultraThinMaterial 回退分支。
+            content()
+        }
     }
 }

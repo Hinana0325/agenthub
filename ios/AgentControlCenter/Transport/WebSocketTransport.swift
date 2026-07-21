@@ -24,6 +24,9 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     /// 事件流续期
     private var eventContinuation: AsyncStream<AgentEvent>.Continuation?
 
+    /// continuation 锁，保护 eventContinuation 的读写（emit / shutdown / onTermination）
+    private let continuationLock = NSLock()
+
     /// 重连状态
     private var isConnecting = false
     private var shouldReconnect = false
@@ -35,7 +38,19 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
 
     lazy var events: AsyncStream<AgentEvent> = {
         AsyncStream { continuation in
+            self.continuationLock.lock()
             self.eventContinuation = continuation
+            self.continuationLock.unlock()
+            // 消费者取消迭代时（视图消失 / Task 取消 / finish() 调用）触发，
+            // 清空存储的 continuation，避免后续 emit() 写入已结束的流。
+            // 使用 [weak self] 避免循环引用：
+            //   transport -> eventContinuation -> onTermination closure -> transport
+            continuation.onTermination = { @Sendable [weak self] _ in
+                guard let self else { return }
+                self.continuationLock.lock()
+                self.eventContinuation = nil
+                self.continuationLock.unlock()
+            }
         }
     }()
 
@@ -83,8 +98,9 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         wsUrl += "/ws"
 
-        guard let url = URL(string: wsUrl) else {
-            emit(.error(message: "Invalid WebSocket URL: \(wsUrl)"))
+        // SSRF 校验：禁止 file:// / data:// / 链路本地 / 元数据服务等危险目标
+        guard let url = URLValidator.validate(wsUrl, allowLocalhost: true) else {
+            emit(.error(message: "服务地址格式错误或不被允许"))
             return
         }
 
@@ -147,9 +163,13 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     // MARK: - Receive Loop
 
     private func receiveLoop() async {
-        while shouldReconnect && connectionState.isConnected {
+        // 每次循环都检查 `Task.isCancelled`，确保外部 cancel() 能立即终止 receiveLoop，
+        // 避免在用户切换会话或退出页面后仍在后台消费 WebSocket 消息。
+        while !Task.isCancelled && shouldReconnect && connectionState.isConnected {
             do {
                 let message = try await webSocketTask?.receive()
+                // receive 返回后再次检查取消标志，避免在已取消的任务中处理消息
+                if Task.isCancelled { break }
                 switch message {
                 case .data(let data):
                     handleData(data)
@@ -161,7 +181,7 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
                     break
                 }
             } catch {
-                if webSocketTask == nil { break }  // transport 已关闭，退出循环
+                if Task.isCancelled || webSocketTask == nil { break }  // 任务已取消或 transport 已关闭
                 await handleDisconnect(reason: error.localizedDescription)
                 break
             }
@@ -176,10 +196,14 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
             return
         }
 
-        // E2E 加密 (如果启用)
+        // E2E 加密 (如果启用)。加密失败时 emit error 且绝不发送明文，避免静默裸传。
         let actualContent: String
         if let e2eKey = e2eKey, !e2eKey.isEmpty {
-            actualContent = CryptoManager.encrypt(content, passphrase: e2eKey)
+            guard let encrypted = CryptoManager.encrypt(content, passphrase: e2eKey) else {
+                emit(.error(message: String(localized: "error.e2e.encrypt")))
+                return
+            }
+            actualContent = encrypted
         } else {
             actualContent = content
         }
@@ -280,12 +304,16 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
 
     func shutdown() {
         disconnect()
+        continuationLock.lock()
         eventContinuation?.finish()
+        continuationLock.unlock()
     }
 
     // MARK: - Event Emission
 
     private func emit(_ event: AgentEvent) {
+        continuationLock.lock()
+        defer { continuationLock.unlock() }
         eventContinuation?.yield(event)
     }
 }

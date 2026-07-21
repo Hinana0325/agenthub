@@ -6,6 +6,7 @@ import Observation
 ///
 /// iOS 端仅检查版本号，不执行 APK 下载（App Store 负责分发）。
 /// 检测到新版本后，UI 层可引导用户前往 App Store 或 GitHub Release 页面。
+@MainActor
 @Observable
 final class UpdateManager {
 

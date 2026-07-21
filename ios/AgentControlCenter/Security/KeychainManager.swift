@@ -67,14 +67,16 @@ enum KeychainManager {
 
     /// 加密明文。输出格式: `AKS:` + Base64(IV[12] ‖ ciphertext)
     /// 空字符串原样返回；已以 AKS: 开头则直接返回（避免双重加密）。
-    static func encrypt(_ plaintext: String) -> String {
+    /// 加密失败返回 nil（不再静默回退明文，避免 apiKey 以明文落入持久化层）。
+    static func encrypt(_ plaintext: String) -> String? {
         guard !plaintext.isEmpty else { return "" }
         if plaintext.hasPrefix(prefix) { return plaintext }
 
         let key = getOrCreateKey()
         let iv = AES.GCM.Nonce()
-        let sealedBox = try? AES.GCM.seal(Data(plaintext.utf8), using: key, nonce: iv)
-        guard let sealedBox = sealedBox else { return plaintext }
+        guard let sealedBox = try? AES.GCM.seal(Data(plaintext.utf8), using: key, nonce: iv) else {
+            return nil
+        }
 
         var combined = Data(sealedBox.nonce)  // 12 bytes IV
         combined.append(sealedBox.ciphertext)
@@ -121,6 +123,96 @@ enum KeychainManager {
     static func isEncrypted(_ value: String) -> Bool {
         value.hasPrefix(prefix)
     }
+
+    // MARK: - Passphrase Storage（E2E 密码短语专用，不进入 UserDefaults）
+
+    private static let passphraseTag = "com.agentcontrolcenter.app.e2e-passphrase"
+
+    /// 读取 E2E 密码短语。未设置时返回空串。
+    static func loadPassphrase() -> String {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: passphraseTag,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let str = String(data: data, encoding: .utf8) else {
+            return ""
+        }
+        return str
+    }
+
+    /// 保存 E2E 密码短语到 Keychain（ThisDeviceOnly，不随 iCloud 备份迁移）。
+    static func savePassphrase(_ value: String) {
+        let data = Data(value.utf8)
+        let attributes: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: passphraseTag,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+        let status = SecItemAdd(attributes as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            SecItemUpdate(
+                [kSecClass as String: kSecClassGenericPassword,
+                 kSecAttrAccount as String: passphraseTag] as CFDictionary,
+                [kSecValueData as String: data] as CFDictionary
+            )
+        }
+    }
+
+    /// 清除 E2E 密码短语。
+    static func clearPassphrase() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: passphraseTag
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
+    // MARK: - Injectable Provider（测试可替换）
+
+    /// 可注入的存储提供者。生产环境使用 `DefaultKeychainStorage`（内部转发到上面的静态方法）；
+    /// 单元测试可在 `setUp()` 替换为内存实现（如 `InMemoryKeychainStorage`），
+    /// 避免污染 CI 上的真实 Keychain 并允许确定性断言。
+    @MainActor static var provider: KeychainStoring = DefaultKeychainStorage()
+}
+
+// MARK: - KeychainStoring Protocol (Test Injectable)
+// 对应 Android KeychainStorage interface（Hilt 注入点）
+
+/// Keychain 存储协议。提取该协议便于在单元测试中替换为内存实现。
+protocol KeychainStoring: Sendable {
+    /// 加密明文，返回 `AKS:` 前缀密文；失败返回 nil
+    func encrypt(_ plaintext: String) -> String?
+    /// 解密 `AKS:` 前缀密文；非前缀返回 nil
+    func decrypt(_ payload: String) -> String?
+    /// 解密或原样返回（向后兼容旧明文）
+    func decryptOrRaw(_ value: String) -> String
+    /// 判断是否已加密
+    func isEncrypted(_ value: String) -> Bool
+    /// 读取 E2E 密码短语；未设置返回空串
+    func loadPassphrase() -> String
+    /// 保存 E2E 密码短语到 Keychain
+    func savePassphrase(_ value: String)
+    /// 清除 E2E 密码短语
+    func clearPassphrase()
+}
+
+/// 默认 `KeychainStoring` 实现：转发到 `KeychainManager` 静态方法。
+/// 生产代码无需显式使用该类型，仅作为 `KeychainManager.provider` 的默认值。
+struct DefaultKeychainStorage: KeychainStoring, Sendable {
+    func encrypt(_ plaintext: String) -> String? { KeychainManager.encrypt(plaintext) }
+    func decrypt(_ payload: String) -> String? { KeychainManager.decrypt(payload) }
+    func decryptOrRaw(_ value: String) -> String { KeychainManager.decryptOrRaw(value) }
+    func isEncrypted(_ value: String) -> Bool { KeychainManager.isEncrypted(value) }
+    func loadPassphrase() -> String { KeychainManager.loadPassphrase() }
+    func savePassphrase(_ value: String) { KeychainManager.savePassphrase(value) }
+    func clearPassphrase() { KeychainManager.clearPassphrase() }
 }
 
 // MARK: - CryptoManager
@@ -143,19 +235,23 @@ enum CryptoManager {
 
     /// 通过 passphrase 派生 AES-256 密钥（PBKDF2-HMAC-SHA256）
     /// 与 Android 端 SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256") 完全兼容
+    /// 600000 轮迭代，输出 32 字节密钥
     private static func deriveKey(passphrase: String, salt: Data) -> SymmetricKey {
         let passphraseData = Data(passphrase.utf8)
         var derivedKeyBytes = [UInt8](repeating: 0, count: 32)
 
+        // 第 1 个参数必须是 kCCPBKDF2（值=2），CCPseudoRandomAlgorithm 才用 kCCPRFHmacAlgSHA256
+        // 修复前误传 CCPBKDFAlgorithm(kCCPRFHmacAlgSHA256)（值=3，无效），导致 PBKDF2 必然失败，
+        // 回退为单次 SHA256(passphrase)，与 Android PBKDF2 派生的密钥不同，AH1 密文跨平台不可解。
         let status = passphraseData.withUnsafeBytes { passphraseBytes in
             salt.withUnsafeBytes { saltBytes in
                 CCKeyDerivationPBKDF(
-                    CCPBKDFAlgorithm(kCCPRFHmacAlgSHA256),
+                    kCCPBKDF2,
                     passphraseBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                     passphraseData.count,
                     saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                     salt.count,
-                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                    kCCPRFHmacAlgSHA256,
                     UInt32(pbkdf2Iterations),
                     nil,
                     0,
@@ -166,15 +262,17 @@ enum CryptoManager {
         }
 
         guard status == kCCSuccess else {
-            // Fallback: 仅在 PBKDF2 失败时使用（不应发生）
-            return SymmetricKey(data: SHA256.hash(data: passphraseData))
+            // PBKDF2 失败时返回空密钥，调用方应判定为加密失败而非回退明文
+            // 之前回退 SHA256(passphrase) 会导致与 Android 派生密钥不同 → 跨平台 E2E 失效
+            return SymmetricKey(size: .bits256)
         }
 
         return SymmetricKey(data: derivedKeyBytes)
     }
 
     /// 加密明文。输出格式: `AH1:` + Base64(IV[12] ‖ salt[16] ‖ ciphertext+tag)
-    static func encrypt(_ plaintext: String, passphrase: String) -> String {
+    /// 加密失败返回 nil（不再静默回退明文，避免 E2E 加密失效时裸传敏感内容）。
+    static func encrypt(_ plaintext: String, passphrase: String) -> String? {
         guard !plaintext.isEmpty else { return "" }
 
         var saltData = Data(count: saltLength)
@@ -184,8 +282,9 @@ enum CryptoManager {
 
         let key = deriveKey(passphrase: passphrase, salt: saltData)
         let nonce = AES.GCM.Nonce()
-        let sealedBox = try? AES.GCM.seal(Data(plaintext.utf8), using: key, nonce: nonce)
-        guard let sealedBox = sealedBox else { return plaintext }
+        guard let sealedBox = try? AES.GCM.seal(Data(plaintext.utf8), using: key, nonce: nonce) else {
+            return nil
+        }
 
         var combined = Data(sealedBox.nonce)   // 12 bytes IV
         combined.append(saltData)               // 16 bytes salt

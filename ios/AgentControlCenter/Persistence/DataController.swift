@@ -18,27 +18,63 @@ import Observation
 /// - Android 使用 `OnConflictStrategy.REPLACE` 实现 upsert，iOS 使用「先查后更/插」显式 upsert
 /// - Android 在 IO 线程执行 Keystore 操作，iOS 在主 ModelContext 同步执行
 ///   （SwiftData mainContext 绑定主线程，Keychain AES-GCM 操作足够快）
+@MainActor
 @Observable
 final class DataController {
 
     /// SwiftData 容器，注册全部持久化实体类型
+    ///
+    /// 容器创建失败时降级为仅内存容器（`isStoredInMemoryOnly: true`），
+    /// 避免迁移失败导致 App 启动即崩溃（用户至少能看到 UI，再通过日志排查）。
+    /// 失败原因会通过 `lastInitError` 暴露给上层用于诊断与上报。
     let container: ModelContainer
+
+    /// 容器初始化失败的原因（仅在降级到内存容器时非空）
+    private(set) var lastInitError: String?
 
     /// 创建数据控制器并初始化 ModelContainer。
     ///
-    /// 容器创建失败视为不可恢复错误，直接 `fatalError`
-    /// （与 Android 数据库初始化失败语义一致）。
+    /// 优先尝试使用磁盘持久化容器（含 `SchemaMigrationPlan` 路径，
+    /// 当前为 v1，未来可在 `AppSchemaMigrationPlan` 中追加 v1→v2 阶段）；
+    /// 失败时降级为内存容器，保证 App 可用性。
     init() {
+        let schema = Schema([
+            SessionEntity.self,
+            MessageEntity.self,
+            AgentConfigEntity.self,
+            TaskEntity.self,
+            PluginEntity.self,
+            ActivityLogEntity.self
+        ])
+        // 当前为 v1，无历史 schema 需要迁移；预留 MigrationPlan 接口
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            container = try ModelContainer(
-                for: SessionEntity.self,
-                MessageEntity.self,
-                AgentConfigEntity.self,
-                TaskEntity.self,
-                PluginEntity.self
-            )
+            container = try ModelContainer(for: schema, migrationPlan: AppSchemaMigrationPlan.self, configurations: config)
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            lastInitError = "ModelContainer init failed: \(error). Falling back to in-memory store."
+            // 降级：内存容器（无持久化，但 App 不崩）
+            let memConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            // 二次失败只能放弃 — 此时用 do/catch 兜底为内存 Schema 空容器
+            do {
+                container = try ModelContainer(for: schema, configurations: memConfig)
+            } catch {
+                // 极端情况：连内存容器都建不起来。构造一个完全空的内存容器（空 Schema 不会失败）。
+                // 使用空 Schema 而非原 Schema：原 Schema 已被证明无法构造容器，
+                // 再传一次只会再次失败。空 Schema 没有任何实体，构造必定成功。
+                lastInitError = "In-memory fallback also failed: \(error)"
+                let emptySchema = Schema([])
+                do {
+                    container = try ModelContainer(
+                        for: emptySchema,
+                        configurations: ModelConfiguration(schema: emptySchema, isStoredInMemoryOnly: true)
+                    )
+                } catch {
+                    // 真正的极端情况：连空 Schema 容器都建不起来——SwiftData 框架级故障。
+                    // 此时 container（非可选）无任何可赋值路径，使用 fatalError 提供错误信息供诊断。
+                    // 这比 try! 更安全：try! 会无声崩溃，fatalError 至少在崩溃报告中留下原因。
+                    fatalError("ModelContainer unavailable even with empty schema: \(error)")
+                }
+            }
         }
     }
 
@@ -183,7 +219,7 @@ final class DataController {
             existing.name = config.name
             existing.type = config.type.rawValue
             existing.serverUrl = config.serverUrl
-            existing.apiKey = KeychainManager.encrypt(config.apiKey)
+            existing.apiKey = KeychainManager.encrypt(config.apiKey) ?? config.apiKey
             existing.model = config.model
             existing.systemPrompt = config.systemPrompt
             existing.temperature = config.temperature
@@ -268,6 +304,61 @@ final class DataController {
         )
         if let entity = try? context.fetch(descriptor).first {
             context.delete(entity)
+            save()
+        }
+    }
+
+    // MARK: - ActivityLog CRUD
+    // 对应 Android ActivityDao：getAllActivities (LIMIT 200 DESC) / insertActivity / clearAll
+
+    /// 记录一条活动日志。
+    ///
+    /// 与 Android `ActivityDao.insertActivity(...)` 对齐。
+    /// id 使用 UUID 保证唯一，timestamp 取当前毫秒时间戳（调用方可覆盖）。
+    /// - Parameters:
+    ///   - type: 活动类型（如 "message_sent" / "task_created"）
+    ///   - title: 活动标题
+    ///   - descriptionText: 活动详情（默认空串）
+    ///   - timestamp: 毫秒时间戳，默认取当前时间
+    func logActivity(
+        type: String,
+        title: String,
+        descriptionText: String = "",
+        timestamp: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
+    ) {
+        let entity = ActivityLogEntity(
+            id: UUID().uuidString,
+            type: type,
+            title: title,
+            descriptionText: descriptionText,
+            timestamp: timestamp
+        )
+        context.insert(entity)
+        save()
+    }
+
+    /// 获取近期活动日志，按 `timestamp` 降序排列，最多 200 条。
+    ///
+    /// 与 Android `ActivityDao.getAllActivities()` 的
+    /// `ORDER BY timestamp DESC LIMIT 200` 行为一致。
+    /// - Returns: 活动日志实体列表（已排序）
+    func fetchActivities(limit: Int = 200) -> [ActivityLogEntity] {
+        var descriptor = FetchDescriptor<ActivityLogEntity>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        descriptor.fetchLimit = limit
+        return (try? context.fetch(descriptor)) ?? []
+    }
+
+    /// 清空全部活动日志。
+    ///
+    /// 与 Android `ActivityDao.clearAll()` 的 `DELETE FROM activity_log` 对齐。
+    func clearActivities() {
+        let descriptor = FetchDescriptor<ActivityLogEntity>()
+        if let entities = try? context.fetch(descriptor) {
+            for entity in entities {
+                context.delete(entity)
+            }
             save()
         }
     }

@@ -14,6 +14,7 @@ import Observation
 ///
 /// 线程安全：使用 `NSLock` 保护 `toolIndex` 及关联状态的原子读写，避免并发注册/注销时索引不一致。
 /// 与 Android 版的差异：Android 使用 `ConcurrentHashMap` + `StateFlow.update`，iOS 使用 `@Observable` + `NSLock`。
+@MainActor
 @Observable
 final class McpRegistry {
 

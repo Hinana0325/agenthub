@@ -27,6 +27,7 @@ import Observation
 /// - `analyticsEnabled` 通过 `UserDefaults` 持久化（与 `@AppStorage` 等效）
 /// - `@Observable` 类无法直接使用 `@AppStorage`（后者依赖 SwiftUI View 生命周期），
 ///   因此使用 `didSet` + `UserDefaults` 实现等效的自动持久化
+@MainActor
 @Observable
 final class AnalyticsManager {
 

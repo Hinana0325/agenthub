@@ -13,8 +13,8 @@ struct ChatView: View {
     @Environment(\.dismiss) private var dismiss
     /// E2E 加密开关
     @AppStorage("encryptionEnabled") private var encryptionEnabled: Bool = false
-    /// E2E 加密密钥
-    @AppStorage("encryptionPassphrase") private var encryptionPassphrase: String = ""
+    /// E2E 加密密钥（从 Keychain 读取，不进入 UserDefaults；视图出现时加载到内存）
+    @State private var encryptionPassphrase: String = ""
     /// 字体大小偏好(P1-4):与设置页共用 @AppStorage 键,注入环境后供 MessageBubble / MarkdownText 使用
     @AppStorage("fontSize") private var fontSize: FontSize = .medium
 
@@ -103,7 +103,11 @@ struct ChatView: View {
                 }
                 // 滚动时交互式收起键盘
                 .scrollDismissesKeyboard(.interactively)
-                .onAppear {
+                // SW-M2: 使用 .task 替代 .onAppear — setupTransport 会启动事件消费 Task，
+                // .task 在视图销毁时自动取消，与 .onDisappear 的 cleanup() 双重保障
+                .task {
+                    // E2E passphrase 从 Keychain 加载到内存，避免持久化于 UserDefaults
+                    encryptionPassphrase = KeychainManager.loadPassphrase()
                     loadMessages()
                     setupTransport()
                     scrollToBottom(proxy: proxy, animated: false)
@@ -143,14 +147,14 @@ struct ChatView: View {
             }
         }
         // 流式错误等场景的错误提示 banner
-        .alert("出错了",
+        .alert(String(localized: "common.error.title"),
                isPresented: Binding(
                    get: { errorMessage != nil },
                    set: { if !$0 { errorMessage = nil } }
                ),
                presenting: errorMessage
         ) { _ in
-            Button("好的", role: .cancel) { errorMessage = nil }
+            Button(String(localized: "common.ok"), role: .cancel) { errorMessage = nil }
         } message: { msg in
             Text(msg)
         }
@@ -202,6 +206,7 @@ struct ChatView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
+                    .accessibilityLabel("清除已选图片")
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.top, AppTheme.Spacing.sm)
@@ -245,18 +250,19 @@ struct ChatView: View {
                     }
 
                 // 语音输入按钮 + 发送/停止按钮：放入同一个 GlassContainer
-                // 使三块玻璃融合为整体，且 send ↔ stop 通过共享 glassEffectID 实现 morph
+                // 使三块玻璃融合为整体，且 send ↔ stop 通过共享 glassMorphID 实现 morph
+                // R4: 改用 glassMorphID 包装，iOS 18 回退为无 morph（仅按钮正常显示）
                 GlassContainer {
                     voiceInputButton
-                        .glassEffectID("voice", in: inputGlassNS)
+                        .glassMorphID("voice", in: inputGlassNS)
 
                     // 发送按钮 / 停止按钮（共享 "action" ID，isWaiting 切换时玻璃形变过渡）
                     if isWaiting {
                         stopButton
-                            .glassEffectID("action", in: inputGlassNS)
+                            .glassMorphID("action", in: inputGlassNS)
                     } else {
                         sendButton
-                            .glassEffectID("action", in: inputGlassNS)
+                            .glassMorphID("action", in: inputGlassNS)
                     }
                 }
             }
@@ -307,6 +313,7 @@ struct ChatView: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
+            .accessibilityLabel("取消回复")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -326,21 +333,27 @@ struct ChatView: View {
     // MARK: - 语音输入按钮
 
     /// 点击后调用 VoiceInputManager 进行语音识别
+    ///
+    /// HIG (iOS 26 Liquid Glass)：
+    /// - 玻璃 tint 通过 `Glass.tint(_:)` 注入颜色，避免在玻璃下垫不透明 Circle 遮挡采样
+    /// - 玻璃直接修饰 Button（不是 label 内部），使 glassEffectID 与效果共享 anchor，触发 send↔stop morph
+    /// - 触控区固定 44×44pt（HIG 最低）
     private var voiceInputButton: some View {
         Button {
             Task { await toggleVoiceInput() }
         } label: {
-            ZStack {
-                Circle()
-                    .fill(voiceManager.state == .listening ? Color.red.opacity(0.2) : Color.clear)
-                    .frame(width: 36, height: 36)
-                Image(systemName: voiceManager.state == .listening ? "mic.fill" : "mic")
-                    .font(.title3)
-                    .foregroundStyle(voiceManager.state == .listening ? .red : AppTheme.primaryColor)
-            }
-            .glassFloating()
+            Image(systemName: voiceManager.state == .listening ? "mic.fill" : "mic")
+                .font(.title3)
+                .foregroundStyle(voiceManager.state == .listening ? .red : AppTheme.primaryColor)
+                .frame(width: 44, height: 44)
         }
         .disabled(isWaiting)
+        // R4: glassTinted 内部 if #available(iOS 26, *) 守卫 .glassEffect/.tint，
+        // iOS 18 走 ultraThinMaterial + tint 色块叠加回退
+        .glassTinted(
+            voiceManager.state == .listening ? Color.red.opacity(0.25) : .clear,
+            in: GlassTokens.circleShape
+        )
         .accessibilityLabel(voiceManager.state == .listening ? "停止语音输入" : "语音输入")
     }
 
@@ -383,14 +396,14 @@ struct ChatView: View {
             Image(systemName: "paperplane.fill")
                 .font(.title3)
                 .foregroundStyle(canSend ? .white : .secondary)
-                .padding(8)
-                .background(
-                    canSend ? AppTheme.primaryColor : Color.gray.opacity(0.3),
-                    in: Circle()
-                )
-                .glassFloating()
+                .frame(width: 44, height: 44)
         }
         .disabled(!canSend)
+        // R4: glassTinted 包装守卫
+        .glassTinted(
+            canSend ? AppTheme.primaryColor : Color.gray.opacity(0.3),
+            in: GlassTokens.circleShape
+        )
         .accessibilityLabel("发送")
     }
 
@@ -404,10 +417,13 @@ struct ChatView: View {
             Image(systemName: "stop.fill")
                 .font(.title3)
                 .foregroundStyle(.white)
-                .padding(8)
-                .background(Color.red, in: Circle())
-                .glassFloating()
+                .frame(width: 44, height: 44)
         }
+        // R4: glassTinted 包装守卫
+        .glassTinted(
+            Color.red,
+            in: GlassTokens.circleShape
+        )
         .accessibilityLabel("停止生成")
     }
 
@@ -606,11 +622,12 @@ struct ChatView: View {
 
     // MARK: - 删除消息
 
-    /// 删除指定消息
+    /// 删除指定消息（同时同步会话消息计数，避免显示与实际数量不一致）
     private func deleteMessage(_ message: Message) {
         HapticFeedback.medium()
         appState.dataController.deleteMessage(id: message.id)
         messages.removeAll { $0.id == message.id }
+        appState.sessionManager.decrementMessageCount(sessionId)
     }
 
     // MARK: - 回复消息
@@ -685,9 +702,9 @@ struct ChatView: View {
             // 持续消费传输层事件流，直到视图退出取消任务
             for await event in t.events {
                 if Task.isCancelled { break }
-                await MainActor.run {
-                    handleEvent(event, sessionId: sid)
-                }
+                // SW-M7: Task 闭包通过 self.appState 访问继承 MainActor 隔离，
+                // 无需 MainActor.run；handleEvent 本身也是 MainActor 隔离的方法
+                handleEvent(event, sessionId: sid)
             }
         }
     }
@@ -816,10 +833,16 @@ struct ChatView: View {
             do {
                 try await transport.sendMessage(sessionId: sessionId, content: text)
             } catch {
-                await MainActor.run {
-                    streamingText = "发送失败: \(error.localizedDescription)"
-                    finalizeAssistantMessage(sessionId: sessionId)
-                }
+                // SW-M7: Task 闭包通过 self.transport 访问 MainActor-isolated 状态，
+                // 闭包本身已隔离到 MainActor，无需 MainActor.run
+                // 发送失败不固化为助手消息：清空流式文本、退出 waiting，
+                // 通过 errorMessage banner 提示用户可重试
+                streamingText = ""
+                isWaiting = false
+                errorMessage = String(
+                    format: NSLocalizedString("error.send.failed", comment: ""),
+                    error.localizedDescription
+                )
             }
         }
     }

@@ -44,10 +44,36 @@ extension AgentTransport {
 // MARK: - Transport Factory
 // 对应 Android TransportFactory
 
-/// 传输层工厂。根据 AgentType 创建对应的 Transport 实例。
-enum TransportFactory {
+/// 传输层工厂协议。提取该协议便于在单元测试中注入 mock 传输，
+/// 避免真实发起网络请求或建立 WebSocket 连接。
+protocol TransportFactorying: Sendable {
+    /// 根据 Agent 类型创建对应的 Transport 实例
+    func create(_ agentType: AgentType) -> AgentTransport
+}
 
+/// 传输层工厂。根据 AgentType 创建对应的 Transport 实例。
+///
+/// 默认通过静态方法 `TransportFactory.create(_:)` 调用，内部转发到 `provider`，
+/// 单元测试可在 `setUp()` 中替换 `TransportFactory.provider` 注入 mock 工厂。
+struct TransportFactory: TransportFactorying, Sendable {
+
+    /// 单例。`provider` 默认指向该实例。
+    static let shared = TransportFactory()
+
+    private init() {}
+
+    /// 静态工厂方法（保持向后兼容的调用方式）。
+    /// 内部转发到 `provider`，使测试可以通过替换 `provider` 注入 mock。
     static func create(_ agentType: AgentType) -> AgentTransport {
+        provider.create(agentType)
+    }
+
+    /// 可注入的工厂提供者。生产环境使用 `TransportFactory.shared`，
+    /// 测试中可在 `setUp()` 替换为 mock 工厂，并在 `tearDown()` 恢复。
+    @MainActor static var provider: TransportFactorying = TransportFactory.shared
+
+    /// 实例方法（协议要求）
+    func create(_ agentType: AgentType) -> AgentTransport {
         switch agentType {
         case .hermes, .openClaw, .openCode:
             return WebSocketTransport()

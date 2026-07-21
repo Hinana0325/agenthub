@@ -26,7 +26,7 @@ enum TaskStatus: String, Codable {
 }
 
 /// 异步任务。与 Chat 的区别：Task 是异步的、可追踪的、可调度的执行单元。
-struct AgentTask: Codable, Identifiable, Equatable {
+struct AgentTask: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var agentId: String
     var sessionId: String? = nil

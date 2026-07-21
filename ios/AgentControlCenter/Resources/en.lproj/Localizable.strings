@@ -175,3 +175,20 @@
 "common.error" = "An error occurred";
 "common.retry" = "Retry";
 "common.noData" = "No Data";
+"common.ok" = "OK";
+"common.notice" = "Notice";
+"common.error.title" = "Error";
+
+/* Error / status messages (Sprint 1-8 ~ 1-12) */
+"error.send.failed" = "Send failed: %@";
+"error.e2e.encrypt" = "E2E encryption failed — message not sent";
+"error.recording.invalid" = "Invalid recording file. Please try again.";
+"error.export.failed" = "Export failed: %@";
+"error.import.failed" = "Import failed: %@";
+"error.encrypt.failed" = "Encryption failed";
+"error.decrypt.failed" = "Decryption failed — file is not an encrypted backup or key mismatch";
+"error.decrypt.utf8" = "Decrypted data is not valid UTF-8 text";
+"error.encrypted.read" = "Unable to read encrypted backup file";
+"error.backup.parse" = "Failed to parse backup: %@";
+"error.restore.failed" = "Restore failed: %@";
+"error.encrypted.export" = "Encrypted export failed: %@";

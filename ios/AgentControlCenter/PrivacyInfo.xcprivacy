@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        隐私清单 (PrivacyInfo.xcprivacy)
+        对应 App Store Connect 2024 春季起强制的「Required Reason API」声明。
+        文档：https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
+    -->
+
+    <!-- ============ NSPrivacyAccessedAPITypes ============ -->
+    <!-- 声明所使用的「Required Reason API」及其使用理由 -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+
+        <!-- 1. UserDefaults (CA92.1)
+             使用位置：AnalyticsManager（埋点开关）、FeatureFlagManager（特性开关）、
+                       WidgetUpdater（与 Widget 共享数据）、AppTheme（用户偏好）
+             理由 CA92.1：访问「应用自身写入的」UserDefaults 数据 -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+        <!-- 2. FileTimestamp (C617.1 / DDA9.1)
+             使用位置：AgentControlCenterApp.crashLogCleanup（清理超过 7 天的崩溃日志）
+             理由 C617.1：访问应用自身容器内文件的修改时间戳；
+                     DDA9.1：在应用组容器内访问文件元数据 -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+                <string>DDA9.1</string>
+            </array>
+        </dict>
+
+        <!-- 3. SystemBootTime (35F9.1)
+             使用位置：PerformanceMonitor（统计性能指标的时间间隔）
+             理由 35F9.1：测量应用内事件之间的时间间隔 -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>35F9.1</string>
+            </array>
+        </dict>
+
+        <!-- 4. DiskSpace (E174.1)
+             使用位置：BackupManager（导出前检查磁盘剩余空间）
+             理由 E174.1：在应用容器内显示磁盘剩余空间，用于判断备份操作是否可执行 -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>E174.1</string>
+            </array>
+        </dict>
+
+    </array>
+
+    <!-- ============ NSPrivacyTracking ============ -->
+    <!--
+        应用不进行用户行为追踪（Sentry 关闭了 sendDefaultPii /
+        enableUserInteractionTracing / attachViewHierarchy / attachScreenshot）。
+        Sentry 仅采集匿名崩溃堆栈与性能 trace，不与第三方共享用于追踪。
+    -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <!-- ============ NSPrivacyTrackingDomains ============ -->
+    <!-- 不追踪，故无追踪域名 -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- ============ NSPrivacyCollectedDataTypes ============ -->
+    <!-- 声明应用采集的数据类型（Sentry 匿名崩溃 + 性能数据） -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+
+        <!-- Crash Data：Sentry 采集崩溃堆栈，用于 App Functionality，不与身份关联 -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCrashData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Performance Data：Sentry 采集性能 trace（tracesSampleRate=0.1） -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePerformanceData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Other Diagnostic Data：本地崩溃日志（caches/CrashLogs/），不联网上传 -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+    </array>
+</dict>
+</plist>

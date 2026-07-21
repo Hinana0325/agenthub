@@ -29,7 +29,7 @@ enum AttachmentType: String, Codable {
 }
 
 /// 聊天消息模型
-struct Message: Codable, Identifiable, Equatable {
+struct Message: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var sessionId: String
     var role: MessageRole

@@ -10,6 +10,7 @@ import Observation
 // `DataController.saveAgentConfig` 与 `AgentManager.register` 完成入库。
 
 /// 市场客户端 — 加载、搜索、安装市场 Agent
+@MainActor
 @Observable
 final class MarketplaceClient {
 

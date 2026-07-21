@@ -175,3 +175,20 @@
 "common.error" = "发生错误";
 "common.retry" = "重试";
 "common.noData" = "暂无数据";
+"common.ok" = "好的";
+"common.notice" = "提示";
+"common.error.title" = "出错了";
+
+/* 错误 / 状态消息（Sprint 1-8 ~ 1-12 新增） */
+"error.send.failed" = "发送失败: %@";
+"error.e2e.encrypt" = "E2E 加密失败，消息未发送";
+"error.recording.invalid" = "录音文件无效，请重试。";
+"error.export.failed" = "导出失败: %@";
+"error.import.failed" = "导入失败: %@";
+"error.encrypt.failed" = "加密失败";
+"error.decrypt.failed" = "解密失败 — 文件非加密备份或密钥不匹配";
+"error.decrypt.utf8" = "解密后的数据不是有效的 UTF-8 文本";
+"error.encrypted.read" = "无法读取加密备份文件";
+"error.backup.parse" = "解析备份失败: %@";
+"error.restore.failed" = "恢复失败: %@";
+"error.encrypted.export" = "加密导出失败: %@";

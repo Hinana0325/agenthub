@@ -97,6 +97,7 @@ struct StatusRecord: Identifiable, Codable, Equatable {
 /// 与 `LocalNotificationManager` 的区别：
 /// - 本类管理 UI 内的状态条展示（in-app banner）
 /// - `LocalNotificationManager` 管理系统级推送通知
+@MainActor
 @Observable
 final class StatusNotificationManager {
 

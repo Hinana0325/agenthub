@@ -32,12 +32,15 @@ struct PluginView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("添加插件")
             }
         }
         .sheet(isPresented: $showAddSheet) {
             addPluginSheet
         }
-        .onAppear {
+        // SW-M2: 使用 .task 替代 .onAppear — 由 SwiftUI 管理任务生命周期，
+        // 视图销毁时自动取消，避免页面快速切换时的孤儿任务
+        .task {
             loadPlugins()
         }
     }
@@ -67,11 +70,8 @@ struct PluginView: View {
                 pluginRow(plugin: $plugin)
             }
             .onDelete { indexSet in
-                // 删除插件
-                for index in indexSet {
-                    let pluginId = plugins[index].id
-                    plugins.remove(at: index)
-                }
+                // 用 remove(atOffsets:) 安全删除多个 index，避免手动循环导致越界
+                plugins.remove(atOffsets: indexSet)
                 // 删除后立即持久化
                 savePlugins()
             }
@@ -125,6 +125,9 @@ struct PluginView: View {
             Toggle("", isOn: plugin.isEnabled)
                 .labelsHidden()
                 .tint(AppTheme.primaryColor)
+                // VoiceOver 朗读插件名 + "开关"，否则只能听到无意义的"开关"
+                .accessibilityLabel(plugin.wrappedValue.name)
+                .accessibilityValue(plugin.wrappedValue.isEnabled ? "已启用" : "已停用")
                 // 切换启用状态后立即持久化
                 .onChange(of: plugin.wrappedValue.isEnabled) { _, _ in
                     savePlugins()

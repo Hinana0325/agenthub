@@ -20,6 +20,7 @@ import Observation
 /// 与 Android 版的差异：
 /// - Android 使用 `StateFlow<Map<String, ServerConnectionState>>`，iOS 使用 `@Observable` + `[String: ServerConnectionState]`
 /// - Android 通过 Hilt `@Inject` 注入依赖，iOS 使用默认参数 init（便于测试时注入 mock）
+@MainActor
 @Observable
 final class McpBridge {
 

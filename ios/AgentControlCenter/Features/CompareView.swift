@@ -68,6 +68,10 @@ struct CompareView: View {
             }
         }
         .navigationTitle("Agent 对比")
+        // 视图销毁时取消未完成的对比任务，避免后台继续等待响应 / 占用 Transport 资源
+        .onDisappear {
+            cancelComparison()
+        }
     }
 
     // MARK: - Agent 选择区
@@ -144,9 +148,14 @@ struct CompareView: View {
                     Image(systemName: "stop.fill")
                         .font(.title3)
                         .foregroundStyle(.white)
-                        .padding(8)
-                        .background(Color.red, in: Circle())
+                        .frame(width: 44, height: 44)
                 }
+                // R4: glassTinted 包装守卫
+                .glassTinted(
+                    Color.red,
+                    in: GlassTokens.circleShape
+                )
+                .accessibilityLabel("停止对比")
             } else {
                 Button {
                     startComparison()
@@ -154,13 +163,15 @@ struct CompareView: View {
                     Image(systemName: "paperplane.fill")
                         .font(.title3)
                         .foregroundStyle(canStart ? .white : .secondary)
-                        .padding(8)
-                        .background(
-                            canStart ? AppTheme.primaryColor : Color.gray.opacity(0.3),
-                            in: Circle()
-                        )
+                        .frame(width: 44, height: 44)
                 }
                 .disabled(!canStart)
+                // R4: glassTinted 包装守卫
+                .glassTinted(
+                    canStart ? AppTheme.primaryColor : Color.gray.opacity(0.3),
+                    in: GlassTokens.circleShape
+                )
+                .accessibilityLabel("开始对比")
             }
         }
         .padding(.horizontal, 16)
@@ -424,10 +435,9 @@ struct CompareView: View {
                 await group.waitForAll()
 
                 // 双方都结束后标记对比结束
-                await MainActor.run {
-                    isComparing = false
-                    compareTask = nil
-                }
+                // SW-M7: compareTask 是 View 的 @State，Task 闭包继承 MainActor 隔离
+                isComparing = false
+                compareTask = nil
             }
         }
     }

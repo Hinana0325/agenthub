@@ -5,10 +5,56 @@ import SwiftData
 // 对应 protocol/schemas/ 下的 JSON Schema 契约与 Android Room 实体
 // (com.agentcontrolcenter.app.core.database.entity.*)
 
+// MARK: - Schema 版本与迁移计划
+//
+// 当前为 v1（无历史 schema），通过 `VersionedSchema` 显式标记版本号，
+// 便于未来发布 v2 时（如新增字段、修改关系）通过 `SchemaMigrationPlan`
+// 声明 v1 → v2 的迁移阶段。当前 MigrationPlan 不含任何 stage，
+// SwiftData 会自动执行轻量级迁移（如新增可选字段、添加关系）。
+
+/// 应用持久化 schema 的版本 1。
+///
+/// 当需要破坏性 schema 变更时，复制本类型为 `AppSchemaV2`，调整字段，
+/// 并在 `AppSchemaMigrationPlan` 中追加 `MigrationStage`（light 或 custom）。
+enum AppSchemaV1: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            SessionEntity.self,
+            MessageEntity.self,
+            AgentConfigEntity.self,
+            TaskEntity.self,
+            PluginEntity.self,
+            ActivityLogEntity.self
+        ]
+    }
+}
+
+/// 应用 schema 迁移计划。
+///
+/// 当前为空（v1 → v1，无 stage）；未来追加 v2 时在此声明阶段：
+/// ```swift
+/// static var stages: [MigrationStage] { [
+///     .lightweight(fromVersion: AppSchemaV1.self, toVersion: AppSchemaV2.self),
+///     // 或 .custom(...) for breaking changes
+/// ] }
+/// ```
+enum AppSchemaMigrationPlan: SchemaMigrationPlan {
+    static var schemas: [any VersionedSchema.Type] {
+        [AppSchemaV1.self]
+    }
+
+    static var stages: [MigrationStage] { [] }
+}
+
 /// Session 实体 — 对应 `protocol/schemas/session-schema.json` 与 Android `SessionEntity`。
 ///
 /// SwiftData 持久化模型，字段与 `Session` 领域模型一一对应。
 /// `id` 标记为唯一属性，用于 upsert 语义。
+///
+/// `messages` 关系使用 `.cascade` 删除规则：删除 Session 时自动删除其下全部 Message，
+/// 避免出现孤儿消息（Android Room 通过外键约束 + `ON DELETE CASCADE` 实现同等语义）。
 @Model
 final class SessionEntity {
     /// 会话唯一 ID（对应 Session.id）
@@ -25,6 +71,9 @@ final class SessionEntity {
     var messageCount: Int = 0
     /// 会话摘要
     var summary: String = ""
+    /// 会话下的全部消息（一对多关系，删除会话时级联删除消息）
+    @Relationship(.cascade, inverse: \MessageEntity.session)
+    var messages: [MessageEntity] = []
 
     /// 创建会话实体
     /// - Parameters:
@@ -42,14 +91,14 @@ final class SessionEntity {
 
 /// Message 实体 — 对应 `protocol/schemas/message-schema.json` 与 Android `MessageEntity`。
 ///
-/// 通过 `sessionId` 与 `SessionEntity` 关联（冗余外键，便于按会话查询）。
-/// `session` 关系属性为可选的 SwiftData to-one 关系；DataController 使用 `sessionId`
-/// 进行关联与过滤，以保持与 Android Room 的查询模式一致。
+/// 通过 `session`（SwiftData 关系）与 `sessionId`（冗余外键）双重关联 SessionEntity：
+/// - `session` 用于级联删除（`.cascade` rule 在 SessionEntity 侧声明）；
+/// - `sessionId` 用于 predicate 过滤，保持与 Android Room 的查询模式一致。
 @Model
 final class MessageEntity {
     /// 消息唯一 ID
     @Attribute(.unique) var id: String
-    /// 所属会话的关系引用（可选，SwiftData 自动推断 to-one 关系）
+    /// 所属会话的关系引用（可选，与 `SessionEntity.messages` 构成双向关系）
     var session: SessionEntity?
     /// 所属会话 ID（冗余外键，用于 predicate 过滤）
     var sessionId: String
@@ -205,6 +254,48 @@ final class PluginEntity {
         self.name = name
         self.description = description
         self.icon = icon
+    }
+}
+
+/// ActivityLog 实体 — 对应 Android `ActivityLogEntity`（`activity_log` 表）。
+///
+/// 记录用户操作行为日志（如发送消息、创建任务、执行工作流等），
+/// 用于 ActivityView 展示近期活动时间线。与 Android 端字段一一对应：
+/// - `id`：主键（与 Android `@PrimaryKey id: String` 对齐）
+/// - `type`：活动类型分类（如 "message_sent" / "task_created"）
+/// - `title`：活动标题
+/// - `description`：活动详情（默认空串）
+/// - `timestamp`：毫秒时间戳，用于排序
+///
+/// SwiftData 通过 `@Attribute(.unique)` 保证 id 唯一；
+/// 查询时按 `timestamp DESC` 排序并取前 200 条（对应 Android
+/// `ActivityDao.getAllActivities()` 的 `ORDER BY timestamp DESC LIMIT 200`）。
+@Model
+final class ActivityLogEntity {
+    /// 活动日志唯一 ID
+    @Attribute(.unique) var id: String
+    /// 活动类型（如 "message_sent" / "task_created" / "workflow_executed"）
+    var type: String
+    /// 活动标题
+    var title: String
+    /// 活动详情
+    var descriptionText: String
+    /// 毫秒时间戳
+    var timestamp: Int64
+
+    /// 创建活动日志实体
+    /// - Parameters:
+    ///   - id: 唯一 ID
+    ///   - type: 活动类型
+    ///   - title: 活动标题
+    ///   - descriptionText: 活动详情（默认空串）
+    ///   - timestamp: 毫秒时间戳
+    init(id: String, type: String, title: String, descriptionText: String = "", timestamp: Int64) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.descriptionText = descriptionText
+        self.timestamp = timestamp
     }
 }
 
@@ -399,7 +490,7 @@ extension AgentConfigEntity {
             name: config.name,
             type: config.type.rawValue,
             serverUrl: config.serverUrl,
-            apiKey: KeychainManager.encrypt(config.apiKey),
+            apiKey: KeychainManager.encrypt(config.apiKey) ?? config.apiKey,
             model: config.model,
             systemPrompt: config.systemPrompt,
             temperature: config.temperature,

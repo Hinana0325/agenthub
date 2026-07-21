@@ -31,13 +31,17 @@ struct DailyActivity: Identifiable, Codable, Equatable {
     /// 当日 token 使用量
     var tokenUsage: TokenUsage
 
+    /// SW-M4: 现代 ParseStrategy 替代 DateFormatter 解析（编译期类型安全，可复用）
+    private static let parseStrategy = Date.ParseStrategy(
+        format: "\(year: .defaultDigits)-\(month: .twoDigits)-\(day: .twoDigits)",
+        locale: Locale(identifier: "zh_CN"),
+        timeZone: .current,
+        isLenient: true
+    )
+
     /// 日期对象（从 dateString 解析）
     var date: Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.timeZone = .current
-        return formatter.date(from: dateString)
+        try? Date(dateString, strategy: Self.parseStrategy)
     }
 }
 
@@ -269,16 +273,18 @@ final class DataInsightsManager {
 
     /// 按日期分组计算每日活动数据。
     private func computeDailyActivity(from messages: [Message]) -> [DailyActivity] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.timeZone = .current
+        // SW-M4: 使用现代 ISO8601FormatStyle 替代 DateFormatter 格式化
+        // 输出 "2024-01-15" 形式的日期键（与 DailyActivity.parseStrategy 兼容）
+        let dateStyle = Date.ISO8601FormatStyle()
+            .year().month().day()
+            .dateSeparator(.dash)
+            .timeSeparator(.omitted)
 
         var dailyMap: [String: DailyActivity] = [:]
 
         for msg in messages {
             let date = Date(timeIntervalSince1970: TimeInterval(msg.timestamp) / 1000)
-            let dateKey = formatter.string(from: date)
+            let dateKey = date.formatted(dateStyle)
 
             var activity = dailyMap[dateKey] ?? DailyActivity(
                 dateString: dateKey,

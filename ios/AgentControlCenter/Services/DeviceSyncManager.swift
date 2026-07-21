@@ -11,6 +11,7 @@ import Observation
 /// - 实际的设备广播、发现、连接和数据传输逻辑需要集成 MCSession /
 ///   MCAdvertiserAssistant / MCBrowserViewController，此模块提供数据层框架。
 /// - 数据导出/导入使用 JSON 序列化，结构兼容 Android 端的 Room 导出格式。
+@MainActor
 @Observable
 final class DeviceSyncManager {
 
@@ -171,7 +172,8 @@ final class DeviceSyncManager {
         // 构建导出数据结构
         let exportPayload = SyncExportPayload(
             version: "1.0",
-            exportedAt: ISO8601DateFormatter().string(from: Date()),
+            // SW-M4: 使用现代 .iso8601 FormatStyle 替代 ISO8601DateFormatter
+            exportedAt: Date().formatted(.iso8601),
             // TODO: 从 DataController 获取实际数据
             // 需要在调用方注入 DataController 实例
             sessions: [],

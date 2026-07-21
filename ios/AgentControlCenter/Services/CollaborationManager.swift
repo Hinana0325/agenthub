@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 /// 协作管理器 — 多人 WebSocket 协作会话
 /// 对应 Android CollaborationManager
@@ -7,8 +8,15 @@ import Observation
 /// 提供协作会话的基本数据结构和会话生命周期管理。
 /// 实际的 WebSocket 信令（消息广播、光标同步、冲突解决等）
 /// 需要配套的后端信令服务支持，此模块仅作为客户端框架。
+///
+/// `@MainActor` 隔离保证 `activeCollabSession` 等响应式状态的读写
+/// 均在主线程，避免 SwiftUI 视图读取时发生数据竞争。
+@MainActor
 @Observable
 final class CollaborationManager {
+
+    /// SW-M3: 协作会话存储日志器（nonisolated：Logger 是 Sendable，可从任意上下文调用）
+    private nonisolated static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "CollaborationManager")
 
     // MARK: - 数据模型
 
@@ -64,19 +72,53 @@ final class CollaborationManager {
 
     /// 本地缓存的协作配置（sessionId -> 映射数据）
     ///
-    /// 使用 UserDefaults 持久化已加入的会话标识，
-    /// 以便应用重启后可以恢复连接状态。
-    private var sessionStore: [String: [String: Any]] {
-        get {
-            guard let data = UserDefaults.standard.data(forKey: "collab_sessions"),
-                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]]
-            else { return [:] }
-            return dict
+    /// 持久化到 `Application Support/Collaboration/sessions.json`，
+    /// 而非 UserDefaults：UserDefaults 仅用于用户偏好设置，
+    /// 业务数据（会话历史、参与者映射等）应使用独立文件，
+    /// 便于备份/清理且避免污染偏好设置命名空间。
+    ///
+    /// SW-M6: 文件 I/O 通过 `Task.detached` 移出 MainActor，避免阻塞 UI。
+    /// 读/写均通过 `loadSessionStore(from:)` / `writeSessionStore(_:to:)` 静态方法。
+
+    /// 协作会话本地缓存文件 URL
+    private nonisolated var sessionsStoreURL: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return appSupport
+            .appendingPathComponent("Collaboration", isDirectory: true)
+            .appendingPathComponent("sessions.json")
+    }
+
+    /// SW-M6: 非隔离的同步读取辅助方法（可在任意 actor / thread 上调用）
+    private nonisolated static func loadSessionStore(from url: URL) -> [String: [String: Any]] {
+        guard let data = try? Data(contentsOf: url) else {
+            return [:]
         }
-        set {
-            if let data = try? JSONSerialization.data(withJSONObject: newValue) {
-                UserDefaults.standard.set(data, forKey: "collab_sessions")
+        do {
+            if let dict = try JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] {
+                return dict
             }
+            logger.warning("loadSessionStore: JSON 顶层结构非预期字典")
+            return [:]
+        } catch {
+            logger.warning("loadSessionStore: 解析失败: \(error.localizedDescription)")
+            return [:]
+        }
+    }
+
+    /// SW-M6: 非隔离的同步写入辅助方法（在 Task.detached 中调用以避免阻塞 MainActor）
+    private nonisolated static func writeSessionStore(_ store: [String: [String: Any]], to url: URL) {
+        let dir = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        do {
+            let data = try JSONSerialization.data(withJSONObject: store, options: [.prettyPrinted])
+            do {
+                try data.write(to: url, options: .atomic)
+            } catch {
+                logger.error("writeSessionStore: 写入文件失败: \(error.localizedDescription)")
+            }
+        } catch {
+            logger.error("writeSessionStore: 序列化失败: \(error.localizedDescription)")
         }
     }
 
@@ -201,19 +243,30 @@ final class CollaborationManager {
     // MARK: - 私有方法
 
     /// 将会话 ID 保存到本地缓存
+    /// SW-M6: 文件 I/O 通过 Task.detached 移出 MainActor，避免阻塞 UI；
+    /// 内存状态（activeCollabSession）已由调用方同步更新，磁盘写入失败仅记日志
     private func saveSessionToStore(_ sessionId: String) {
-        var store = sessionStore
-        store[sessionId] = [
-            "joinedAt": ISO8601DateFormatter().string(from: Date()),
+        let url = sessionsStoreURL
+        let entry: [String: Any] = [
+            // SW-M4: 使用现代 .iso8601 FormatStyle 替代 ISO8601DateFormatter
+            "joinedAt": Date().formatted(.iso8601),
             "sessionId": sessionId
         ]
-        sessionStore = store
+        Task.detached(priority: .utility) {
+            var store = Self.loadSessionStore(from: url)
+            store[sessionId] = entry
+            Self.writeSessionStore(store, to: url)
+        }
     }
 
     /// 从本地缓存移除会话
+    /// SW-M6: 文件 I/O 通过 Task.detached 移出 MainActor
     private func removeFromStore(sessionId: String) {
-        var store = sessionStore
-        store.removeValue(forKey: sessionId)
-        sessionStore = store
+        let url = sessionsStoreURL
+        Task.detached(priority: .utility) {
+            var store = Self.loadSessionStore(from: url)
+            store.removeValue(forKey: sessionId)
+            Self.writeSessionStore(store, to: url)
+        }
     }
 }

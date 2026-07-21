@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var selectedCompactTab: CompactTab = .sessions
 
     /// 是否显示命令面板（⌘K 触发）
-    @State private var showingCommandPalette: Bool = false
+    @State private var showingCommandPalette: Bool = false  // 已废弃：appState.showCommandPalette 接管
 
     /// 命令面板管理器（共享实例，便于注册运行时命令）
     private var commandPaletteManager: CommandPaletteManager {
@@ -140,20 +140,20 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: appState.statusNotificationManager.currentStatus)
         .preferredColorScheme(preferredColorScheme)
-        // 命令面板触发：隐藏的 ⌘K 快捷键按钮
-        .background(
-            Button("") { showingCommandPalette = true }
-                .keyboardShortcut("k", modifiers: .command)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
-        )
         // 命令面板 Sheet
-        .sheet(isPresented: $showingCommandPalette) {
+        // HIG (iOS 26 Liquid Glass)：sheet 内容使用玻璃采样下层视图，
+        // 必须将 sheet 背景设为 .clear，否则系统默认 material 会遮挡玻璃 lensing
+        // HIG：⌘K 快捷键已移到 App 级 .commands { CommandMenu }，
+        // 此处通过 appState.showCommandPalette 双向绑定，避免隐藏按钮 hack
+        .sheet(isPresented: Binding(
+            get: { appState.showCommandPalette },
+            set: { appState.showCommandPalette = $0 }
+        )) {
             CommandPaletteView()
                 .presentationDetents([.medium, .large])
                 .presentationBackgroundInteraction(.enabled)
                 .presentationDragIndicator(.visible)
+                .presentationBackground(.clear)
         }
         // 首次启动注册命令面板的运行时动作
         .task { registerCommandActions() }
@@ -161,13 +161,10 @@ struct ContentView: View {
         .onChange(of: appState.pendingShortcutDestination) { _, destination in
             handleShortcutDestination(destination)
         }
-        // U1: Tab 切换时触发选择反馈
-        .onChange(of: selectedTab) { _, _ in
-            HapticFeedback.selection()
-        }
-        .onChange(of: selectedCompactTab) { _, _ in
-            HapticFeedback.selection()
-        }
+        // HIG：顶层 Tab / 侧边栏导航切换不应触发触觉反馈。
+        // selection 触觉应保留给 Picker / Segmented Control 等真"选择"控件，
+        // 否则用户会习惯性忽略触觉信号。
+        // （已移除 .onChange { HapticFeedback.selection() }）
         // P3-5: 应用启动时检查是否有冷启动期间暂存的快捷方式目标
         .task {
             if let destination = appState.pendingShortcutDestination {
@@ -232,7 +229,7 @@ struct ContentView: View {
                 navigate(to: .agents)
             }),
             ("action.toggle_theme", { toggleTheme() }),
-            ("tools.command_palette", { showingCommandPalette = true }),
+            ("tools.command_palette", { appState.showCommandPalette = true }),
             ("tools.refresh_market", {
                 Task { await appState.marketplaceClient.loadAgents() }
                 navigate(to: .marketplace)
@@ -319,8 +316,14 @@ struct ContentView: View {
         }
         .padding(.horizontal, AppTheme.Spacing.lg)
         .padding(.vertical, AppTheme.Spacing.sm)
-        .background(statusBarColor(for: status).opacity(0.6))
-        .glassPill()
+        // HIG (iOS 26 Liquid Glass)：移除不透明色块背景，改为玻璃 tint；
+        // 白色文字在 tint 玻璃上保持高对比，Dark Mode 下玻璃会自适应采样的暗背景
+        // R4: 改用 glassTinted 包装，内部 if #available(iOS 26, *) 守卫，
+        // iOS 18 走 ultraThinMaterial + tint 色块叠加回退
+        .glassTinted(
+            statusBarColor(for: status).opacity(0.6),
+            in: GlassTokens.pillShape
+        )
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 

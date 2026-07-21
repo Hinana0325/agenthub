@@ -39,26 +39,24 @@ final class SmartNotificationManager {
     var config: NotificationConfig = NotificationConfig()
 
     // MARK: - 正则规则
+    //
+    // 使用 Swift Regex 字面量（编译期检查，无需 try!），case-insensitive 通过 `i` 标志开启。
+    // 字面量在首次访问时由 Swift 运行时编译并缓存，性能与 NSRegularExpression 相当。
 
     /// 高优先级规则 1：错误 / 异常 / 失败 / 崩溃
-    private static let highPriorityErrorPattern =
-        try! NSRegularExpression(pattern: "\\b(error|exception|failed|crash)\\b", options: .caseInsensitive)
+    private static let highPriorityErrorPattern = /\b(?:error|exception|failed|crash)\b/i
 
     /// 高优先级规则 2：警告
-    private static let highPriorityWarningPattern =
-        try! NSRegularExpression(pattern: "\\b(warning|warn)\\b", options: .caseInsensitive)
+    private static let highPriorityWarningPattern = /\b(?:warning|warn)\b/i
 
     /// 高优先级规则 3：紧急请求
-    private static let highPriorityUrgentPattern =
-        try! NSRegularExpression(pattern: "\\b(please|need|require|urgent)\\b", options: .caseInsensitive)
+    private static let highPriorityUrgentPattern = /\b(?:please|need|require|urgent)\b/i
 
     /// 低优先级规则 1：心跳 / 保活
-    private static let lowPriorityHeartbeatPattern =
-        try! NSRegularExpression(pattern: "\\b(heartbeat|ping|alive)\\b", options: .caseInsensitive)
+    private static let lowPriorityHeartbeatPattern = /\b(?:heartbeat|ping|alive)\b/i
 
     /// 低优先级规则 2：完成确认
-    private static let lowPriorityDonePattern =
-        try! NSRegularExpression(pattern: "\\b(ok|done|finished)\\b", options: .caseInsensitive)
+    private static let lowPriorityDonePattern = /\b(?:ok|done|finished)\b/i
 
     // MARK: - 优先级判断
 
@@ -68,31 +66,30 @@ final class SmartNotificationManager {
     /// - Parameter message: 聊天消息
     /// - Returns: 消息优先级
     func shouldNotify(message: Message) -> Priority {
-        let content = message.content.lowercased()
-        let range = NSRange(content.startIndex..., in: content)
+        let content = message.content
 
         // 高优先级：错误 / 异常 / 失败 / 崩溃
-        if Self.highPriorityErrorPattern.firstMatch(in: content, range: range) != nil {
+        if content.firstMatch(of: Self.highPriorityErrorPattern) != nil {
             return .high
         }
 
         // 高优先级：警告
-        if Self.highPriorityWarningPattern.firstMatch(in: content, range: range) != nil {
+        if content.firstMatch(of: Self.highPriorityWarningPattern) != nil {
             return .high
         }
 
         // 高优先级：紧急请求
-        if Self.highPriorityUrgentPattern.firstMatch(in: content, range: range) != nil {
+        if content.firstMatch(of: Self.highPriorityUrgentPattern) != nil {
             return .high
         }
 
         // 低优先级：心跳 / 保活
-        if Self.lowPriorityHeartbeatPattern.firstMatch(in: content, range: range) != nil {
+        if content.firstMatch(of: Self.lowPriorityHeartbeatPattern) != nil {
             return .low
         }
 
         // 低优先级：完成确认
-        if Self.lowPriorityDonePattern.firstMatch(in: content, range: range) != nil {
+        if content.firstMatch(of: Self.lowPriorityDonePattern) != nil {
             return .low
         }
 

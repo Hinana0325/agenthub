@@ -8,7 +8,7 @@ struct SessionsView: View {
 
     // MARK: - 重命名状态(P1-10)
     /// 是否显示重命名 Sheet
-    @State private var showRenameSheet: Bool = false
+    @State private var showRenameSheet: Bool = false  // 已废弃：sheet(item:) 接管，仅保留兼容
     /// 待重命名的会话
     @State private var sessionToRename: Session?
     /// 重命名输入框文本
@@ -72,9 +72,8 @@ struct SessionsView: View {
 
                         // 滑动:重命名会话(P1-10)
                         Button {
-                            sessionToRename = session
                             renameText = session.title
-                            showRenameSheet = true
+                            sessionToRename = session
                         } label: {
                             Label("重命名", systemImage: "pencil")
                         }
@@ -124,10 +123,10 @@ struct SessionsView: View {
                 }
             }
             // 重命名 Sheet(P1-10)
-            .sheet(isPresented: $showRenameSheet) {
-                if let session = sessionToRename {
-                    renameSheet(for: session)
-                }
+            // HIG：使用 sheet(item:) 而非 sheet(isPresented:) + 平行 @State item，
+            // 保证 sheet 关闭时 item 自动 nil，避免下次开启显示陈旧数据
+            .sheet(item: $sessionToRename) { session in
+                renameSheet(for: session)
             }
         }
     }
@@ -146,7 +145,6 @@ struct SessionsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
-                        showRenameSheet = false
                         sessionToRename = nil
                     }
                 }
@@ -160,7 +158,6 @@ struct SessionsView: View {
                         if let updated = appState.sessionManager.sessions.first(where: { $0.id == session.id }) {
                             appState.dataController.saveSession(updated)
                         }
-                        showRenameSheet = false
                         sessionToRename = nil
                     }
                 }

@@ -80,6 +80,7 @@ struct TasksView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("创建任务")
                 }
             }
             // 空状态占位
@@ -107,8 +108,8 @@ struct TasksView: View {
                     reloadTasks()
                 }
             }
-            // 视图出现时从持久化层加载任务
-            .onAppear {
+            // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
+            .task {
                 reloadTasks()
             }
         }
@@ -167,9 +168,9 @@ struct TasksView: View {
     private func refreshTasks() async {
         // 让出当前任务,使下拉刷新动画能正常展示
         await Task.yield()
-        await MainActor.run {
-            reloadTasks()
-        }
+        // SW-M7: refreshTasks 在 View 内定义，闭包继承 MainActor 隔离，
+        // reloadTasks 也是 MainActor 方法，无需 MainActor.run
+        reloadTasks()
     }
 }
 

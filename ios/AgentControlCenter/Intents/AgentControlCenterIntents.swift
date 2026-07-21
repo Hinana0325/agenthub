@@ -42,10 +42,10 @@ struct NewChatIntent: AppIntent {
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     ///
-    /// 同时将目标写入 `ShortcutRelay.pendingDestination` 静态属性，
+    /// 同时将目标写入 `ShortcutRelay.shared`（actor）暂存，
     /// 确保应用冷启动时（IntentRouter 尚未开始监听）目标不会丢失。
     func perform() async throws -> some IntentResult {
-        ShortcutRelay.pendingDestination = .newChat
+        await ShortcutRelay.shared.setPending(.newChat)
         NotificationCenter.default.post(name: ShortcutIntentNotification.newChat, object: nil)
         return .result()
     }
@@ -74,7 +74,7 @@ struct NewAgentIntent: AppIntent {
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     func perform() async throws -> some IntentResult {
-        ShortcutRelay.pendingDestination = .newAgent
+        await ShortcutRelay.shared.setPending(.newAgent)
         NotificationCenter.default.post(name: ShortcutIntentNotification.newAgent, object: nil)
         return .result()
     }
@@ -103,7 +103,7 @@ struct OpenSettingsIntent: AppIntent {
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     func perform() async throws -> some IntentResult {
-        ShortcutRelay.pendingDestination = .settings
+        await ShortcutRelay.shared.setPending(.settings)
         NotificationCenter.default.post(name: ShortcutIntentNotification.openSettings, object: nil)
         return .result()
     }

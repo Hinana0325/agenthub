@@ -12,7 +12,7 @@ enum McpTransportType: String, Codable {
 }
 
 /// MCP 服务器能力
-struct McpServerCapabilities: Codable, Equatable {
+struct McpServerCapabilities: Codable, Equatable, Sendable {
     var tools: Bool = false
     var resources: Bool = false
     var prompts: Bool = false
@@ -20,7 +20,7 @@ struct McpServerCapabilities: Codable, Equatable {
 }
 
 /// MCP Server 连接配置
-struct McpServer: Codable, Identifiable, Equatable {
+struct McpServer: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var name: String
     var transportUrl: String
@@ -31,7 +31,7 @@ struct McpServer: Codable, Identifiable, Equatable {
 }
 
 /// 工具输入参数的 JSON Schema
-struct McpToolProperty: Codable, Equatable {
+struct McpToolProperty: Codable, Equatable, Sendable {
     var type: String
     var description: String = ""
     var enumValues: [String]? = nil
@@ -42,14 +42,14 @@ struct McpToolProperty: Codable, Equatable {
     }
 }
 
-struct McpToolSchema: Codable, Equatable {
+struct McpToolSchema: Codable, Equatable, Sendable {
     var type: String = "object"
     var properties: [String: McpToolProperty] = [:]
     var required: [String] = []
 }
 
 /// MCP 工具定义
-struct McpTool: Codable, Identifiable, Equatable {
+struct McpTool: Codable, Identifiable, Equatable, Sendable {
     var id: String { "\(serverId):\(name)" }
     var name: String
     var description: String
@@ -58,7 +58,7 @@ struct McpTool: Codable, Identifiable, Equatable {
 }
 
 /// MCP 内容类型（判别联合）
-enum McpContent: Codable, Equatable {
+enum McpContent: Codable, Equatable, Sendable {
     case text(String)
     case image(data: String, mimeType: String)
     case audio(data: String, mimeType: String)
@@ -116,27 +116,32 @@ struct McpToolResult: Equatable {
 
 // MARK: - JSON-RPC 2.0
 
-struct JsonRpcRequest: Codable {
+struct JsonRpcRequest: Codable, Sendable {
     var jsonrpc: String = "2.0"
     var id: Int
     var method: String
     var params: [String: AnyCodable]? = nil
 }
 
-struct JsonRpcResponse: Codable {
+struct JsonRpcResponse: Codable, Sendable {
     var jsonrpc: String = "2.0"
     var id: Int
     var result: AnyCodable? = nil
     var error: JsonRpcError? = nil
 }
 
-struct JsonRpcError: Codable, Error {
+struct JsonRpcError: Codable, Error, Sendable {
     var code: Int
     var message: String
 }
 
 /// 用于在 JSON 中承载任意值的包装类型
-struct AnyCodable: Codable, Equatable {
+///
+/// `@unchecked Sendable` — `value: Any` 在类型系统层面不具备 Sendable，
+/// 但本类型仅通过 `init(from:)` 解码 JSON 得到，所存值均为 Sendable
+/// 基础类型（Bool / Int / Double / String / NSNull）或其嵌套字典/数组。
+/// 在跨 actor 传递 JSON-RPC 参数时需要 Sendable，故显式声明。
+struct AnyCodable: Codable, Equatable, @unchecked Sendable {
     let value: Any
 
     init(_ value: Any) { self.value = value }

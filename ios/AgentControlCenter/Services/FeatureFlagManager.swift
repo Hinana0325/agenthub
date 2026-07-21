@@ -28,6 +28,10 @@ import Observation
 /// - 覆盖表通过 `UserDefaults` 持久化（与 `@AppStorage` 等效）
 /// - `@Observable` 类无法直接使用 `@AppStorage`（后者依赖 SwiftUI View 生命周期），
 ///   因此使用 `JSONEncoder` / `JSONDecoder` + `UserDefaults` 实现等效持久化
+///
+/// `@MainActor` 隔离保证 `overrides` 等响应式状态的读写均在主线程，
+/// 避免 SwiftUI 视图读取时发生数据竞争。
+@MainActor
 @Observable
 final class FeatureFlagManager {
 

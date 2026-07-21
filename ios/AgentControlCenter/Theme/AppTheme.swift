@@ -197,9 +197,11 @@ enum AppTheme {
         if interval < 3600 { return "\(Int(interval / 60))分钟前" }
         if interval < 86400 { return "\(Int(interval / 3600))小时前" }
         if interval < 604800 { return "\(Int(interval / 86400))天前" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM/dd"
-        return formatter.string(from: date)
+        // SW-M4: 使用现代 FormatStyle 替代 DateFormatter（输出形如 "01/15"）
+        return date.formatted(Date.FormatStyle()
+            .month(.twoDigits)
+            .day(.twoDigits)
+            .locale(Locale.current))
     }
 }
 

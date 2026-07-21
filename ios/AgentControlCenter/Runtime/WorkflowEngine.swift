@@ -44,6 +44,7 @@ private enum AgentOutcome: Sendable {
 /// - Android 版通过 Hilt 注入 TransportFactory 和 AgentConfigDao
 /// - iOS 版使用 TransportFactory.create(agentType) 创建传输层
 /// - AgentConfigDao 尚未实现，当前使用默认配置占位
+@MainActor
 @Observable
 final class WorkflowEngine {
 
@@ -289,6 +290,8 @@ final class WorkflowEngine {
         }
 
         // 3. 收集事件（60s 超时竞争）
+        // 预先捕获超时秒数到局部变量，避免 group.addTask 闭包跨 MainActor 隔离访问 self
+        let timeoutSeconds = agentTimeoutSeconds
         let outcome: AgentOutcome = await withTaskGroup(of: AgentOutcome.self) { group in
             // 事件收集任务
             group.addTask {
@@ -321,7 +324,7 @@ final class WorkflowEngine {
 
             // 超时任务
             group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(self.agentTimeoutSeconds * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
                 return .timedOut
             }
 
@@ -372,7 +375,9 @@ final class WorkflowEngine {
             // 正则提取：用 extra 作为正则表达式，提取第一个捕获组
             // extra 为空时默认匹配全部内容
             let pattern = extra.isEmpty ? "(.+)" : extra
+            // SW-M3: 正则编译失败时记录可见日志（pattern 来自用户输入，需提示错误）
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
+                log("Error: 无效的正则表达式: \(pattern)")
                 return input
             }
             let range = NSRange(input.startIndex..., in: input)

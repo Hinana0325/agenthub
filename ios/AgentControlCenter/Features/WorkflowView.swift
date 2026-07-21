@@ -61,6 +61,11 @@ struct WorkflowView: View {
             .padding(16)
         }
         .navigationTitle("工作流")
+        // 视图销毁时取消未完成的工作流执行任务，避免后台继续占用资源 / 触发无用 LLM 调用
+        .onDisappear {
+            executeTask?.cancel()
+            executeTask = nil
+        }
     }
 
     // MARK: - 模板选择
@@ -151,7 +156,7 @@ struct WorkflowView: View {
 
             HStack {
                 if executionState.isRunning {
-                    // 运行中：显示停止按钮
+                    // 运行中：显示停止按钮（HIG：触控高度 ≥ 44pt）
                     Button {
                         executeTask?.cancel()
                         appState.workflowEngine.reset()
@@ -160,11 +165,15 @@ struct WorkflowView: View {
                             .font(.subheadline.bold())
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red, in: RoundedRectangle(cornerRadius: 8))
+                            .padding(.vertical, 12)
                     }
+                    // R4: glassTinted 包装守卫，iOS 18 走 ultraThinMaterial + tint 回退
+                    .glassTinted(
+                        Color.red,
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
                 } else {
-                    // 空闲：显示执行按钮
+                    // 空闲：显示执行按钮（HIG：触控高度 ≥ 44pt）
                     Button {
                         executeWorkflow()
                     } label: {
@@ -172,13 +181,14 @@ struct WorkflowView: View {
                             .font(.subheadline.bold())
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(
-                                canExecute ? AppTheme.primaryColor : Color.gray,
-                                in: RoundedRectangle(cornerRadius: 8)
-                            )
+                            .padding(.vertical, 12)
                     }
                     .disabled(!canExecute)
+                    // R4: glassTinted 包装守卫
+                    .glassTinted(
+                        canExecute ? AppTheme.primaryColor : Color.gray,
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
                 }
 
                 Spacer()
@@ -217,12 +227,10 @@ struct WorkflowView: View {
 
         executeTask = Task {
             let result = await appState.workflowEngine.execute(workflow: workflow, input: text)
-            // 执行完成后在主线程更新 UI
-            await MainActor.run {
-                // executionState 已通过 @Observable 自动更新
-                if !result.hasPrefix("Error:") {
-                    inputText = ""
-                }
+            // SW-M7: Task 闭包已通过 appState 访问继承 MainActor 隔离，无需 MainActor.run
+            // executionState 已通过 @Observable 自动更新
+            if !result.hasPrefix("Error:") {
+                inputText = ""
             }
         }
     }

@@ -175,3 +175,20 @@
 "common.error" = "エラーが発生しました";
 "common.retry" = "再試行";
 "common.noData" = "データなし";
+"common.ok" = "OK";
+"common.notice" = "お知らせ";
+"common.error.title" = "エラー";
+
+/* エラー / ステータスメッセージ（Sprint 1-8 ~ 1-12 追加分） */
+"error.send.failed" = "送信失敗: %@";
+"error.e2e.encrypt" = "E2E 暗号化に失敗しました — メッセージは送信されません";
+"error.recording.invalid" = "録音ファイルが無効です。再試行してください。";
+"error.export.failed" = "エクスポート失敗: %@";
+"error.import.failed" = "インポート失敗: %@";
+"error.encrypt.failed" = "暗号化に失敗しました";
+"error.decrypt.failed" = "復号失敗 — 暗号化バックアップではないか、キーが一致しません";
+"error.decrypt.utf8" = "復号されたデータが有効な UTF-8 テキストではありません";
+"error.encrypted.read" = "暗号化バックアップファイルを読み込めません";
+"error.backup.parse" = "バックアップの解析に失敗しました: %@";
+"error.restore.failed" = "復元失敗: %@";
+"error.encrypted.export" = "暗号化エクスポート失敗: %@";

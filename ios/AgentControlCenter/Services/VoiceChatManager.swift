@@ -12,6 +12,7 @@ import AVFoundation
 // - 波形可视化：定时采样 audioLevel 写入 levels 数组（最多保留 64 个采样点）
 
 /// 语音聊天管理器 — 录音、回放与波形可视化
+@MainActor
 @Observable
 final class VoiceChatManager {
 
@@ -73,9 +74,13 @@ final class VoiceChatManager {
     @ObservationIgnored private(set) var currentPlayingMessageId: String?
 
     // MARK: - 初始化
+    //
+    // HIG (Guideline 2.5.6)：
+    // 不在 init() 中激活 AVAudioSession，避免应用启动时中断后台音频。
+    // .playAndRecord session 仅在用户实际触发录音/播放时才激活。
 
     init() {
-        configureAudioSession()
+        // 不调用 configureAudioSession() —— 延迟到 startRecording()/playRecording() 时再激活
     }
 
     deinit {
@@ -84,7 +89,10 @@ final class VoiceChatManager {
 
     // MARK: - AudioSession 配置
 
-    /// 配置 AVAudioSession（播放与录音模式）
+    /// 配置并激活 AVAudioSession（播放与录音模式）。
+    ///
+    /// HIG (Guideline 2.5.6)：仅在用户实际触发录音 / 播放时调用，
+    /// 避免应用启动时中断用户正在听的音乐 / 播客。
     private func configureAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
@@ -95,9 +103,18 @@ final class VoiceChatManager {
         }
     }
 
+    /// 停用 AVAudioSession（停止录音 / 播放后调用，让其他 App 的音频恢复）
+    private func deactivateAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+    }
+
     // MARK: - 录音
 
     /// 开始录音
+    ///
+    /// HIG (Guideline 5.1.1)：
+    /// - 在构造 `AVAudioRecorder` 之前显式请求麦克风权限
+    /// - 仅在用户手势触发的上下文中调用（如 VoiceChatView 录音按钮点击）
     func startRecording() {
         // 释放上次录音资源
         audioRecorder?.stop()
@@ -106,6 +123,24 @@ final class VoiceChatManager {
         audioLevel = 0.0
         recordingDuration = 0.0
         errorMessage = nil
+
+        // HIG：先请求麦克风权限，再激活 audio session 与构造 recorder
+        AVAudioApplication.requestRecordPermission { [weak self] granted in
+            Task { @MainActor in
+                guard let self else { return }
+                guard granted else {
+                    self.errorMessage = "麦克风权限被拒绝，请在系统设置中开启"
+                    return
+                }
+                self.startRecordingInternal()
+            }
+        }
+    }
+
+    /// 实际启动录音的内部实现（权限通过后调用）
+    private func startRecordingInternal() {
+        // HIG：仅在确认录音意图后激活 audio session
+        configureAudioSession()
 
         // 录音文件 URL
         let url = makeRecordingURL()
@@ -131,6 +166,7 @@ final class VoiceChatManager {
         } catch {
             errorMessage = "录音启动失败：\(error.localizedDescription)"
             isRecording = false
+            deactivateAudioSession()
         }
     }
 
@@ -183,6 +219,9 @@ final class VoiceChatManager {
         // 停止当前播放
         stopPlayback()
 
+        // HIG：播放前激活 audio session（与录音一致，不在 init() 激活）
+        configureAudioSession()
+
         do {
             let player = try AVAudioPlayer(contentsOf: url)
             player.prepareToPlay()
@@ -195,6 +234,7 @@ final class VoiceChatManager {
             startPlaybackTimer()
         } catch {
             errorMessage = "播放失败：\(error.localizedDescription)"
+            deactivateAudioSession()
         }
     }
 
@@ -223,6 +263,8 @@ final class VoiceChatManager {
         currentPlayingMessageId = nil
         playbackTimer?.invalidate()
         playbackTimer = nil
+        // 释放 audio session，让其他应用音频恢复
+        if !isRecording { deactivateAudioSession() }
     }
 
     /// 跳转到指定进度（0.0 ~ 1.0）
@@ -244,28 +286,33 @@ final class VoiceChatManager {
         playbackTimer?.invalidate()
         recordingTimer = nil
         playbackTimer = nil
-        try? AVAudioSession.sharedInstance().setActive(false)
+        deactivateAudioSession()
     }
 
     // MARK: - 计时器
 
     /// 启动录音计时与采样
+    ///
+    /// Timer 由 MainActor 调度（本类为 @MainActor），回调在 main RunLoop 上触发，
+    /// 因此闭包内通过 `MainActor.assumeIsolated` 同步访问 self。
     private func startRecordingTimer() {
         recordingTimer?.invalidate()
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            guard let self, let recorder = self.audioRecorder, recorder.isRecording else { return }
-            recorder.updateMeters()
+            MainActor.assumeIsolated {
+                guard let self, let recorder = self.audioRecorder, recorder.isRecording else { return }
+                recorder.updateMeters()
 
-            // averagePower 返回 -160 ~ 0 dB，归一化为 0 ~ 1
-            let db = recorder.averagePower(forChannel: 0)
-            let level = self.normalizeDBToLevel(db)
-            self.audioLevel = level
-            self.recordingDuration += 0.05
+                // averagePower 返回 -160 ~ 0 dB，归一化为 0 ~ 1
+                let db = recorder.averagePower(forChannel: 0)
+                let level = self.normalizeDBToLevel(db)
+                self.audioLevel = level
+                self.recordingDuration += 0.05
 
-            // 写入波形采样
-            self.waveformLevels.append(level)
-            if self.waveformLevels.count > self.maxWaveformSamples {
-                self.waveformLevels.removeFirst(self.waveformLevels.count - self.maxWaveformSamples)
+                // 写入波形采样
+                self.waveformLevels.append(level)
+                if self.waveformLevels.count > self.maxWaveformSamples {
+                    self.waveformLevels.removeFirst(self.waveformLevels.count - self.maxWaveformSamples)
+                }
             }
         }
     }
@@ -274,11 +321,13 @@ final class VoiceChatManager {
     private func startPlaybackTimer() {
         playbackTimer?.invalidate()
         playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let player = self.audioPlayer else { return }
-            self.playbackProgress = player.currentTime
-            if !player.isPlaying {
-                // 播放结束
-                self.stopPlayback()
+            MainActor.assumeIsolated {
+                guard let self, let player = self.audioPlayer else { return }
+                self.playbackProgress = player.currentTime
+                if !player.isPlaying {
+                    // 播放结束
+                    self.stopPlayback()
+                }
             }
         }
     }
@@ -296,12 +345,21 @@ final class VoiceChatManager {
 
     // MARK: - 录音文件 URL
 
-    /// 生成录音文件 URL（临时目录）
+    /// 生成录音文件 URL。
+    ///
+    /// 录音文件存放在 `caches/VoiceRecordings/` 而非 `NSTemporaryDirectory()`：
+    /// - 系统在低存储压力下才会清理 caches 目录，临时目录可能更早被回收，
+    ///   导致播放时文件已丢失；
+    /// - caches 目录不会被 iCloud/iTunes 备份，符合语音消息的临时性语义；
+    /// - 与崩溃日志、备份等其它 caches 子目录平级，便于统一清理。
     /// - Returns: 文件 URL
     private func makeRecordingURL() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let dir = caches.appendingPathComponent("VoiceRecordings", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fileName = "voice_\(Int(Date().timeIntervalSince1970 * 1000)).m4a"
-        return tempDir.appendingPathComponent(fileName)
+        return dir.appendingPathComponent(fileName)
     }
 }
 

@@ -12,24 +12,24 @@ enum PluginActionType: String, Codable {
 }
 
 /// 插件动作。判别联合，通过 type 字段区分。
-enum PluginAction: Codable, Equatable {
+enum PluginAction: Codable, Equatable, Sendable {
     case httpCall(HttpCall)
     case broadcast(Broadcast)
     case workflow(WorkflowAction)
 
-    struct HttpCall: Codable, Equatable {
+    struct HttpCall: Codable, Equatable, Sendable {
         var url: String
         var method: String = "GET"
         var headers: [String: String] = [:]
         var bodyTemplate: String? = nil
     }
 
-    struct Broadcast: Codable, Equatable {
+    struct Broadcast: Codable, Equatable, Sendable {
         var action: String
         var extras: [String: String] = [:]
     }
 
-    struct WorkflowAction: Codable, Equatable {
+    struct WorkflowAction: Codable, Equatable, Sendable {
         var promptTemplate: String
     }
 
@@ -70,7 +70,7 @@ enum PluginAction: Codable, Equatable {
 }
 
 /// 插件
-struct Plugin: Codable, Identifiable, Equatable {
+struct Plugin: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var name: String
     var description: String
@@ -82,7 +82,7 @@ struct Plugin: Codable, Identifiable, Equatable {
 }
 
 /// 插件执行结果
-struct PluginResult: Equatable {
+struct PluginResult: Equatable, Sendable {
     var content: String
     var sendToAgent: Bool = false
 }
@@ -103,14 +103,14 @@ enum FileTransferStatus: String, Codable {
     case cancelled = "cancelled"
 }
 
-struct FileMetadata: Codable, Equatable {
+struct FileMetadata: Codable, Equatable, Sendable {
     var filename: String
     var mimeType: String
     var size: Int
     var checksum: String
 }
 
-struct FileTransferRequest: Codable, Identifiable {
+struct FileTransferRequest: Codable, Identifiable, Sendable {
     var id: String
     var direction: FileTransferDirection
     var metadata: FileMetadata

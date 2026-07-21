@@ -28,16 +28,37 @@ enum AppShortcutDestination: String {
 /// 待处理的导航目标，但 [IntentRouter] 引用了 `AppState`（`@Observable`，iOS 17+），
 /// 若 AppIntent 直接引用 IntentRouter 会触发可用性冲突。
 ///
-/// 因此将暂存属性提取到此无依赖的命名空间枚举中：
-/// - AppIntent `perform()` 写入 `ShortcutRelay.pendingDestination`
-/// - `IntentRouter.bind(to:)` 读取并清空该属性，回放到 AppState
+/// 因此将暂存属性提取到此无依赖的 actor 中：
+/// - AppIntent `perform()` 通过 `await ShortcutRelay.shared.setPending(_:)` 写入
+/// - `IntentRouter.bind(to:)` 通过 `await ShortcutRelay.shared.consumePendingDestination()` 读取并清空
 ///
-/// 线程安全：`pendingDestination` 在 Intent `perform()`（后台线程）中写入，
-/// 在 `bind(to:)`（主线程，应用启动时）中读取。由于两者不会并发执行
-/// （冷启动时 perform 先于 bind），不存在数据竞争。
-enum ShortcutRelay {
+/// 线程安全（Swift 6 严格并发）：`ShortcutRelay` 是 actor，
+/// 跨线程访问由 actor 隔离保证，无需手动加锁。
+/// AppIntent `perform()` 运行在后台执行器；IntentRouter 在 MainActor 上读取，
+/// 两者通过 actor 串行化访问，无数据竞争。
+actor ShortcutRelay {
+
+    /// 全局共享实例 — AppIntent 与 IntentRouter 都通过此单例读写
+    static let shared = ShortcutRelay()
+
     /// 冷启动时由 AppIntent 写入，由 IntentRouter.bind(to:) 读取并清空
-    static var pendingDestination: AppShortcutDestination?
+    private(set) var pendingDestination: AppShortcutDestination?
+
+    private init() {}
+
+    /// 写入待处理的目标（覆盖已有值）。
+    /// - Parameter destination: 导航目标；传 nil 等价于清空
+    func setPending(_ destination: AppShortcutDestination?) {
+        pendingDestination = destination
+    }
+
+    /// 原子地读取并清空待处理目标（一次性消费语义）。
+    /// - Returns: 之前暂存的目标；若无返回 nil
+    func consumePendingDestination() -> AppShortcutDestination? {
+        let pending = pendingDestination
+        pendingDestination = nil
+        return pending
+    }
 }
 
 // MARK: - IntentRouter
@@ -48,7 +69,7 @@ enum ShortcutRelay {
 /// 1. 监听 [ShortcutIntentNotification] 中的三种通知
 /// 2. 将通知转换为 `AppShortcutDestination` 并写入 `AppState.pendingShortcutDestination`
 /// 3. 处理冷启动场景：Intent 可能在 IntentRouter 初始化前触发，
-///    通过 [ShortcutRelay.pendingDestination] 静态属性暂存，待 AppState 绑定后回放
+///    通过 [ShortcutRelay.shared] actor 暂存，待 AppState 绑定后回放
 ///
 /// 使用方式（在 `AgentControlCenterApp.init()` 中）：
 /// ```swift
@@ -56,13 +77,13 @@ enum ShortcutRelay {
 /// router.bind(to: appState)
 /// ```
 ///
-/// 线程安全：通知回调在主线程执行（通过 `queue: .main` 保证）；
-/// [ShortcutRelay.pendingDestination] 静态属性在 Intent `perform()` 中写入，
-/// 在主线程 `bind(to:)` 中读取，不存在竞争。
+/// 线程安全：本类标记 `@MainActor`，通知回调通过 `Task { @MainActor }` 跳转；
+/// `ShortcutRelay` 是 actor，跨线程访问由 actor 隔离保证。
 ///
 /// - Note: 本类不直接使用 AppIntents framework，而是通过 NotificationCenter
 ///   解耦。由于引用了 `AppState`（`@Observable`，iOS 17+），
 ///   本类隐式要求 iOS 17+（与项目部署目标一致）。
+@MainActor
 final class IntentRouter {
 
     /// 共享单例 — 全局唯一路由器
@@ -84,17 +105,21 @@ final class IntentRouter {
 
     /// 绑定应用状态，使后续通知能直接转发到 AppState。
     ///
-    /// 绑定时会检查 [ShortcutRelay.pendingDestination] 静态属性：
-    /// 若存在冷启动时暂存的目标，立即回放到 AppState 并清空。
+    /// 绑定时会检查 [ShortcutRelay.shared] 暂存的目标：
+    /// 若存在冷启动时暂存的目标，回放到 AppState 并清空。
     ///
+    /// - Note: 由于 [ShortcutRelay] 是 actor，回放通过 `Task` 异步完成。
+    ///   `appState` 立即绑定，确保后续 `route(to:)` 同步路径可用。
     /// - Parameter appState: 应用全局状态
     func bind(to appState: AppState) {
         self.appState = appState
 
-        // 回放冷启动时暂存的目标
-        if let pending = ShortcutRelay.pendingDestination {
-            appState.pendingShortcutDestination = pending
-            ShortcutRelay.pendingDestination = nil
+        // 异步消费冷启动时暂存的目标，回放到 AppState
+        Task { [weak self] in
+            guard let self else { return }
+            if let pending = await ShortcutRelay.shared.consumePendingDestination() {
+                self.appState?.pendingShortcutDestination = pending
+            }
         }
     }
 
@@ -112,7 +137,10 @@ final class IntentRouter {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.route(to: .newChat)
+            // 通知回调闭包非 isolated；用 Task 跳转到 MainActor 调用 route(to:)
+            Task { @MainActor [weak self] in
+                await self?.route(to: .newChat)
+            }
         }
 
         // 新建 Agent
@@ -121,7 +149,9 @@ final class IntentRouter {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.route(to: .newAgent)
+            Task { @MainActor [weak self] in
+                await self?.route(to: .newAgent)
+            }
         }
 
         // 打开设置
@@ -130,7 +160,9 @@ final class IntentRouter {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.route(to: .settings)
+            Task { @MainActor [weak self] in
+                await self?.route(to: .settings)
+            }
         }
 
         observers = [newChatObserver, newAgentObserver, openSettingsObserver]
@@ -138,15 +170,15 @@ final class IntentRouter {
 
     /// 路由到指定目标 — 设置 AppState 的 pendingShortcutDestination。
     ///
-    /// 若 AppState 尚未绑定（冷启动中），暂存到 [ShortcutRelay.pendingDestination]。
+    /// 若 AppState 尚未绑定（冷启动中），暂存到 [ShortcutRelay.shared]。
     ///
     /// - Parameter destination: 快捷方式导航目标
-    private func route(to destination: AppShortcutDestination) {
+    private func route(to destination: AppShortcutDestination) async {
         if let appState {
             appState.pendingShortcutDestination = destination
         } else {
-            // AppState 尚未绑定 — 暂存到静态属性，待 bind(to:) 时回放
-            ShortcutRelay.pendingDestination = destination
+            // AppState 尚未绑定 — 暂存到 actor，待 bind(to:) 时回放
+            await ShortcutRelay.shared.setPending(destination)
         }
     }
 

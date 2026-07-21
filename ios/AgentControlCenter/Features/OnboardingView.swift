@@ -55,7 +55,8 @@ struct OnboardingView: View {
                         .tag(index)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
+            // HIG：底部按钮已自带进度提示，关闭系统 page dots 避免与 CTA 视觉冲突
+            .tabViewStyle(.page(indexDisplayMode: .never))
 
             // 底部按钮
             VStack(spacing: AppTheme.Spacing.md) {

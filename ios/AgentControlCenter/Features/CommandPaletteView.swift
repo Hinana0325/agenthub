@@ -64,14 +64,16 @@ struct CommandPaletteView: View {
                             emptyState
                         } else {
                             ForEach(Array(filteredCommands.enumerated()), id: \.element.id) { index, command in
-                                CommandRow(
-                                    command: command,
-                                    isSelected: selectedIndex == index
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
+                                // HIG：使用 Button 代替 onTapGesture，保证 VoiceOver 行为
+                                Button {
                                     executeCommand(command, at: index)
+                                } label: {
+                                    CommandRow(
+                                        command: command,
+                                        isSelected: selectedIndex == index
+                                    )
                                 }
+                                .buttonStyle(.plain)
                                 .id(command.id)
                                 .onHover { hovering in
                                     if hovering {

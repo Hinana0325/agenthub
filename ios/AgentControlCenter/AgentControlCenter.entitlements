@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        App Entitlements (AgentControlCenter.entitlements)
+        对应 App Store 提交所需的应用能力声明。
+        通过 project.yml 的 CODE_SIGN_ENTITLEMENTS 引用。
+    -->
+
+    <!-- App Group：与 Widget Extension 共享 UserDefaults / 文件容器 -->
+    <!-- bundle id: group.com.agentcontrolcenter.app.ios -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.agentcontrolcenter.app.ios</string>
+    </array>
+</dict>
+</plist>

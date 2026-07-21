@@ -11,6 +11,10 @@ import Observation
 /// - 提供 Agent 状态的响应式流
 /// - 协调 Transport 层与 Agent 实例的绑定
 /// - 按 Capability 查询 Agent
+///
+/// `@MainActor` 隔离保证 `agents` / `activeAgent` 等响应式状态的读写
+/// 均在主线程进行，避免 SwiftUI 视图读取时发生数据竞争。
+@MainActor
 @Observable
 final class AgentManager {
 

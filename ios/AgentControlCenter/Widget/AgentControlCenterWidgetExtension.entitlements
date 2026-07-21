@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        Widget Extension Entitlements
+        与主 App 共享同一 App Group，以读写 UserDefaults(suiteName:) 与共享文件容器。
+    -->
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.agentcontrolcenter.app.ios</string>
+    </array>
+</dict>
+</plist>

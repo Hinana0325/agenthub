@@ -45,7 +45,7 @@ enum AgentCapability: String, Codable, CaseIterable {
 }
 
 /// Agent 连接配置。apiKey 在持久化时由 Keychain 加密，使用 AKS: 前缀格式。
-struct AgentConfig: Codable, Identifiable, Equatable {
+struct AgentConfig: Codable, Identifiable, Equatable, Sendable {
     var id: String = "default"
     var name: String = "Default Agent"
     var type: AgentType = .hermes
@@ -60,7 +60,7 @@ struct AgentConfig: Codable, Identifiable, Equatable {
 }
 
 /// Agent 运行时实例
-struct Agent: Codable, Identifiable, Equatable {
+struct Agent: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var name: String
     var endpoint: String = ""

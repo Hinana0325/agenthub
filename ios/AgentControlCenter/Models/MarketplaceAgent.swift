@@ -8,7 +8,7 @@ import Foundation
 // 通过 `MarketplaceClient.install(agent:)` 转换为本地 `AgentConfig` 后入库。
 
 /// 市场 Agent 模型 — 用于在市场页面展示可安装的 Agent 信息
-struct MarketplaceAgent: Identifiable, Codable, Hashable {
+struct MarketplaceAgent: Identifiable, Codable, Hashable, Sendable {
     /// 唯一标识（与本地 AgentConfig.id 复用，便于去重）
     let id: String
     /// 显示名称

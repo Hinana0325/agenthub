@@ -63,6 +63,7 @@ struct McpView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("添加 MCP 服务器")
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -72,8 +73,8 @@ struct McpView: View {
                     saveServers()
                 }
             }
-            // 视图出现时从 UserDefaults 加载已保存的 MCP 服务器列表
-            .onAppear {
+            // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
+            .task {
                 loadServers()
             }
         }

@@ -105,7 +105,8 @@ struct DeviceSyncView: View {
             .padding(AppTheme.Spacing.lg)
         }
         .navigationTitle("设备同步")
-        .onAppear {
+        // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
+        .task {
             loadSyncHistory()
             loadLastSyncTime()
         }
@@ -300,10 +301,14 @@ struct DeviceSyncView: View {
     /// 最后同步时间的格式化字符串
     private var lastSyncTimeFormatted: String {
         guard let time = lastSyncTime else { return "从未同步" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        formatter.locale = Locale(identifier: "zh_CN")
-        return formatter.string(from: time)
+        // SW-M4: 使用现代 FormatStyle 替代 DateFormatter（locale 自动从系统获取）
+        return time.formatted(Date.FormatStyle()
+            .year(.defaultDigits)
+            .month(.twoDigits)
+            .day(.twoDigits)
+            .hour(.twoDigits)
+            .minute(.twoDigits)
+            .locale(Locale(identifier: "zh_CN")))
     }
 
     // MARK: - 已连接设备列表
@@ -398,6 +403,7 @@ struct DeviceSyncView: View {
             }
             .buttonStyle(.borderless)
             .disabled(!device.isOnline || isSyncing)
+            .accessibilityLabel("与该设备同步")
         }
         .padding(.vertical, AppTheme.Spacing.xs)
     }
@@ -648,9 +654,12 @@ struct DeviceSyncView: View {
 
     /// 格式化日期为本地化字符串
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM-dd HH:mm"
-        formatter.locale = Locale(identifier: "zh_CN")
-        return formatter.string(from: date)
+        // SW-M4: 使用现代 FormatStyle 替代 DateFormatter
+        return date.formatted(Date.FormatStyle()
+            .month(.twoDigits)
+            .day(.twoDigits)
+            .hour(.twoDigits)
+            .minute(.twoDigits)
+            .locale(Locale(identifier: "zh_CN")))
     }
 }

@@ -2,21 +2,24 @@ name: AgentControlCenter
 options:
   bundleIdPrefix: com.agentcontrolcenter.app
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "18.0"
   developmentLanguage: zh-Hans
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
-  xcodeVersion: "26.0"
+  xcodeVersion: "16.0"
 
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    SWIFT_STRICT_CONCURRENCY: minimal
+    SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # Sentry DSN 通过 xcconfig 风格变量注入到 Info.plist；
+    # 本地构建未设置时 Info.plist 中保留 $(SENTRY_DSN) 占位，App 启动时会跳过 Sentry 上报。
+    SENTRY_DSN: "$(SENTRY_DSN)"
 
 packages:
   Sentry:
@@ -27,7 +30,7 @@ targets:
   AgentControlCenter:
     type: application
     platform: iOS
-    deploymentTarget: "26.0"
+    deploymentTarget: "18.0"
     sources:
       - path: AgentControlCenter
         excludes:
@@ -40,26 +43,71 @@ targets:
       - package: Sentry
     info:
       path: AgentControlCenter/Info.plist
+      properties:
+        SENTRY_DSN: $(SENTRY_DSN)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.agentcontrolcenter.app.ios
         PRODUCT_NAME: AgentControlCenter
-        MARKETING_VERSION: "4.5.0"
-        CURRENT_PROJECT_VERSION: "35"
+        MARKETING_VERSION: "4.6.0"
+        CURRENT_PROJECT_VERSION: "36"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
-        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        # App Entitlements：声明 App Group / Keychain Sharing 等能力，
+        # 缺失会导致 UserDefaults(suiteName:) 返回 nil，Widget 数据流断裂
+        CODE_SIGN_ENTITLEMENTS: AgentControlCenter/AgentControlCenter.entitlements
+    dependencies:
+      - target: AgentControlCenterWidgetExtension
+
+  AgentControlCenterWidgetExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: AgentControlCenter/Widget
+        excludes:
+          - AgentControlCenterWidgetExtension.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.agentcontrolcenter.app.ios.WidgetExtension
+        PRODUCT_NAME: AgentControlCenterWidgetExtension
+        MARKETING_VERSION: "4.6.0"
+        CURRENT_PROJECT_VERSION: "36"
+        SKIP_INSTALL: YES
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        CODE_SIGN_ENTITLEMENTS: AgentControlCenter/Widget/AgentControlCenterWidgetExtension.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: AgentWidget
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  AgentControlCenterTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: AgentControlCenterTests
+    dependencies:
+      - target: AgentControlCenter
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.agentcontrolcenter.app.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   AgentControlCenter:
     build:
       targets:
         AgentControlCenter: all
+        AgentControlCenterWidgetExtension: all
+        AgentControlCenterTests: [test]
     run:
       config: Debug
     test:
       config: Debug
+      targets:
+        - AgentControlCenterTests
     profile:
       config: Release
     analyze:

@@ -31,23 +31,66 @@ enum BackupSchedule: String, Codable, CaseIterable {
 ///
 /// 仅包含可安全跨设备迁移的设置项；`encryptionPassphrase` 等绑定设备的敏感凭据
 /// 不在此处，由 `KeychainManager` 单独管理。
+///
+/// 字段命名与 Android `BackupManager.BackupSettings` 完全对齐（`themeMode` /
+/// `e2eEnabled` / `autoBackup`），保证 iOS ↔ Android 跨平台备份可互读。
+/// 旧版 iOS 备份中使用的 `theme` / `encryptionEnabled` 字段在解码时仍被接受，
+/// 用于向前兼容。
 struct BackupSettings: Codable, Equatable {
-    /// 主题模式："system" / "light" / "dark"
-    var theme: String
+    /// 主题模式："system" / "light" / "dark"（Android 字段名 `themeMode`）
+    var themeMode: String
     /// 字体大小："small" / "medium" / "large"（与 `FontSize` 的 rawValue 对齐）
     var fontSize: String
-    /// 是否启用端到端加密
-    var encryptionEnabled: Bool
+    /// 是否启用端到端加密（Android 字段名 `e2eEnabled`）
+    var e2eEnabled: Bool
     /// 自动备份调度（与 `BackupSchedule.rawValue` 对齐）
     var autoBackup: String
 
     /// 创建一份默认设置快照（用于解码失败兜底）
     static let defaultSettings = BackupSettings(
-        theme: "system",
+        themeMode: "system",
         fontSize: "medium",
-        encryptionEnabled: false,
+        e2eEnabled: false,
         autoBackup: BackupSchedule.manual.rawValue
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case themeMode, fontSize, e2eEnabled, autoBackup
+        // 旧版 iOS 字段名 — 仅用于解码兼容
+        case legacyTheme = "theme"
+        case legacyEncryptionEnabled = "encryptionEnabled"
+    }
+
+    init(themeMode: String, fontSize: String, e2eEnabled: Bool, autoBackup: String) {
+        self.themeMode = themeMode
+        self.fontSize = fontSize
+        self.e2eEnabled = e2eEnabled
+        self.autoBackup = autoBackup
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // 优先使用新字段名 `themeMode`，回退到旧版 `theme`（向前兼容旧 iOS 备份）
+        self.themeMode = try c.decodeIfPresent(String.self, forKey: .themeMode)
+            ?? c.decodeIfPresent(String.self, forKey: .legacyTheme)
+            ?? "system"
+        self.fontSize = try c.decodeIfPresent(String.self, forKey: .fontSize) ?? "medium"
+        // 优先使用 `e2eEnabled`，回退到旧版 `encryptionEnabled`
+        self.e2eEnabled = try c.decodeIfPresent(Bool.self, forKey: .e2eEnabled)
+            ?? c.decodeIfPresent(Bool.self, forKey: .legacyEncryptionEnabled)
+            ?? false
+        self.autoBackup = try c.decodeIfPresent(String.self, forKey: .autoBackup)
+            ?? BackupSchedule.manual.rawValue
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        // 仅编码新字段名，保证与 Android 互读
+        try c.encode(themeMode, forKey: .themeMode)
+        try c.encode(fontSize, forKey: .fontSize)
+        try c.encode(e2eEnabled, forKey: .e2eEnabled)
+        try c.encode(autoBackup, forKey: .autoBackup)
+    }
 }
 
 // MARK: - BackupData
@@ -55,17 +98,22 @@ struct BackupSettings: Codable, Equatable {
 /// 备份数据载体 — 包含一次完整快照所需的全部领域数据。
 ///
 /// 序列化为 JSON 后可作为本地备份文件或加密备份的明文载荷。
-/// 与 Android 端 `BackupManager.BackupData` 结构对齐，便于跨平台迁移。
+/// 与 Android 端 `BackupManager.BackupData` 结构对齐：
+/// - `timestamp` 为 epoch milliseconds（Int64），对应 Android `Long`；
+/// - 旧版 iOS 备份使用 ISO 8601 字符串字段 `exportedAt`，解码时仍被接受。
 struct BackupData: Codable {
     /// 备份格式版本号，用于向前兼容
     let version: String
-    /// 备份生成时间（ISO 8601 字符串）
-    let exportedAt: String
+    /// 备份生成时间（epoch milliseconds，与 Android 对齐）
+    let timestamp: Int64
     /// 全部会话列表
     let sessions: [Session]
     /// 全部消息列表（跨会话扁平化）
     let messages: [Message]
-    /// 全部 Agent 配置列表（apiKey 已解密为明文）
+    /// 全部 Agent 配置列表
+    ///
+    /// 注意：明文备份时 `apiKey` 已被脱敏为 `"***"`，无法还原；
+    /// 加密备份时保留原始 `apiKey`，可解密还原。
     let agentConfigs: [AgentConfig]
     /// 设置快照
     let settings: BackupSettings
@@ -83,8 +131,7 @@ struct BackupData: Codable {
         settings: BackupSettings
     ) {
         self.version = Self.formatVersion
-        let formatter = ISO8601DateFormatter()
-        self.exportedAt = formatter.string(from: Date())
+        self.timestamp = Int64(Date().timeIntervalSince1970 * 1000)
         self.sessions = sessions
         self.messages = messages
         self.agentConfigs = agentConfigs
@@ -93,6 +140,42 @@ struct BackupData: Codable {
 
     /// 备份格式版本号
     static let formatVersion = "3.0.0"
+
+    private enum CodingKeys: String, CodingKey {
+        case version, timestamp, sessions, messages, agentConfigs, settings
+        // 旧版 iOS 字段名 — 仅用于解码兼容
+        case legacyExportedAt = "exportedAt"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try c.decodeIfPresent(String.self, forKey: .version) ?? Self.formatVersion
+        // 优先使用 `timestamp`（Int64 epoch ms），回退到旧版 `exportedAt`（ISO 8601 字符串）
+        if let ts = try c.decodeIfPresent(Int64.self, forKey: .timestamp) {
+            self.timestamp = ts
+        } else if let isoString = try c.decodeIfPresent(String.self, forKey: .legacyExportedAt),
+                  // SW-M4: 使用现代 .iso8601 解析策略替代 ISO8601DateFormatter
+                  let date = try? Date(isoString, strategy: .iso8601) {
+            self.timestamp = Int64(date.timeIntervalSince1970 * 1000)
+        } else {
+            self.timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+        }
+        self.sessions = try c.decodeIfPresent([Session].self, forKey: .sessions) ?? []
+        self.messages = try c.decodeIfPresent([Message].self, forKey: .messages) ?? []
+        self.agentConfigs = try c.decodeIfPresent([AgentConfig].self, forKey: .agentConfigs) ?? []
+        self.settings = try c.decodeIfPresent(BackupSettings.self, forKey: .settings)
+            ?? .defaultSettings
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(version, forKey: .version)
+        try c.encode(timestamp, forKey: .timestamp)
+        try c.encode(sessions, forKey: .sessions)
+        try c.encode(messages, forKey: .messages)
+        try c.encode(agentConfigs, forKey: .agentConfigs)
+        try c.encode(settings, forKey: .settings)
+    }
 }
 
 // MARK: - BackupManager
@@ -172,17 +255,34 @@ final class BackupManager {
 
     /// 将完整备份以明文 JSON 写入 Documents/Backups/ 目录。
     ///
+    /// 安全说明：明文备份中的 `agentConfigs[].apiKey` 会被脱敏为 `"***"`，
+    /// 防止备份文件外泄后泄露 API 凭据。`restoreBackup` 不会用脱敏值覆盖
+    /// 数据库中的真实 apiKey，用户恢复后无需重新登录现有 Agent；
+    /// 若需将 Agent 配置一并迁移到新设备，请使用 `exportEncrypted`。
+    ///
     /// - Returns: 成功返回导出文件的 `URL`；失败返回 `nil` 并设置 `lastError`
     @discardableResult
     func exportToFile() -> URL? {
         lastError = nil
         do {
-            let data = try encodeBackup(collectBackupData())
+            var backup = collectBackupData()
+            // 明文备份：对每个 AgentConfig 的 apiKey 做脱敏
+            backup.agentConfigs = backup.agentConfigs.map { config in
+                var masked = config
+                if !masked.apiKey.isEmpty {
+                    masked.apiKey = "***"
+                }
+                return masked
+            }
+            let data = try encodeBackup(backup)
             let url = try writeBackup(data: data, fileExtension: "json")
             lastExportedURL = url
             return url
         } catch {
-            lastError = "导出失败: \(error.localizedDescription)"
+            lastError = String(
+                format: NSLocalizedString("error.export.failed", comment: ""),
+                error.localizedDescription
+            )
             return nil
         }
     }
@@ -208,7 +308,10 @@ final class BackupManager {
             let data = try Data(contentsOf: url)
             return decodeBackup(data: data)
         } catch {
-            lastError = "导入失败: \(error.localizedDescription)"
+            lastError = String(
+                format: NSLocalizedString("error.import.failed", comment: ""),
+                error.localizedDescription
+            )
             return nil
         }
     }
@@ -231,10 +334,9 @@ final class BackupManager {
         lastError = nil
         do {
             let json = try encodeBackupString(collectBackupData())
-            // KeychainManager.encrypt 输出 `AKS:` 前缀的 Base64 字符串
-            let encrypted = KeychainManager.encrypt(json)
-            guard !encrypted.isEmpty else {
-                lastError = "加密失败"
+            // KeychainManager.encrypt 输出 `AKS:` 前缀的 Base64 字符串；加密失败返回 nil
+            guard let encrypted = KeychainManager.encrypt(json) else {
+                lastError = String(localized: "error.encrypt.failed")
                 return nil
             }
             let data = Data(encrypted.utf8)
@@ -242,7 +344,10 @@ final class BackupManager {
             lastExportedURL = url
             return url
         } catch {
-            lastError = "加密导出失败: \(error.localizedDescription)"
+            lastError = String(
+                format: NSLocalizedString("error.encrypted.export", comment: ""),
+                error.localizedDescription
+            )
             return nil
         }
     }
@@ -271,15 +376,15 @@ final class BackupManager {
             }
         }
         guard let payload = String(data: try? Data(contentsOf: url) ?? Data(), encoding: .utf8) else {
-            lastError = "无法读取加密备份文件"
+            lastError = String(localized: "error.encrypted.read")
             return nil
         }
         guard let json = KeychainManager.decrypt(payload) else {
-            lastError = "解密失败 — 文件非加密备份或密钥不匹配"
+            lastError = String(localized: "error.decrypt.failed")
             return nil
         }
         guard let data = json.data(using: .utf8) else {
-            lastError = "解密后的数据不是有效的 UTF-8 文本"
+            lastError = String(localized: "error.decrypt.utf8")
             return nil
         }
         return decodeBackup(data: data)
@@ -307,7 +412,10 @@ final class BackupManager {
             }
             return true
         } catch {
-            lastError = "恢复失败: \(error.localizedDescription)"
+            lastError = String(
+                format: NSLocalizedString("error.restore.failed", comment: ""),
+                error.localizedDescription
+            )
             return false
         }
     }
@@ -326,9 +434,9 @@ final class BackupManager {
         }
         let agentConfigs = dataController.fetchAgentConfigs()
         let settings = BackupSettings(
-            theme: UserDefaults.standard.string(forKey: "theme") ?? "system",
+            themeMode: UserDefaults.standard.string(forKey: "theme") ?? "system",
             fontSize: UserDefaults.standard.string(forKey: "fontSize") ?? "medium",
-            encryptionEnabled: UserDefaults.standard.bool(forKey: "encryptionEnabled"),
+            e2eEnabled: UserDefaults.standard.bool(forKey: "encryptionEnabled"),
             autoBackup: UserDefaults.standard.string(forKey: Self.autoBackupStorageKey)
                 ?? BackupSchedule.manual.rawValue
         )
@@ -361,7 +469,10 @@ final class BackupManager {
         do {
             return try decoder.decode(BackupData.self, from: data)
         } catch {
-            lastError = "解析备份失败: \(error.localizedDescription)"
+            lastError = String(
+                format: NSLocalizedString("error.backup.parse", comment: ""),
+                error.localizedDescription
+            )
             return nil
         }
     }

@@ -24,7 +24,7 @@ enum TransformType: String, Codable {
 }
 
 /// 工作流节点
-struct WorkflowNode: Codable, Identifiable, Equatable {
+struct WorkflowNode: Codable, Identifiable, Equatable, Sendable {
     var id: String = UUID().uuidString
     var type: NodeType
     var label: String = ""
@@ -37,7 +37,7 @@ struct WorkflowNode: Codable, Identifiable, Equatable {
 }
 
 /// 工作流边
-struct WorkflowEdge: Codable, Identifiable, Equatable {
+struct WorkflowEdge: Codable, Identifiable, Equatable, Sendable {
     var id: String = UUID().uuidString
     var fromNodeId: String
     var toNodeId: String
@@ -45,7 +45,7 @@ struct WorkflowEdge: Codable, Identifiable, Equatable {
 }
 
 /// 工作流 DAG
-struct Workflow: Codable, Identifiable, Equatable {
+struct Workflow: Codable, Identifiable, Equatable, Sendable {
     var id: String = UUID().uuidString
     var name: String
     var description: String = ""
@@ -54,7 +54,7 @@ struct Workflow: Codable, Identifiable, Equatable {
 }
 
 /// 工作流执行状态
-struct WorkflowExecutionState: Equatable {
+struct WorkflowExecutionState: Equatable, Sendable {
     var isRunning: Bool = false
     var currentNodeId: String? = nil
     var completedNodeIds: Set<String> = []

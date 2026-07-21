@@ -17,9 +17,9 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>4.5.0</string>
+    <string>4.6.0</string>
     <key>CFBundleVersion</key>
-    <string>35</string>
+    <string>36</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIApplicationSceneManifest</key>
@@ -54,10 +54,14 @@
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <!--
+        Background Modes (Guideline 2.5.4)：
+        移除 remote-notification（无 APNs entitlement 与注册代码）；
+        保留 fetch / processing 用于 BGTaskScheduler 后台数据刷新。
+    -->
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>
-        <string>remote-notification</string>
         <string>processing</string>
     </array>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
@@ -65,13 +69,34 @@
         <string>com.agentcontrolcenter.app.refresh</string>
         <string>com.agentcontrolcenter.app.processing</string>
     </array>
+    <!--
+        隐私权限说明（Guideline 5.1.1）：
+        描述必须明确告知用户数据用途，避免使用「用于功能实现」等通用文案。
+    -->
     <key>NSMicrophoneUsageDescription</key>
-    <string>Agent Control Center 需要麦克风权限以支持语音输入</string>
+    <string>Agent Control Center 需要麦克风权限以录制语音消息和进行语音输入识别</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Agent Control Center 需要语音识别权限以将你的语音转为文字发送给 Agent</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Agent Control Center 需要相册权限以发送图片</string>
-    <key>NSCameraUsageDescription</key>
-    <string>Agent Control Center 需要相机权限以拍照发送</string>
+    <string>Agent Control Center 需要相册权限以选择并发送图片给 Agent</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Agent Control Center 需要本地网络权限以连接本地 Agent</string>
+    <string>Agent Control Center 需要本地网络权限以发现局域网内的其他设备进行 P2P 同步，以及连接本地 LLM 推理服务</string>
+    <!--
+        NSBonjourServices (iOS 14+)：
+        MultipeerConnectivity 通过 Bonjour 发现对端，必须列出 service type，
+        否则 local-network 权限弹窗后 peer discovery 静默失败。
+    -->
+    <key>NSBonjourServices</key>
+    <array>
+        <string>acc-sync._tcp</string>
+        <string>acc-sync._udp</string>
+    </array>
+    <!--
+        Export Compliance (Guideline 5.5)：
+        本应用仅使用 HTTPS + Apple 标准 CryptoKit (AES-GCM)，属于豁免范围，
+        显式声明 false 避免每次提交都要填写年度自分类表单。
+    -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
