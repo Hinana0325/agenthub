@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
+// D3: AGP 9.0 起内置 Kotlin 支持，'kotlin-android' plugin 不再需要（应用会报错）。
+// 见 https://kotl.in/gradle/agp-built-in-kotlin
 apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'dagger.hilt.android.plugin'
@@ -7,7 +8,9 @@ apply plugin: 'io.gitlab.arturbosch.detekt'
 
 android {
     namespace "com.agentcontrolcenter.app"
-    compileSdk rootProject.ext.compileSdkVersion
+    // D3: AGP 9 要求 compileSdk 用字面量（不再接受 rootProject.ext.xxx 引用，
+    // 否则报 "does not specify compileSdk in build.gradle"）。minSdk/targetSdk 同理。
+    compileSdk 36
     buildToolsVersion '36.0.0'
 
     lint {
@@ -16,8 +19,9 @@ android {
 
     defaultConfig {
         applicationId "com.agentcontrolcenter.app"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        // D3: 同 compileSdk，AGP 9 要求字面量
+        minSdkVersion 24
+        targetSdkVersion 36
 
         // Read version from the single source of truth: version.properties
         // File is at the repo root (parent of the android/ Gradle project).
