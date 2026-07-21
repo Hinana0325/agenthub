@@ -7,9 +7,10 @@ import XCTest
 final class TransportFactoryTests: XCTestCase {
 
     /// 测试结束后恢复默认 provider，避免污染其他测试
-    override func tearDown() {
+    // CI-fix: Swift 6 下 tearDown 不能收紧 isolation；标 nonisolated override + 直接访问
+    // static var（已经是 nonisolated(unsafe)）即可。super.tearDown() 默认 no-op 跳过。
+    nonisolated override func tearDown() {
         TransportFactory.provider = TransportFactory.shared
-        super.tearDown()
     }
 
     // MARK: - 默认路由
@@ -83,7 +84,8 @@ final class TransportFactoryTests: XCTestCase {
 // MARK: - Mock TransportFactory
 
 /// 测试用 TransportFactory mock，记录调用次数和参数
-private final class MockTransportFactory: TransportFactorying, @unchecked Sendable {
+// CI-fix: 添加 Equatable 协议（基于引用相等），让 XCTAssertEqual 比较可用。
+private final class MockTransportFactory: TransportFactorying, @unchecked Sendable, Equatable {
     private(set) var createCallCount = 0
     private(set) var lastAgentType: AgentType?
 
@@ -91,6 +93,10 @@ private final class MockTransportFactory: TransportFactorying, @unchecked Sendab
         createCallCount += 1
         lastAgentType = agentType
         return MockTransport()
+    }
+
+    static func == (lhs: MockTransportFactory, rhs: MockTransportFactory) -> Bool {
+        lhs === rhs
     }
 }
 

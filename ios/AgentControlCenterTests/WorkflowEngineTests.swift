@@ -6,19 +6,20 @@ import XCTest
 @MainActor
 final class WorkflowEngineTests: XCTestCase {
 
-    private var engine: WorkflowEngine!
+    // CI-fix: Swift 6 下 setUp/tearDown 不能收紧 isolation，manager 标 nonisolated(unsafe)
+    // 让 nonisolated override 能访问；改用 setUp() async throws + MainActor.run 调用
+    // MainActor 隔离的初始化器。super.setUp() 默认 no-op，跳过避免发送 self 跨 actor。
+    nonisolated(unsafe) private var engine: WorkflowEngine!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         // 注入 mock TransportFactory，避免模板测试触发真实网络请求
         TransportFactory.provider = MockTransportFactory()
-        engine = WorkflowEngine()
+        engine = await MainActor.run { WorkflowEngine(dataController: DataController()) }
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         engine = nil
         TransportFactory.provider = TransportFactory.shared
-        super.tearDown()
     }
 
     // MARK: - 重置
@@ -108,7 +109,7 @@ final class WorkflowEngineTests: XCTestCase {
             nodes: [
                 WorkflowNode(id: "input", type: .input, label: "输入"),
                 WorkflowNode(id: "upper", type: .transform, label: "转大写", transformType: .toUppercase),
-                WorkflowNode(id: "prefix", type: .transform, label: "加前缀", transformType: .prefix, prompt: ">> "),
+                WorkflowNode(id: "prefix", type: .transform, label: "加前缀", prompt: ">> ", transformType: .prefix),
                 WorkflowNode(id: "output", type: .output, label: "输出")
             ],
             edges: [
@@ -138,8 +139,8 @@ final class WorkflowEngineTests: XCTestCase {
             description: "测试",
             nodes: [
                 WorkflowNode(id: "input", type: .input, label: "I"),
-                WorkflowNode(id: "a", type: .transform, label: "A", transformType: .prefix, prompt: "A:"),
-                WorkflowNode(id: "b", type: .transform, label: "B", transformType: .prefix, prompt: "B:"),
+                WorkflowNode(id: "a", type: .transform, label: "A", prompt: "A:", transformType: .prefix),
+                WorkflowNode(id: "b", type: .transform, label: "B", prompt: "B:", transformType: .prefix),
                 WorkflowNode(id: "merge", type: .transform, label: "Merge", transformType: .passthrough),
                 WorkflowNode(id: "output", type: .output, label: "O")
             ],
@@ -308,7 +309,7 @@ final class WorkflowEngineTests: XCTestCase {
             description: "测试",
             nodes: [
                 WorkflowNode(id: "input", type: .input, label: "I"),
-                WorkflowNode(id: "transform", type: .transform, label: "T", transformType: type, prompt: extra),
+                WorkflowNode(id: "transform", type: .transform, label: "T", prompt: extra, transformType: type),
                 WorkflowNode(id: "output", type: .output, label: "O")
             ],
             edges: [
