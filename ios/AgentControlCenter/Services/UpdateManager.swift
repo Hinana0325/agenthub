@@ -130,9 +130,9 @@ final class UpdateManager {
             isNewVersionAvailable = compareVersions(remoteVersion, currentVersion) == .remoteNewer
 
         } catch let decodingError as DecodingError {
-            error = "解析 Release 数据失败: \(decodingError.localizedDescription)"
+            self.error = "解析 Release 数据失败: \(decodingError.localizedDescription)"
         } catch {
-            error = "网络请求失败: \(error.localizedDescription)"
+            self.error = "网络请求失败: \(error.localizedDescription)"
         }
     }
 
