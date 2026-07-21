@@ -3,6 +3,11 @@ import SwiftUI
 @testable import AgentControlCenter
 
 // MARK: - 液态玻璃预设单元测试
+// CI-fix: 类标记 @MainActor。glassPill() / glassFloating() / glassInteractive(in:)
+// / glassStatic(in:) / glassTinted(_:in:) / GlassContainer.init 等都是 SwiftUI View
+// 协议扩展方法（View 是 @MainActor），nonisolated 测试方法调用会报
+// "call to main actor-isolated instance method in a synchronous nonisolated context"。
+@MainActor
 final class GlassPresetsTests: XCTestCase {
 
     // MARK: - GlassTokens 测试
