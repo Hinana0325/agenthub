@@ -79,6 +79,19 @@ targets:
       - path: AgentControlCenter/Widget
         excludes:
           - AgentControlCenterWidgetExtension.entitlements
+          - Info.plist
+    # CI-fix: WidgetExtension 必须有显式 Info.plist 包含 NSExtension dict，
+    # 否则 iOS Simulator 安装时报 "extensionDictionary must be set in placeholder
+    # attributes for an app extension placeholder"。原配置用 GENERATE_INFOPLIST_FILE: YES
+    # + INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier 期望生成嵌套 dict，
+    # 但 Xcode 16.4 的 INFOPLIST_KEY_* 不会生成嵌套 NSExtension dict，导致
+    # WidgetExtension.appex 安装失败、test runner 启动失败。
+    info:
+      path: AgentControlCenter/Widget/Info.plist
+      properties:
+        CFBundleDisplayName: AgentWidget
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.agentcontrolcenter.app.ios.WidgetExtension
@@ -88,9 +101,7 @@ targets:
         SKIP_INSTALL: YES
         IPHONEOS_DEPLOYMENT_TARGET: "18.0"
         CODE_SIGN_ENTITLEMENTS: AgentControlCenter/Widget/AgentControlCenterWidgetExtension.entitlements
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: AgentWidget
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
 
   AgentControlCenterTests:
     type: bundle.unit-test
