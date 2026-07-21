@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.runtime.notification
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -7,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.content.pm.PackageManager
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -201,6 +203,70 @@ class LocalNotificationManager(private val context: Context) {
             }
         } catch (_: Exception) {
             // 分组摘要失败不影响主通知
+        }
+    }
+
+    /**
+     * I3: Android 16 (API 36, BAKLAVA) Live Updates 通知。
+     *
+     * 使用 [Notification.ProgressStyle] 持续展示进行中的任务（如 Agent 流式响应、
+     * 导航、外卖配送等）。通知标记为 ongoing，用户无法滑动清除，需在任务结束时
+     * 调用 [cancel] 取消。
+     *
+     * 仅在 API 36+ 设备生效；低于 BAKLAVA 的设备直接 return，不影响现有通知逻辑。
+     * 即使 compileSdk >= 36，运行时也会再次校验 SDK_INT，确保在低版本设备上安全。
+     *
+     * @param notificationId 通知 ID（同一 ID 的通知会被更新而非新建，适合反复刷新进度）
+     * @param title 通知标题
+     * @param content 通知正文
+     * @param progress 进度 0-100；[indeterminate] 为 true 时忽略此值
+     * @param indeterminate 是否为不确定进度（如流式响应开始时未知总长度）
+     */
+    @RequiresApi(Build.VERSION_CODES.BAKLAVA)
+    fun notifyLiveUpdate(
+        notificationId: Int,
+        title: String,
+        content: String,
+        progress: Int,
+        indeterminate: Boolean = false
+    ) {
+        // 低于 Android 16 的设备不支持 ProgressStyle，静默跳过
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
+
+        // Android 13+ 需要运行时授予 POST_NOTIFICATIONS 权限，未授权时静默跳过，
+        // 与 [notifyWithStyle] 的权限检查逻辑保持一致，避免触发 SecurityException。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        try {
+            // Notification.ProgressStyle 是 Android 16 (API 36) 引入的新样式，
+            // 专为 Live Updates 场景设计。setStyledByProgress(false) 表示由系统
+            // 根据 progress 自行渲染进度条样式而非完全自定义。
+            val progressStyle = Notification.ProgressStyle()
+                .setStyledByProgress(false)
+                .setProgress(progress)
+                .setProgressIndeterminate(indeterminate)
+
+            // 注意：此处使用平台 Notification.Builder 而非 NotificationCompat.Builder，
+            // 因为 ProgressStyle 目前仅存在于平台 API 中，NotificationCompat 尚未封装。
+            val notification = Notification.Builder(context, CHANNEL_DEFAULT)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setOngoing(true)
+                .setStyle(progressStyle)
+                .build()
+
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        } catch (_: Exception) {
+            // ProgressStyle 在部分 OEM ROM 上可能行为不一致，失败时静默跳过，
+            // 不影响流式响应本身。
         }
     }
 

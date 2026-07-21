@@ -203,7 +203,7 @@ private fun WorkflowCard(
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         }
     }
@@ -224,7 +224,7 @@ private fun WorkflowBadge(icon: androidx.compose.ui.graphics.vector.ImageVector,
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -259,7 +259,7 @@ private fun WorkflowDetailScreen(
                             Icons.Default.PlayArrow,
                             contentDescription = stringResource(R.string.workflow_run),
                             tint = if (executionState.isRunning)
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             else
                                 MaterialTheme.colorScheme.primary
                         )
@@ -567,7 +567,7 @@ private fun CreateWorkflowDialog(
                             Text(
                                 text = subtitle,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

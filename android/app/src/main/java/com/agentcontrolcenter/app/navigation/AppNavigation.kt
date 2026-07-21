@@ -135,6 +135,15 @@ fun AppNavigation() {
                     }
                 }
 
+                // I1: 折叠屏铰链避让。
+                // book mode 下铰链竖向分隔屏幕，Rail 在左、内容在右，
+                // 中间用 hingeWidth 宽度的 Spacer 避开铰链区域，
+                // 防止内容被铰链遮挡或落在不可点击区域。
+                // 非折叠屏 / 全开时 hingeWidth = 0.dp，Spacer 退化为无宽度。
+                if (adaptive.isBookMode && adaptive.hingeWidth > 0.dp) {
+                    Spacer(modifier = Modifier.width(adaptive.hingeWidth))
+                }
+
                 Scaffold(
                     modifier = Modifier.weight(1f),
                     contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top)

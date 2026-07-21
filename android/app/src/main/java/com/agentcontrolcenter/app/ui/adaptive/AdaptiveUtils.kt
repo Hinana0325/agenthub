@@ -2,7 +2,9 @@ package com.agentcontrolcenter.app.ui.adaptive
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -79,6 +81,10 @@ data class PanelConfig(
  * @property isTablet 宽度 ≥ 600dp 即视为平板（含折叠屏展开态）
  * @property isLandscape 宽度 > 高度时为横屏
  * @property isFoldable 折叠屏判断：中等宽度 + 较矮高度，或宽度在 600-720 之间
+ * @property isBookMode 折叠屏半开且铰链竖向（book mode），适合双栏布局
+ * @property isTableMode 折叠屏半开且铰链横向（table mode），适合上下分栏（预留）
+ * @property hingeWidth 铰链宽度（已转换为 dp），非折叠屏或全开时为 0.dp。
+ *                      在双栏布局中应作为 Spacer 宽度以避开铰链区域。
  */
 @Immutable
 data class AdaptiveConfig(
@@ -89,7 +95,10 @@ data class AdaptiveConfig(
     val panelConfig: PanelConfig,
     val isTablet: Boolean,
     val isLandscape: Boolean,
-    val isFoldable: Boolean
+    val isFoldable: Boolean,
+    val isBookMode: Boolean = false,
+    val isTableMode: Boolean = false,
+    val hingeWidth: Dp = 0.dp
 ) {
     // ── 向后兼容字段 ──────────────────────────────────────────────
     /** @deprecated Use [widthClass]. */
@@ -113,7 +122,10 @@ data class AdaptiveConfig(
             panelConfig = PanelConfig(contentMaxWidth = 600.dp, inputMaxWidth = 640.dp),
             isTablet = false,
             isLandscape = false,
-            isFoldable = false
+            isFoldable = false,
+            isBookMode = false,
+            isTableMode = false,
+            hingeWidth = 0.dp
         )
     }
 }
@@ -121,8 +133,9 @@ data class AdaptiveConfig(
 /**
  * 计算当前屏幕的自适应配置。
  *
- * 该函数使用纯 dp 判断（无额外 Gradle 依赖），在 Composable 上下文中
- * 读取 [LocalConfiguration] 并返回完整的 [AdaptiveConfig]。
+ * 该函数使用纯 dp 判断 + 折叠屏 [FoldingFeature] 姿态检测，
+ * 在 Composable 上下文中读取 [LocalConfiguration] / [LocalDensity]
+ * 并返回完整的 [AdaptiveConfig]。
  *
  * 断点规则：
  * | 级别 | 宽度 | 高度 |
@@ -130,12 +143,26 @@ data class AdaptiveConfig(
  * | Compact | < 600dp | < 480dp |
  * | Medium | 600-839dp | 480-899dp |
  * | Expanded | ≥ 840dp | ≥ 900dp |
+ *
+ * I1: 折叠屏双栏布局优化。
+ * - 当 [FoldingFeature] 处于半开且铰链竖向（book mode）时，
+ *   无论 [WindowWidthClass] 是否为 Compact，都强制启用 Rail（双栏）布局，
+ *   并通过 [AdaptiveConfig.hingeWidth] 暴露铰链宽度供调用方避让。
+ * - 平铺姿态（table mode）暂不改变布局，仅记录到 [AdaptiveConfig.isTableMode]。
  */
 @Composable
 fun currentAdaptiveConfig(): AdaptiveConfig {
     val config = LocalConfiguration.current
+    val density = LocalDensity.current
     val widthDp = config.screenWidthDp
     val heightDp = config.screenHeightDp
+
+    // I1: 读取折叠屏姿态（非折叠屏 / 全开时为 null）
+    val foldingFeature by currentFoldingFeature()
+    val isBookMode = foldingFeature.isBookMode
+    val isTableMode = foldingFeature.isTableMode
+    // bounds.width() 单位为像素，需通过 LocalDensity 转换为 dp
+    val hingeWidth = with(density) { foldingFeature.hingeWidthPx.toDp() }
 
     val widthClass = when {
         widthDp >= 840 -> WindowWidthClass.Expanded
@@ -151,20 +178,23 @@ fun currentAdaptiveConfig(): AdaptiveConfig {
 
     val isLandscape = widthDp > heightDp
     val isTablet = widthDp >= 600
-    // 折叠屏判断：中等宽度 + 较矮高度，或宽度在 600-720 之间
-    val isFoldable = widthClass == WindowWidthClass.Medium &&
-            (heightDp < 600 || widthDp in 600..720)
+    // 折叠屏判断：中等宽度 + 较矮高度，或宽度在 600-720 之间，
+    // 或检测到 FoldingFeature（更准确的硬件判断）
+    val isFoldable = (widthClass == WindowWidthClass.Medium &&
+            (heightDp < 600 || widthDp in 600..720)) ||
+            foldingFeature != null
 
+    // I1: book mode 强制 Rail（双栏），即使 Compact 宽度也启用
     val navMode = when (widthClass) {
         WindowWidthClass.Expanded -> NavigationMode.Rail
-        WindowWidthClass.Medium -> if (isLandscape) NavigationMode.Rail else NavigationMode.BottomBar
-        WindowWidthClass.Compact -> NavigationMode.BottomBar
+        WindowWidthClass.Medium -> if (isLandscape || isBookMode) NavigationMode.Rail else NavigationMode.BottomBar
+        WindowWidthClass.Compact -> if (isBookMode) NavigationMode.Rail else NavigationMode.BottomBar
     }
 
     val contentLayout = when (widthClass) {
         WindowWidthClass.Expanded -> ContentLayout.Dual
-        WindowWidthClass.Medium -> if (isLandscape) ContentLayout.Dual else ContentLayout.Single
-        WindowWidthClass.Compact -> ContentLayout.Single
+        WindowWidthClass.Medium -> if (isLandscape || isBookMode) ContentLayout.Dual else ContentLayout.Single
+        WindowWidthClass.Compact -> if (isBookMode) ContentLayout.Dual else ContentLayout.Single
     }
 
     val panelConfig = when (widthClass) {
@@ -174,7 +204,7 @@ fun currentAdaptiveConfig(): AdaptiveConfig {
             contentMaxWidth = 720.dp,
             inputMaxWidth = 680.dp
         )
-        WindowWidthClass.Medium -> if (isLandscape) PanelConfig(
+        WindowWidthClass.Medium -> if (isLandscape || isBookMode) PanelConfig(
             showSidebar = true,
             sidebarWidth = 240.dp,
             contentMaxWidth = 600.dp,
@@ -183,7 +213,12 @@ fun currentAdaptiveConfig(): AdaptiveConfig {
             contentMaxWidth = 600.dp,
             inputMaxWidth = 600.dp
         )
-        WindowWidthClass.Compact -> PanelConfig(
+        WindowWidthClass.Compact -> if (isBookMode) PanelConfig(
+            showSidebar = true,
+            sidebarWidth = 240.dp,
+            contentMaxWidth = 600.dp,
+            inputMaxWidth = 600.dp
+        ) else PanelConfig(
             contentMaxWidth = 600.dp,
             inputMaxWidth = 640.dp
         )
@@ -197,15 +232,24 @@ fun currentAdaptiveConfig(): AdaptiveConfig {
         panelConfig = panelConfig,
         isTablet = isTablet,
         isLandscape = isLandscape,
-        isFoldable = isFoldable
+        isFoldable = isFoldable,
+        isBookMode = isBookMode,
+        isTableMode = isTableMode,
+        hingeWidth = hingeWidth
     )
 }
 
 // ── 便捷扩展属性 ────────────────────────────────────────────────────
 
-/** 是否应显示侧边导航栏（Rail 模式）。 */
+/**
+ * 是否应显示侧边导航栏（Rail 模式）。
+ *
+ * I1: 折叠屏半开（book mode）时也强制返回 true，以便在 Compact 宽度下
+ * 启用双栏布局（list 左 / detail 右），中间用 [AdaptiveConfig.hingeWidth]
+ * 宽度的 Spacer 避开铰链。
+ */
 val AdaptiveConfig.shouldShowRail: Boolean
-    get() = navMode == NavigationMode.Rail
+    get() = navMode == NavigationMode.Rail || isBookMode
 
 /** 是否应显示侧边栏面板。 */
 val AdaptiveConfig.shouldShowSidebar: Boolean

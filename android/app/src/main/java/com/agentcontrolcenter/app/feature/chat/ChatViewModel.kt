@@ -36,6 +36,7 @@ import com.agentcontrolcenter.app.AgentControlCenterWidget
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.core.common.PerformanceMonitor
 import com.agentcontrolcenter.app.core.ui.VoiceInputManager
+import com.agentcontrolcenter.app.runtime.notification.LocalNotificationManager
 import com.agentcontrolcenter.app.widget.WidgetInputActivity
 import com.agentcontrolcenter.app.widget.WidgetDataProvider
 import javax.inject.Inject
@@ -103,6 +104,14 @@ class ChatViewModel @Inject constructor(
     private var voiceInputManager: VoiceInputManager? = null
     private var voiceChatManager: VoiceChatManager? = null
     private val localModelManager = LocalModelManager()
+
+    companion object {
+        /**
+         * I3: Agent 流式响应 Live Updates 通知使用的固定 ID。
+         * 使用固定 ID 可在流式过程中反复更新同一条通知，结束时按此 ID 取消。
+         */
+        private const val LIVE_UPDATE_NOTIFICATION_ID = 1001
+    }
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -289,15 +298,21 @@ class ChatViewModel @Inject constructor(
                             isStreaming = false
                         )
                     }
+                    // I3: 非增量完整消息已到达，流式结束，取消 Live Updates 通知
+                    cancelStreamingNotification()
                 }
             }
             is AgentEvent.Error -> {
                 repository.logActivity("error", "Agent error", event.message)
                 _uiState.update { it.copy(isStreaming = false, isConnecting = false, errorMessage = event.message) }
+                // I3: 流式出错，取消 Live Updates 通知
+                cancelStreamingNotification()
             }
             is AgentEvent.Disconnected -> {
                 repository.logActivity("connection", "Agent disconnected")
                 _uiState.update { it.copy(isStreaming = false) }
+                // I3: 连接断开，流式中止，取消 Live Updates 通知
+                cancelStreamingNotification()
             }
             is AgentEvent.Connected -> {
                 repository.logActivity("connection", "Agent connected")
@@ -321,6 +336,8 @@ class ChatViewModel @Inject constructor(
                     repository.logActivity("message", "Agent response received", lastAssistant.content.take(80))
                 }
                 _uiState.update { it.copy(isStreaming = false) }
+                // I3: 流式完成，取消 Live Updates 通知
+                cancelStreamingNotification()
             }
         }
     }
@@ -415,6 +432,8 @@ class ChatViewModel @Inject constructor(
             }
 
             if (_uiState.value.connectionState.isConnected) {
+                // I3: 流式响应开始，显示 Live Updates 通知（Android 16+；低版本静默跳过）
+                showStreamingNotification()
                 // G4-2: 捕获网络发送异常，将消息状态置为 Failed 以支持重试。
                 try {
                     connectionRepository.sendMessage(sessionId, text)
@@ -425,6 +444,8 @@ class ChatViewModel @Inject constructor(
                         })
                     }
                 } catch (e: Exception) {
+                    // I3: 发送失败，流式不会进行，取消已显示的 Live Updates 通知
+                    cancelStreamingNotification()
                     // 发送失败，更新状态为 Failed，供用户点击重试
                     val app = getApplication<Application>()
                     _uiState.update { s ->
@@ -457,6 +478,49 @@ class ChatViewModel @Inject constructor(
         streamingJob?.cancel()
         streamingJob = null
         _uiState.update { it.copy(isStreaming = false) }
+        // I3: 用户主动停止流式响应，取消 Live Updates 通知
+        cancelStreamingNotification()
+    }
+
+    /**
+     * I3: 显示 Agent 流式响应的 Live Updates 通知（Android 16+）。
+     *
+     * 在流式开始时调用，使用不确定进度（indeterminate）样式提示用户「Agent 正在响应」。
+     * 低于 Android 16 的设备由 [LocalNotificationManager.notifyLiveUpdate] 内部静默跳过，
+     * 不会影响现有通知行为。
+     */
+    private fun showStreamingNotification() {
+        // 低于 Android 16 的设备不支持 Live Updates；notifyLiveUpdate 内部亦会跳过。
+        // 此处提前 return 以满足 lint 对 @RequiresApi(BAKLAVA) 调用的约束，
+        // 避免在 minSdk 设备上触发 NewApi lint 错误。
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA) return
+        try {
+            val app = getApplication<Application>()
+            LocalNotificationManager.getInstance(app).notifyLiveUpdate(
+                notificationId = LIVE_UPDATE_NOTIFICATION_ID,
+                title = app.getString(R.string.app_name),
+                content = "Agent is responding…",
+                progress = 0,
+                indeterminate = true
+            )
+        } catch (_: Exception) {
+            // 通知不可用不影响流式响应本身
+        }
+    }
+
+    /**
+     * I3: 取消 Agent 流式响应的 Live Updates 通知。
+     *
+     * 在流式完成/失败/断开/用户取消时调用。即使未曾显示通知（如低版本设备或权限缺失），
+     * cancel 也是幂等的，安全可调用。
+     */
+    private fun cancelStreamingNotification() {
+        try {
+            LocalNotificationManager.getInstance(getApplication())
+                .cancel(LIVE_UPDATE_NOTIFICATION_ID)
+        } catch (_: Exception) {
+            // 取消失败可忽略
+        }
     }
 
     /**

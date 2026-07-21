@@ -154,6 +154,17 @@ dependencies {
     implementation 'androidx.compose.foundation:foundation'
     // Compose Animation — SharedTransitionLayout (Compose 1.7+) for shared element transitions
     implementation 'androidx.compose.animation:animation'
+
+    // Material3 Adaptive — 折叠屏 / 大屏自适应布局支持（ListDetailPaneScaffold 等）
+    // I1: 折叠屏双栏布局优化。版本由 Compose BOM 统一管理。
+    implementation 'androidx.compose.material3.adaptive:adaptive'
+    implementation 'androidx.compose.material3.adaptive:adaptive-layout'
+    implementation 'androidx.compose.material3.adaptive:adaptive-navigation'
+
+    // Jetpack WindowManager — 折叠屏铰链 / 姿态检测（FoldingFeature / WindowLayoutInfo）
+    // I1: 用于 currentFoldingFeature() 监听窗口布局变化。
+    implementation 'androidx.window:window:1.3.0'
+
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 

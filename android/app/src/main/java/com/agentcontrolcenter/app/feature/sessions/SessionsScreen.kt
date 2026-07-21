@@ -16,6 +16,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -102,10 +103,14 @@ private fun SessionsDualPaneLayout(
         else sessionList.filter { it.title.contains(searchQuery, ignoreCase = true) }
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             GlassTopAppBar(
-                title = { Text(stringResource(R.string.nav_sessions)) }
+                title = { Text(stringResource(R.string.nav_sessions)) },
+                scrollBehavior = scrollBehavior
             )
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -353,7 +358,10 @@ private fun SessionsSinglePaneLayout(
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             GlassTopAppBar(
                 title = { Text(stringResource(R.string.nav_sessions)) },
@@ -396,7 +404,8 @@ private fun SessionsSinglePaneLayout(
                             )
                         }
                     }
-                }
+                },
+                scrollBehavior = scrollBehavior
             )
         },
         // M3 Expressive FAB：手机布局下新建会话入口（保留顶栏按钮向后兼容）

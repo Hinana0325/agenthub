@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.0] - 2026-07-21
+
+### Added — 折叠屏 + Toolbar + Live Updates + 对比度
+
+- **折叠屏双栏布局优化**: 新增 `FoldableDetector.kt`，使用 Jetpack WindowManager 检测折叠屏姿态（`isBookMode` / `isTableMode` / `hingeWidth`）。`AdaptiveConfig` 新增 3 个字段，`shouldShowRail` 在 book mode 下强制双栏。`AppNavigation` 双栏 Row 中添加铰链避让 `Spacer`。新增依赖 `androidx.window:window:1.3.0` + M3 adaptive 库。
+- **M3 Expressive Toolbars**: `GlassTopAppBar` 新增 `scrollBehavior` 参数。SettingsScreen 使用 `LargeTopAppBar` + `exitUntilCollapsedScrollBehavior`（滚动时大标题折叠）。SessionsScreen 和 AgentsScreen 使用 `pinnedScrollBehavior`（列表滚动时顶栏固定）。Scaffold 添加 `nestedScroll` 联动。
+- **Live Updates 通知**: `LocalNotificationManager` 新增 `notifyLiveUpdate()` 方法，使用 Android 16 (API 36) 的 `Notification.ProgressStyle`。`ChatViewModel` 流式响应期间显示持续通知，流式完成/失败/取消时自动取消。低版本设备静默跳过。
+- **深色模式对比度调优**: 9 处 `onSurface.copy(alpha = 0.3f/0.5f)` 提升对比度，符合 WCAG AA 4.5:1 标准。文本改用 `onSurfaceVariant`，图标改用 `onSurfaceVariant.copy(alpha = 0.6f)`。涉及 EmptyStateView、SettingsAbout、SettingsComponents、WorkflowScreen。
+
+### Changed
+
+- **版本号**: Android versionCode 34 → 35 / versionName 4.4.0 → 4.5.0；iOS 同步。
+
 ## [4.4.0] - 2026-07-20
 
 ### Fixed — 国际化硬编码中文修复
