@@ -306,7 +306,7 @@ struct DeviceSyncView: View {
             .year(.defaultDigits)
             .month(.twoDigits)
             .day(.twoDigits)
-            .hour(.twoDigitsNoAMPM())
+            .hour(.twoDigitsNoAMPM)
             .minute(.twoDigits)
             .locale(Locale(identifier: "zh_CN")))
     }
@@ -658,7 +658,7 @@ struct DeviceSyncView: View {
         return date.formatted(Date.FormatStyle()
             .month(.twoDigits)
             .day(.twoDigits)
-            .hour(.twoDigitsNoAMPM())
+            .hour(.twoDigitsNoAMPM)
             .minute(.twoDigits)
             .locale(Locale(identifier: "zh_CN")))
     }
