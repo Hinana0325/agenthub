@@ -9,17 +9,20 @@ final class TaskManagerTests: XCTestCase {
     private var manager: TaskManager!
 
     // CI-fix: Swift 6 下 `XCTestCase.setUp()` 在父类中是 nonisolated 声明，
-    // 子类即使标 @MainActor，override 仍继承 nonisolated 隔离。需要显式 @MainActor
-    // 才能访问 main actor-isolated 属性。
-    @MainActor
+    // override 不能收紧 isolation（"has different actor isolation from nonisolated
+    // overridden declaration"）。XCTest 实际在 main thread 执行 setUp/tearDown，
+    // 用 `MainActor.assumeIsolated { }` 显式断言主线程上下文以访问 @MainActor 属性。
     override func setUp() {
         super.setUp()
-        manager = TaskManager()
+        MainActor.assumeIsolated {
+            manager = TaskManager()
+        }
     }
 
-    @MainActor
     override func tearDown() {
-        manager = nil
+        MainActor.assumeIsolated {
+            manager = nil
+        }
         super.tearDown()
     }
 
