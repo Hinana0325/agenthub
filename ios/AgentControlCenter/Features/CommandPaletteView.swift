@@ -101,7 +101,12 @@ struct CommandPaletteView: View {
             }
         }
         .frame(maxWidth: 560, minHeight: 360, maxHeight: 560)
-        .glassInteractive(in: GlassTokens.sheetShape)
+        // 黑框修复: 原 `.glassInteractive(in: GlassTokens.sheetShape)` 在 iOS 18 /
+        // Xcode 16 回退分支用 `.ultraThinMaterial` 作整个面板背景，深色模式下
+        // ultraThinMaterial 暗色基底会让 360-560pt 高的面板显示为大暗色矩形。
+        // 改用 `Color(.systemBackground)` 不透明背景，深浅模式自适应且无暗色基底。
+        .background(Color(.systemBackground), in: GlassTokens.sheetShape)
+        .shadow(color: Color.black.opacity(0.15), radius: 16, x: 0, y: 8)
         .onAppear {
             isSearchFocused = true
             selectedIndex = 0

@@ -1012,7 +1012,9 @@ private struct MessageBubble: View {
             }
         }
         .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        // 黑框修复: 原 `.thinMaterial` 在深色模式下有暗色基底，叠加在消息气泡上
+        // 会形成近黑色小色块。改用 secondaryBackground 不透明色，深浅模式自适应。
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - 上下文菜单

@@ -601,10 +601,15 @@ private struct ToastView: View {
             Spacer()
             Text(message)
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                // 黑框修复: 原固定 .white 文字 + .black.opacity(0.8) 背景，
+                // 深色模式下整个屏幕已深色，黑色 toast 与背景对比度不足，
+                // 视觉上像"边缘模糊的纯黑矩形"。改用自适应色：
+                // - 背景用 .regularMaterial（系统自适应材质，深浅模式都有合理对比度）
+                // - 文字用 .primary（深色模式白字 / 浅色模式黑字）
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(.black.opacity(0.8), in: Capsule())
+                .background(.regularMaterial, in: Capsule())
                 .padding(.bottom, 60)
         }
         .allowsHitTesting(false)
