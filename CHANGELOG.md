@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.2] - 2026-07-21
+
+### Fixed — iOS SettingsView 10 项逻辑问题修复
+
+修复用户反馈「设置页面的逻辑有啥问题吗」审计发现的 10 项逻辑 Bug，覆盖加密生命周期、通知开关死 UI、跨视图字体同步、Keychain I/O 优化、版本号硬编码等。
+
+- **`.task` / `.onChange(of: passphrase)` 循环触发**: 进入设置页 `.task` 从 Keychain 加载 passphrase 后立即触发 `.onChange`，又把刚读出的值写回 Keychain 一次（无意义 I/O）。用 `isPassphraseLoaded` flag 区分「初始加载」与「用户修改」，跳过首次 onChange。
+- **`regeneratePassphrase` 名不副实**: 按钮「重新生成」原 implementation 只清空 passphrase，与按钮名严重不符。改为用 `CryptoKit.SymmetricKey(size: .bits256)` 生成密码学安全 32 字节随机密钥，base64 编码后赋值。
+- **加密开关与 passphrase 生命周期不一致**: 关闭加密时不清 Keychain 和内存 passphrase，重启后旧密钥仍可启用加密；启用前无 passphrase 校验，可进入「已启用但无密钥」的失效状态。修正：关闭时同步清空内存 + Keychain + 取消待写任务；启用时若 passphrase 为空自动生成；UI 增加「尚未设置密码短语」提示。
+- **`clearAllData` 注释与行为矛盾 + 范围不全**: 注释说「Agent 配置保留」但代码实际调用 `deleteAgentConfig`；未清 UserDefaults（`defaultModel`/`temperature`/`theme`/通知开关等）；未清 Keychain E2E 密钥。修正：注释与行为对齐（Agent 配置一并清除），补齐 UserDefaults + Keychain 清理，同步当前视图 `@AppStorage`/`@State`，并增加用户反馈 alert。
+- **fontSize 不通知已打开的 ChatView**: `@State` 仅初始化一次，不响应 UserDefaults 外部写入。设置页改字体后已打开的会话页字体不更新，需重启 App。修正：`FontSize.saveToUserDefaults` 广播 `NotificationCenter` 通知，ChatView `.onReceive` 监听后重新 `loadFromUserDefaults` 刷新 `@State`，再触发 `\.appFontSize` 环境注入。
+- **通知开关死 UI**: `notifyHighPriority` / `notifyMediumPriority` / `notifyLowPriority` 三个 `@AppStorage` Toggle 写入 UserDefaults 但无代码读取，`SmartNotificationManager` 用独立内存 `NotificationConfig`，两者未桥接。修正：`NotificationConfig` 增加 `loadFromUserDefaults` / `savePriorityToUserDefaults`，Manager 初始化时读取；提供 `updateConfig(_:)` 方法显式持久化（规避 `@Observable` 宏下 `didSet` 不触发的问题，参考 Apple Forums thread/731113）；SettingsView Toggle 改为绑定到 `appState.notificationManager.config`。
+- **Keychain 写入 debounce**: TextField/SecureField 每输入一个字符触发 `.onChange` → `SecItemUpdate` 系统调用。输入 20 字符密码 = 20 次 Keychain 写入。改用 `Task.sleep(0.6s)` debounce，仅停止输入后写回。
+- **About 区版本号硬编码**: 构建号硬编码 `"2"`，应用版本回退值 `"2.2.0"` 与当前 4.6.x 严重不符。改为动态读取 `CFBundleVersion`，回退值统一为「未知」。
+- **移除 `exportedJSON` 死状态**: `@State private var exportedJSON: URL?` 设置后从未被读取，删除。
+- **Toast 多次点击计时器竞态**: `.onAppear` + `DispatchQueue.main.asyncAfter` 在连续点击「显示密钥」时，第一次的计时器仍会触发提前把 toast 置 false。改用 `.task` + `Task.sleep`，SwiftUI 重建时自动取消上一次 task。
+
 ## [4.6.1] - 2026-07-21
 
 ### Fixed — iOS Xcode 16.4 / Swift 6 编译错误修复（CI 全绿）
