@@ -17,11 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
+        # D2: Gradle 9.0+ 最低要求 JDK 21 运行；AGP 9.3 + Gradle 9.6.1 配套。
+        # JDK 17 会让 Gradle 9 直接启动失败（UnsupportedClassVersionError）。
+        # 项目编译目标仍是 Java 17（compileOptions sourceCompatibility/targetCompatibility），
+        # 这里 JDK 21 仅用于运行 Gradle 本身。
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4

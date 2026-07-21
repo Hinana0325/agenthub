@@ -1,5 +1,8 @@
 ext {
-    kotlinVersion = '2.2.0'
+    // 注意：kotlinVersion 必须与 build.gradle 顶部 buildscript ext.kotlinVersion 保持一致。
+    // buildscript block 里的 ext 仅在 buildscript 作用域可见，子项目实际用的是这里。
+    // Dependabot 升级 Kotlin 时只改 build.gradle 不会改本文件 —— 需手动同步。
+    kotlinVersion = '2.4.10'
     minSdkVersion = 24
     compileSdkVersion = 36
     targetSdkVersion = 36
