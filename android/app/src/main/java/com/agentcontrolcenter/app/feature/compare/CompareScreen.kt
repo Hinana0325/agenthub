@@ -22,7 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.feature.chat.MarkdownText
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 
 private val WHITESPACE_REGEX = "\\s+".toRegex()
 
@@ -37,7 +37,7 @@ fun CompareScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = {
                     Text(stringResource(R.string.compare_title))
                 },

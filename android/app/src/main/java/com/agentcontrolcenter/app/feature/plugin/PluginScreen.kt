@@ -21,8 +21,8 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.plugin.api.Plugin
 import com.agentcontrolcenter.app.plugin.runtime.PluginExecutor
 import com.agentcontrolcenter.app.plugin.runtime.PluginManager
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
@@ -51,7 +51,7 @@ fun PluginScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.plugin_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -98,24 +98,28 @@ fun PluginScreen(
         }
     }
 
-    if (showDetailDialog && selectedPlugin != null) {
+    // selectedPlugin 是 by remember { mutableStateOf } 委托属性，smart-cast 无法传播到
+    // 闭包内，且重复读取可能拿到不同的值。这里用局部 val 捕获当前快照，消除所有 !!。
+    val selected = selectedPlugin
+    if (showDetailDialog && selected != null) {
         PluginDetailDialog(
-            plugin = selectedPlugin!!,
+            plugin = selected,
             runInput = runInput,
             onRunInputChange = { runInput = it },
             onRun = {
                 scope.launch {
-                    runResult = executor.execute(selectedPlugin!!, runInput)
+                    runResult = executor.execute(selected, runInput)
                 }
             },
-            onToggle = { pluginManager.togglePlugin(selectedPlugin!!.id) },
+            onToggle = { pluginManager.togglePlugin(selected.id) },
             onDismiss = { showDetailDialog = false }
         )
     }
 
     // Execution result dialog
-    if (runResult != null) {
-        val result = runResult!!
+    // runResult 同样是委托属性，用局部 val 捕获快照后在非空分支中使用，消除 !!。
+    val result = runResult
+    if (result != null) {
         AlertDialog(
             onDismissRequest = { runResult = null },
             title = { Text(if (result.sendToAgent) stringResource(R.string.plugin_send_to_agent) else stringResource(R.string.plugin_result)) },
@@ -168,7 +172,7 @@ fun PluginScreen(
 
 @Composable
 private fun PluginStatsCard(total: Int, enabled: Int) {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
     ) {

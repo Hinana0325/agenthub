@@ -87,7 +87,7 @@ fun Modifier.glassBackground(
  * Delegates directly to [Surface] with a solid `surfaceContainer` color.
  */
 @Composable
-fun GlassBox(
+fun AppSurfaceBox(
     modifier: Modifier = Modifier,
     tintColor: Color = Color.White,
     borderColor: Color = Color.White,
@@ -108,7 +108,7 @@ fun GlassBox(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassTopAppBar(
+fun AppTopAppBar(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
@@ -132,7 +132,7 @@ fun GlassTopAppBar(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassNavigationBar(
+fun AppNavigationBar(
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -149,7 +149,7 @@ fun GlassNavigationBar(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassNavigationRail(
+fun AppNavigationRail(
     header: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
@@ -166,7 +166,7 @@ fun GlassNavigationRail(
  * Standard Material3 [Card] (clickable) — Liquid Glass disabled.
  */
 @Composable
-fun GlassCard(
+fun AppCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -196,7 +196,7 @@ fun GlassCard(
  * Standard Material3 [Card] (non-clickable) — Liquid Glass disabled.
  */
 @Composable
-fun GlassCard(
+fun AppCard(
     modifier: Modifier = Modifier,
     shape: Shape = CardDefaults.shape,
     colors: androidx.compose.material3.CardColors = CardDefaults.cardColors(
@@ -220,7 +220,7 @@ fun GlassCard(
  * Standard Material3 [FloatingActionButton] — Liquid Glass disabled.
  */
 @Composable
-fun GlassFloatingActionButton(
+fun AppFAB(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.primary,
@@ -243,7 +243,7 @@ fun GlassFloatingActionButton(
  * Liquid Glass disabled.
  */
 @Composable
-fun GlassPill(
+fun AppPill(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     tintColor: Color = Color.White,
@@ -270,7 +270,7 @@ fun GlassPill(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassDropdownMenu(
+fun AppDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -294,7 +294,7 @@ fun GlassDropdownMenu(
  * Standard Material3 [DropdownMenuItem] — Liquid Glass disabled.
  */
 @Composable
-fun GlassDropdownMenuItem(
+fun AppDropdownMenuItem(
     text: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -317,7 +317,7 @@ fun GlassDropdownMenuItem(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlassModalBottomSheet(
+fun AppModalBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(),

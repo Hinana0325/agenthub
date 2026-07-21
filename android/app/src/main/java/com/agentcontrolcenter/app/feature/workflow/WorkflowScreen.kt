@@ -17,7 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +90,7 @@ private fun WorkflowListScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.workflow_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -243,7 +243,7 @@ private fun WorkflowDetailScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(workflow.name) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

@@ -17,8 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import com.agentcontrolcenter.app.data.sync.DeviceSyncManager
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -40,7 +40,7 @@ fun DeviceSyncScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.device_sync_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -147,7 +147,7 @@ private fun SyncToggleCard(
     onToggle: (Boolean) -> Unit,
     onSyncNow: () -> Unit
 ) {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
     ) {
@@ -211,7 +211,7 @@ private fun SyncToggleCard(
 
 @Composable
 private fun SyncStatusCard(syncState: DeviceSyncManager.SyncState) {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -273,7 +273,7 @@ private fun PairedDeviceCard(
 ) {
     var showRemoveDialog by remember { mutableStateOf(false) }
 
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -360,7 +360,7 @@ private fun PairedDeviceCard(
 
 @Composable
 private fun EmptyDevicesCard() {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
     ) {

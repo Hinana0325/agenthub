@@ -128,8 +128,15 @@ class DataInsightsManager(
         var maxStreak = 1
         var currentStreak = 1
         for (i in 1 until days.size) {
-            val prevDate = sdf.parse(days[i - 1])!!
-            val currDate = sdf.parse(days[i])!!
+            // SimpleDateFormat.parse 理论上可能因格式异常返回 null（或抛 ParseException）。
+            // 这里用 try-catch 包裹日期解析，解析失败时重置当前连续计数并跳过本次循环，
+            // 避免 !! 在异常数据下抛 NPE 导致整个 insights 计算崩溃。
+            val prevDate = try { sdf.parse(days[i - 1]) } catch (_: Exception) { null }
+            val currDate = try { sdf.parse(days[i]) } catch (_: Exception) { null }
+            if (prevDate == null || currDate == null) {
+                currentStreak = 1
+                continue
+            }
             val diff = (currDate.time - prevDate.time) / (1000 * 60 * 60 * 24)
             if (diff == 1L) {
                 currentStreak++

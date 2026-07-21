@@ -23,8 +23,8 @@ import com.agentcontrolcenter.app.data.model.ActivityItem
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -56,7 +56,7 @@ fun ActivityScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.nav_activity)) },
                 actions = {
                     if (uiState.activities.isNotEmpty()) {
@@ -288,7 +288,7 @@ private fun DetailSection(title: String, content: @Composable () -> Unit) {
 private fun ActivityCard(activity: ActivityItem) {
     val (icon, color) = activityIconAndColor(activity)
 
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(12.dp),
     ) {

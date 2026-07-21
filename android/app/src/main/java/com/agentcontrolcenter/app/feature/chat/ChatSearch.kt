@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.model.Message
 import com.agentcontrolcenter.app.data.model.MessageRole
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 
 /**
@@ -42,7 +42,7 @@ internal fun SearchOverlay(
         color = if (isGlassSearch) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = {
                     OutlinedTextField(
                         value = query,

@@ -27,15 +27,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
+import com.agentcontrolcenter.app.core.util.formatDateTime
 import com.agentcontrolcenter.app.runtime.task.TaskManager
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 
 /**
  * 任务页面 — 对齐 iOS TasksView。
@@ -60,7 +58,7 @@ fun TasksScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.tasks_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -176,7 +174,7 @@ private fun TaskItem(
         task.status == TaskManager.TaskStatus.Running
 
     Box {
-        GlassCard(
+        AppCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp)
@@ -286,13 +284,13 @@ private fun TaskItem(
             }
         }
 
-        GlassDropdownMenu(
+        AppDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
             if (isActive) {
                 // 进行中任务：取消
-                GlassDropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.task_cancel)) },
                     onClick = { showMenu = false; onCancel() },
                     leadingIcon = {
@@ -300,7 +298,7 @@ private fun TaskItem(
                     }
                 )
             }
-            GlassDropdownMenuItem(
+            AppDropdownMenuItem(
                 text = {
                     Text(
                         stringResource(R.string.task_delete),
@@ -379,8 +377,10 @@ private fun taskStatusColor(status: TaskManager.TaskStatus): Color = when (statu
 
 /**
  * 格式化时间戳为 "yyyy-MM-dd HH:mm" 格式（本地时区）。
+ *
+ * 委托给统一的 [com.agentcontrolcenter.app.core.util.formatDateTime]，
+ * 复用 ThreadLocal 缓存的 SimpleDateFormat 实例，避免每次调用重复创建。
  */
 private fun formatRelativeTime(timestamp: Long): String {
-    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    return formatDateTime(timestamp)
 }

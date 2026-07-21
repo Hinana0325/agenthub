@@ -245,9 +245,12 @@ class LocalModelManager {
             BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
-                    if (line.isNullOrBlank()) continue
+                    // readLine() 已保证非空，但 line 是 var 局部变量，smart-cast 无法传播。
+                    // 这里用局部非空变量 current 捕获，避免 !! 在并发/异常路径下抛 NPE。
+                    val current = line ?: continue
+                    if (current.isBlank()) continue
                     try {
-                        val chunk = JSONObject(line!!)
+                        val chunk = JSONObject(current)
                         val content = chunk.getJSONObject("message").optString("content", "")
                         if (content.isNotEmpty()) {
                             fullResponse.append(content)
@@ -365,8 +368,10 @@ class LocalModelManager {
             BufferedReader(InputStreamReader(conn.inputStream)).use { reader ->
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
-                    if (line.isNullOrBlank() || line == "data: [DONE]") continue
-                    val data = line!!.removePrefix("data: ").trim()
+                    // 同上：用局部非空变量 current 捕获，避免 !! 在 SSE 流读取中抛 NPE。
+                    val current = line ?: continue
+                    if (current.isBlank() || current == "data: [DONE]") continue
+                    val data = current.removePrefix("data: ").trim()
                     if (data.isEmpty()) continue
                     try {
                         val chunk = JSONObject(data)

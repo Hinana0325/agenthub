@@ -32,8 +32,8 @@ import androidx.compose.ui.res.stringResource
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.feature.chat.ChatViewModel
 import com.agentcontrolcenter.app.feature.chat.MessageBubble
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import com.agentcontrolcenter.app.ui.theme.ShapePill
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.components.SessionSkeletonItem
@@ -108,7 +108,7 @@ private fun SessionsDualPaneLayout(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.nav_sessions)) },
                 scrollBehavior = scrollBehavior
             )
@@ -363,7 +363,7 @@ private fun SessionsSinglePaneLayout(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.nav_sessions)) },
                 actions = {
                     // 排序按钮 + 下拉菜单
@@ -773,7 +773,7 @@ private fun SessionCard(
     onDelete: () -> Unit,
     onTogglePin: () -> Unit
 ) {
-    GlassCard(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .sharedBounds("session_${session.id}")

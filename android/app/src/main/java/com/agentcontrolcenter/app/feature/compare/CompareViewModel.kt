@@ -4,12 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.util.runSafely
 import com.agentcontrolcenter.app.data.repository.ChatRepository
 import com.agentcontrolcenter.app.transport.protocol.AgentEvent
 import com.agentcontrolcenter.app.transport.protocol.AgentTransport
 import com.agentcontrolcenter.app.transport.TransportFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,34 +77,36 @@ class CompareViewModel @Inject constructor(
         viewModelScope.launch { repository.logActivity("compare", "Starting compare: ${configA.name} vs ${configB.name}") }
 
         viewModelScope.launch {
-            try {
+            runSafely(
+                onError = { e ->
+                    _transportA.value?.shutdown()
+                    _transportA.value = null
+                    // A failed to start: mark A complete and only stop comparing if B is done.
+                    _uiState.update {
+                        it.copy(isAComplete = true, isComparing = !it.isBComplete, error = "Agent A: ${e.message}")
+                    }
+                }
+            ) {
                 val transportA = transportFactory.create(configA.type).also { _transportA.value = it }
                 transportA.connect(configA)
                 transportA.sendMessage("${sessionId}_a", prompt)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _transportA.value?.shutdown()
-                _transportA.value = null
-                // A failed to start: mark A complete and only stop comparing if B is done.
-                _uiState.update {
-                    it.copy(isAComplete = true, isComparing = !it.isBComplete, error = "Agent A: ${e.message}")
-                }
             }
         }
 
         viewModelScope.launch {
-            try {
+            runSafely(
+                onError = { e ->
+                    _transportB.value?.shutdown()
+                    _transportB.value = null
+                    // B failed to start: mark B complete and only stop comparing if A is done.
+                    _uiState.update {
+                        it.copy(isBComplete = true, isComparing = !it.isAComplete, error = "Agent B: ${e.message}")
+                    }
+                }
+            ) {
                 val transportB = transportFactory.create(configB.type).also { _transportB.value = it }
                 transportB.connect(configB)
                 transportB.sendMessage("${sessionId}_b", prompt)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _transportB.value?.shutdown()
-                _transportB.value = null
-                // B failed to start: mark B complete and only stop comparing if A is done.
-                _uiState.update {
-                    it.copy(isBComplete = true, isComparing = !it.isAComplete, error = "Agent B: ${e.message}")
-                }
             }
         }
 

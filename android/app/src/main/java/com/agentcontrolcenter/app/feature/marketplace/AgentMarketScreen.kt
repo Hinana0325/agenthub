@@ -24,8 +24,8 @@ import com.agentcontrolcenter.app.data.marketplace.MarketplaceClient
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.data.model.MarketplaceAgent
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import java.text.NumberFormat
 import kotlinx.coroutines.delay
 
@@ -98,7 +98,7 @@ fun AgentMarketScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.marketplace_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -250,7 +250,7 @@ private fun MarketplaceAgentCard(
     isInstalled: Boolean,
     onInstall: () -> Unit
 ) {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
     ) {

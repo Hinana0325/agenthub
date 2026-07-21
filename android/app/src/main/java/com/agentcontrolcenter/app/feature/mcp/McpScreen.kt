@@ -27,8 +27,8 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.mcp.bridge.McpBridge
 import com.agentcontrolcenter.app.mcp.model.McpServer
 import com.agentcontrolcenter.app.mcp.model.McpTransportType
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 
 /**
  * MCP 服务器管理页面 — 对齐 iOS McpView。
@@ -79,7 +79,7 @@ fun McpScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.mcp_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -194,7 +194,7 @@ private fun McpServerCard(
     val isConnecting = rowState.connectionState == McpBridge.ConnectionState.Connecting ||
         rowState.isTesting
 
-    GlassCard(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),

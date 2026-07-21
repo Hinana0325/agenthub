@@ -28,7 +28,7 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.data.update.UpdateManager
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.core.util.runSafely
 import com.agentcontrolcenter.app.data.repository.ChatRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -84,7 +85,11 @@ class AgentsViewModel @Inject constructor(
 
     fun exportConfigs(context: Context) {
         viewModelScope.launch {
-            try {
+            runSafely(
+                onError = { e ->
+                    _uiState.update { it.copy(exportMessage = "Export failed: ${e.message}") }
+                }
+            ) {
                 val configs = repository.getAllConfigsList()
                 val json = Gson().toJson(configs)
                 val fileName = "agentcontrolcenter-configs-${System.currentTimeMillis()}.json"
@@ -94,9 +99,6 @@ class AgentsViewModel @Inject constructor(
                         exportMessage = if (saved) "Exported to $fileName" else "Export failed"
                     )
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _uiState.update { it.copy(exportMessage = "Export failed: ${e.message}") }
             }
         }
     }

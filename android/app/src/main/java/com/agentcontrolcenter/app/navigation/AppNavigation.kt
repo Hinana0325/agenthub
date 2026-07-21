@@ -23,8 +23,8 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import com.agentcontrolcenter.app.ui.theme.GlassNavigationBar
-import com.agentcontrolcenter.app.ui.theme.GlassNavigationRail
+import com.agentcontrolcenter.app.ui.theme.AppNavigationBar
+import com.agentcontrolcenter.app.ui.theme.AppNavigationRail
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -103,7 +103,7 @@ fun AppNavigation() {
     ) {
         if (adaptive.shouldShowRail) {
             Row(modifier = Modifier.fillMaxSize()) {
-                GlassNavigationRail(
+                AppNavigationRail(
                     header = { Spacer(modifier = Modifier.height(24.dp)) }
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -159,7 +159,7 @@ fun AppNavigation() {
             Scaffold(
                 contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
                 bottomBar = {
-                    GlassNavigationBar {
+                    AppNavigationBar {
                         Screen.getTabs().forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any {
                                 it.route == screen.route

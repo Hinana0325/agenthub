@@ -27,7 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.agent.model.ConnectionState
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 
 @Composable
 internal fun OfflineBanner(onConnect: () -> Unit) {
@@ -354,7 +354,7 @@ fun WizardOverlay(
                         onDismissRequest = { expanded = false }
                     ) {
                         AgentType.entries.forEach { type ->
-                            GlassDropdownMenuItem(
+                            AppDropdownMenuItem(
                                 text = { Text(type.displayName) },
                                 onClick = { selectedType = type; expanded = false }
                             )

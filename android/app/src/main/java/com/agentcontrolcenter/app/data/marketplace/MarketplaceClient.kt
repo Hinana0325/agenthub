@@ -165,7 +165,12 @@ class MarketplaceClient {
                 clawHubResult.getOrNull()?.let { combined.addAll(it) }
 
                 if (combined.isEmpty() && openClawResult.isFailure && clawHubResult.isFailure) {
-                    Result.failure(openClawResult.exceptionOrNull() ?: clawHubResult.exceptionOrNull()!!)
+                    // 两个源都失败：优先取 openClaw 的异常，其次取 clawHub 的异常，
+                    // 两者都为 null（理论上不应发生）时回退到一个默认异常，避免 !! 抛 NPE。
+                    val ex = openClawResult.exceptionOrNull()
+                        ?: clawHubResult.exceptionOrNull()
+                        ?: RuntimeException("Unknown marketplace error")
+                    Result.failure(ex)
                 } else {
                     Result.success(combined)
                 }

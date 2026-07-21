@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.insights.DataInsightsManager
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +61,7 @@ fun InsightsScreen(
 
     Scaffold(
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.insights_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -175,7 +175,7 @@ fun InsightsScreen(
                     )
                 }
                 item {
-                    GlassCard(
+                    AppCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                     ) {
@@ -210,7 +210,7 @@ fun InsightsScreen(
                     )
                 }
                 item {
-                    GlassCard(
+                    AppCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                     ) {
@@ -232,7 +232,7 @@ fun InsightsScreen(
                         )
                     }
                     item {
-                        GlassCard(
+                        AppCard(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                         ) {
@@ -261,7 +261,7 @@ private fun StatCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color
 ) {
-    GlassCard(
+    AppCard(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
     ) {

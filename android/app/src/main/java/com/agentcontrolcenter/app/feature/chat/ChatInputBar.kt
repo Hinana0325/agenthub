@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.dp
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.core.ui.HapticFeedback
 import com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.ui.theme.ShapePill
 import com.agentcontrolcenter.app.ui.theme.glassBackground
@@ -232,16 +232,16 @@ fun ChatInputBar(
                                         )
                                     )
                                 }
-                                GlassDropdownMenu(
+                                AppDropdownMenu(
                                     expanded = showAttachMenu,
                                     onDismissRequest = { showAttachMenu = false }
                                 ) {
-                                    GlassDropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(stringResource(R.string.attach_image)) },
                                         onClick = { showAttachMenu = false; onAttachImage() },
                                         leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp)) }
                                     )
-                                    GlassDropdownMenuItem(
+                                    AppDropdownMenuItem(
                                         text = { Text(stringResource(R.string.attach_document)) },
                                         onClick = { showAttachMenu = false; onAttachFile() },
                                         leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(20.dp)) }

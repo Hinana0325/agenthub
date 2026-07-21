@@ -65,12 +65,12 @@ import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.adaptive.shouldShowSidebar
 import com.agentcontrolcenter.app.ui.components.ErrorSnackbar
 import kotlinx.coroutines.launch
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.ui.theme.glassBackground
-import com.agentcontrolcenter.app.ui.theme.GlassEnterTransition
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.AppEnterTransition
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 import com.agentcontrolcenter.app.ui.theme.ShapePill
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
@@ -490,7 +490,7 @@ private fun ChatTopBar(
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
 
-    GlassTopAppBar(
+    AppTopAppBar(
         title = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -712,7 +712,7 @@ fun MessageBubble(
 
     AnimatedVisibility(
         visible = true,
-        enter = if (hasEntered) EnterTransition.None else GlassEnterTransition
+        enter = if (hasEntered) EnterTransition.None else AppEnterTransition
     ) {
     Column(
         modifier = Modifier
@@ -842,11 +842,11 @@ fun MessageBubble(
             }
 
             // Context menu
-            GlassDropdownMenu(
+            AppDropdownMenu(
                 expanded = showContextMenu,
                 onDismissRequest = { showContextMenu = false }
             ) {
-                GlassDropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.action_copy)) },
                     onClick = {
                         showContextMenu = false
@@ -860,7 +860,7 @@ fun MessageBubble(
                     }
                 )
                 if (isUser && onEdit != null) {
-                    GlassDropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.action_edit)) },
                         onClick = {
                             showContextMenu = false
@@ -876,7 +876,7 @@ fun MessageBubble(
                     )
                 }
                 if (onReply != null) {
-                    GlassDropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.action_reply)) },
                         onClick = {
                             showContextMenu = false
@@ -891,7 +891,7 @@ fun MessageBubble(
                         }
                     )
                 }
-                GlassDropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
                     onClick = {
                         showContextMenu = false

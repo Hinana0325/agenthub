@@ -29,6 +29,11 @@ class TransportFactory @Inject constructor(
 
         AgentType.OpenAI,
         AgentType.XiaomiMiMo,
-        AgentType.LocalModel -> OpenAIHttpTransport(context)
+        AgentType.LocalModel -> OpenAIHttpTransport(
+            context = context,
+            // J4: 证书锁定默认关闭。待 CertificatePinnerFactory 中填入实际 pin
+            // 值后，可改为从 AgentConfig / 用户设置读取以按需启用。
+            enableCertificatePinning = false
+        )
     }
 }

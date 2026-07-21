@@ -41,10 +41,10 @@ import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.components.AgentCardSkeletonItem
-import com.agentcontrolcenter.app.ui.theme.GlassCard
-import com.agentcontrolcenter.app.ui.theme.GlassTopAppBar
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenu
-import com.agentcontrolcenter.app.ui.theme.GlassDropdownMenuItem
+import com.agentcontrolcenter.app.ui.theme.AppCard
+import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
+import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,7 +94,7 @@ fun AgentsScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            GlassTopAppBar(
+            AppTopAppBar(
                 title = { Text(stringResource(R.string.nav_agents)) },
                 scrollBehavior = scrollBehavior
             )
@@ -104,11 +104,11 @@ fun AgentsScreen(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 // FAB menu items
-                GlassDropdownMenu(
+                AppDropdownMenu(
                     expanded = showFabMenu,
                     onDismissRequest = { showFabMenu = false }
                 ) {
-                    GlassDropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.new_agent)) },
                         onClick = {
                             showFabMenu = false
@@ -116,7 +116,7 @@ fun AgentsScreen(
                         },
                         leadingIcon = { Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(20.dp)) }
                     )
-                    GlassDropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.import_configs)) },
                         onClick = {
                             showFabMenu = false
@@ -124,7 +124,7 @@ fun AgentsScreen(
                         },
                         leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }
                     )
-                    GlassDropdownMenuItem(
+                    AppDropdownMenuItem(
                         text = { Text(stringResource(R.string.export_configs)) },
                         onClick = {
                             showFabMenu = false
@@ -246,7 +246,7 @@ private fun AgentGridCard(
     }
 
     Box {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth().semantics {
             contentDescription = "Agent: ${agent.name}, type: ${agent.type.displayName}"
         }.combinedClickable(
@@ -314,16 +314,16 @@ private fun AgentGridCard(
     }
 
     // Context menu
-    GlassDropdownMenu(
+    AppDropdownMenu(
         expanded = showContextMenu,
         onDismissRequest = { showContextMenu = false }
     ) {
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_edit)) },
             onClick = { showContextMenu = false; onEdit() },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) }
         )
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
             onClick = { showContextMenu = false; showDeleteConfirm = true },
             leadingIcon = {
@@ -335,7 +335,7 @@ private fun AgentGridCard(
                 )
             }
         )
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.copy_config)) },
             onClick = { showContextMenu = false },
             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -372,7 +372,7 @@ private fun AgentCard(
     }
 
     Box {
-    GlassCard(
+    AppCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).semantics {
             contentDescription = "Agent: ${agent.name}, type: ${agent.type.displayName}"
         }.combinedClickable(
@@ -429,16 +429,16 @@ private fun AgentCard(
     }
 
     // Context menu
-    GlassDropdownMenu(
+    AppDropdownMenu(
         expanded = showContextMenu,
         onDismissRequest = { showContextMenu = false }
     ) {
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_edit)) },
             onClick = { showContextMenu = false; onEdit() },
             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) }
         )
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.btn_delete), color = MaterialTheme.colorScheme.error) },
             onClick = { showContextMenu = false; showDeleteConfirm = true },
             leadingIcon = {
@@ -450,7 +450,7 @@ private fun AgentCard(
                 )
             }
         )
-        GlassDropdownMenuItem(
+        AppDropdownMenuItem(
             text = { Text(stringResource(R.string.copy_config)) },
             onClick = { showContextMenu = false },
             leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp)) }
@@ -633,7 +633,7 @@ private fun TypeSelector(
             onDismissRequest = { expanded = false }
         ) {
             AgentType.entries.forEach { agentType ->
-                GlassDropdownMenuItem(
+                AppDropdownMenuItem(
                     text = { Text(agentType.displayName) },
                     onClick = { onSelect(agentType); expanded = false }
                 )

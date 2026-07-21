@@ -51,7 +51,18 @@ import com.agentcontrolcenter.app.transport.protocol.AgentTransport
  */
 class OpenAIHttpTransport(
     private val context: Context?,
-    private val gson: Gson = Gson()
+    private val gson: Gson = Gson(),
+    /**
+     * 是否启用证书锁定（Certificate Pinning）。
+     *
+     * 默认 `false`——不锁定任何主机。设为 `true` 后，[CertificatePinnerFactory]
+     * 中已登记 pin 的公网 API 主机（如 api.openai.com）将受到证书公钥校验，
+     * 防止 MITM 攻击。本地 LLM 端点（127.0.0.1 / 10.0.x / 192.168.x）与
+     * 用户自定义服务器因未登记 pin 而不受影响。
+     *
+     * 启用前需在 [CertificatePinnerFactory.PUBLIC_API_PINS] 中填入实际 pin 值。
+     */
+    private val enableCertificatePinning: Boolean = false
 ) : AgentTransport {
 
     private val eventScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -75,6 +86,18 @@ class OpenAIHttpTransport(
             connectTimeoutMillis = 10_000
             requestTimeoutMillis = 120_000
             socketTimeoutMillis = 30_000
+        }
+        // J4: 证书锁定（Certificate Pinning）。
+        // OkHttp 的 CertificatePinner 仅校验已登记 pin 的主机，本地 LLM
+        // （127.0.0.1 / 10.0.x / 192.168.x）与用户自定义服务器因未登记 pin
+        // 而不受影响。默认关闭（enableCertificatePinning = false），需在
+        // CertificatePinnerFactory 中填入实际 pin 值后显式启用。
+        engine {
+            config {
+                certificatePinner(
+                    CertificatePinnerFactory.buildPinner(enableCertificatePinning)
+                )
+            }
         }
     }
 
