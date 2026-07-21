@@ -25,9 +25,12 @@ jobs:
       # 原 26.0 配置会导致 xcode-select 失败，CI 永远跑不起来。
       # Liquid Glass 作为 iOS 26 增量特性通过 if #available(iOS 26, *) 守卫，
       # 在 iOS 18 模拟器上走回退分支，不影响构建验证。
+      # CI-fix: IOS_VERSION 18.4 → 18.6。macos-15 runner 镜像升级后不再包含
+      # iOS 18.4 simulator runtime，仅剩 18.5 / 18.6 / 26.x。18.6 是 iOS 18.x
+      # 最新可用版本，保留 R2 的「iOS 18 fallback 路径」验证意图。
       XCODE_VERSION: "16.4"
       IOS_SIMULATOR: "iPhone 16"
-      IOS_VERSION: "18.4"
+      IOS_VERSION: "18.6"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

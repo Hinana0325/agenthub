@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.annotation.PreDestroy
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -187,8 +186,14 @@ class ConnectionRepository @Inject constructor(
      * 也未取消 repositoryScope（SupervisorJob 泄漏）。在多进程 / 测试 / 内存压力
      * 进程重启场景下，回调绑定对象无法回收，且 ConnectivityManager 维护的 callback
      * 列表会强引用 appContext 导致进程级泄漏。
+     *
+     * CI-fix: 移除 @PreDestroy 注解。F3 原加 `import javax.annotation.PreDestroy`，
+     * 但项目未引入 `javax.annotation-api` 依赖，导致 `Unresolved reference 'PreDestroy'`
+     * 编译失败（Android Lint + Assemble 两个 job 均 FAILED）。
+     * Hilt `@Singleton` 生命周期与 Application 一致，`@PreDestroy` 仅在进程退出时触发，
+     * 实用价值有限；显式调用 [shutdown] / [onDispose] 仍是主要清理路径，F3 的 `@Volatile`
+     * 并发修复保留。
      */
-    @PreDestroy
     fun onDispose() {
         // 注销网络回调，避免 ConnectivityManager 持有 callback 强引用
         networkCallback?.let { cb ->
