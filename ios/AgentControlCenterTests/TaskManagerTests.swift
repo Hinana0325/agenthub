@@ -14,13 +14,14 @@ final class TaskManagerTests: XCTestCase {
     nonisolated(unsafe) private var manager: TaskManager!
 
     override func setUp() async throws {
-        try await super.setUp()
+        // CI-fix: 不调用 `try await super.setUp()` — XCTest 的 async 版本在 Swift 6 下
+        // 是 @MainActor 隔离，从 nonisolated 子类 override 调用会发送非 Sendable 的 self
+        // 跨 actor 边界。父类默认实现是 no-op，跳过即可。
         manager = await MainActor.run { TaskManager() }
     }
 
     override func tearDown() async throws {
         manager = nil
-        try await super.tearDown()
     }
 
     // MARK: - 提交任务
