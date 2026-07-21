@@ -15,10 +15,16 @@ enum URLValidator {
 
     /// 禁止访问的 IP 段（链路本地 / 元数据服务 / 回环陷阱等）
     /// 注意：127.0.0.1 / localhost 允许（本地 Agent 部署场景）
+    /// H-S 修复：扩展黑名单覆盖云厂商常用的元数据 / 保留段
     private static let blockedCIDRs: [(address: String, prefix: Int)] = [
         ("169.254.0.0", 16),    // 链路本地（含 AWS/GCP/Azure metadata 169.254.169.254）
         ("0.0.0.0", 8),         // 本网络
-        ("255.255.255.255", 32) // 广播
+        ("255.255.255.255", 32),// 广播
+        ("100.64.0.0", 10),     // 运营商级 NAT（CGNAT）
+        ("192.0.0.0", 24),      // IETF 协议分配
+        ("198.18.0.0", 15),     // 基准测试
+        ("224.0.0.0", 4),       // 组播
+        ("240.0.0.0", 4)        // 保留（部分云厂商用于元数据）
     ]
 
     /// 校验 URL 字符串是否安全可用。
@@ -51,12 +57,27 @@ enum URLValidator {
             return url
         }
 
-        // IPv6 字面量（带方括号或裸写）— 简化处理：仅放行非链路本地
+        // IPv6 字面量（带方括号或裸写）
+        // H-S 修复：原代码仅匹配 fe80 前缀，遗漏 fe90-febf（同属链路本地 fe80::/10），
+        // 且不阻止 IPv6-mapped IPv4 地址（::ffff:169.254.169.254 可绕过 IPv4 黑名单）。
         if host.contains(":") {
-            // IPv6，链路本地 fe80::/10 禁止
-            let lower = host.hasPrefix("[") ? String(host.dropFirst().dropLast()) : host
-            if lower.lowercased().hasPrefix("fe80") {
+            var lower = host.hasPrefix("[") ? String(host.dropFirst().dropLast()) : host
+            lower = lower.lowercased()
+            // 链路本地 fe80::/10（覆盖 fe80~febf）
+            if lower.hasPrefix("fe8") || lower.hasPrefix("fe9") ||
+               lower.hasPrefix("fea") || lower.hasPrefix("feb") {
                 return nil
+            }
+            // 唯一本地地址 fc00::/7
+            if lower.hasPrefix("fc") || lower.hasPrefix("fd") {
+                return allowLocalhost ? url : nil
+            }
+            // IPv4-mapped IPv6: ::ffff:a.b.c.d — 剥离前缀后递归走 IPv4 校验
+            if lower.hasPrefix("::ffff:") {
+                let ipv4Part = String(lower.dropFirst("::ffff:".count))
+                if let ipv4 = parseIPv4(ipv4Part) {
+                    return isIPv4Allowed(ipv4, allowLocalhost: allowLocalhost) ? url : nil
+                }
             }
             return url
         }

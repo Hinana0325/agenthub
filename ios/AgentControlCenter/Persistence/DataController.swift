@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Observation
+import os
 
 // MARK: - DataController
 // 对应 Android com.agentcontrolcenter.app.data.repository.ChatRepository + AppDatabase
@@ -31,6 +32,16 @@ final class DataController {
 
     /// 容器初始化失败的原因（仅在降级到内存容器时非空）
     private(set) var lastInitError: String?
+
+    /// 最近一次持久化错误（fetch/save/delete 失败时写入，UI 可读取展示）
+    ///
+    /// C8 修复：原 16 处 `try?` 静默吞掉 SwiftData 错误，UI 表现为"无数据"
+    /// 但无法区分"真的无数据"与"加载失败"。改为 do-catch 后写入此属性，
+    /// SettingsView 等界面可监听并提示用户。
+    private(set) var lastError: String?
+
+    /// C8 修复：统一日志器，便于 Console.app 筛选持久化层错误
+    private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "DataController")
 
     /// 创建数据控制器并初始化 ModelContainer。
     ///
@@ -92,7 +103,7 @@ final class DataController {
         let descriptor = FetchDescriptor<SessionEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let existing = try? context.fetch(descriptor).first {
+        if let existing = safeFetchFirst(descriptor, context: "saveSession.fetch") {
             existing.title = session.title
             existing.createdAt = session.createdAt
             existing.updatedAt = session.updatedAt
@@ -111,7 +122,7 @@ final class DataController {
         let descriptor = FetchDescriptor<SessionEntity>(
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
-        let entities = (try? context.fetch(descriptor)) ?? []
+        let entities = safeFetch(descriptor, context: "fetchSessions", fallback: [])
         return entities.map { $0.toSession() }
     }
 
@@ -122,7 +133,7 @@ final class DataController {
         let descriptor = FetchDescriptor<SessionEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let entity = try? context.fetch(descriptor).first {
+        if let entity = safeFetchFirst(descriptor, context: "deleteSession.fetch") {
             context.delete(entity)
             save()
         }
@@ -140,7 +151,7 @@ final class DataController {
         let descriptor = FetchDescriptor<MessageEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let existing = try? context.fetch(descriptor).first {
+        if let existing = safeFetchFirst(descriptor, context: "saveMessage.fetch") {
             existing.sessionId = message.sessionId
             existing.role = message.role.rawValue
             existing.content = message.content
@@ -167,7 +178,7 @@ final class DataController {
             predicate: #Predicate { $0.sessionId == targetId },
             sortBy: [SortDescriptor(\.timestamp, order: .forward)]
         )
-        let entities = (try? context.fetch(descriptor)) ?? []
+        let entities = safeFetch(descriptor, context: "fetchMessages", fallback: [])
         return entities.map { $0.toMessage() }
     }
 
@@ -178,7 +189,7 @@ final class DataController {
         let descriptor = FetchDescriptor<MessageEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let entity = try? context.fetch(descriptor).first {
+        if let entity = safeFetchFirst(descriptor, context: "deleteMessage.fetch") {
             context.delete(entity)
             save()
         }
@@ -191,7 +202,7 @@ final class DataController {
         let descriptor = FetchDescriptor<MessageEntity>(
             predicate: #Predicate { $0.sessionId == targetId }
         )
-        guard let entities = try? context.fetch(descriptor) else { return }
+        let entities = safeFetch(descriptor, context: "deleteMessages.fetch", fallback: [])
         for entity in entities {
             context.delete(entity)
         }
@@ -215,7 +226,7 @@ final class DataController {
         let descriptor = FetchDescriptor<AgentConfigEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let existing = try? context.fetch(descriptor).first {
+        if let existing = safeFetchFirst(descriptor, context: "saveAgentConfig.fetch") {
             existing.name = config.name
             existing.type = config.type.rawValue
             existing.serverUrl = config.serverUrl
@@ -240,7 +251,7 @@ final class DataController {
         let descriptor = FetchDescriptor<AgentConfigEntity>(
             sortBy: [SortDescriptor(\.name, order: .forward)]
         )
-        let entities = (try? context.fetch(descriptor)) ?? []
+        let entities = safeFetch(descriptor, context: "fetchAgentConfigs", fallback: [])
         return entities.map { $0.toAgentConfig() }
     }
 
@@ -251,7 +262,7 @@ final class DataController {
         let descriptor = FetchDescriptor<AgentConfigEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let entity = try? context.fetch(descriptor).first {
+        if let entity = safeFetchFirst(descriptor, context: "deleteAgentConfig.fetch") {
             context.delete(entity)
             save()
         }
@@ -269,7 +280,7 @@ final class DataController {
         let descriptor = FetchDescriptor<TaskEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let existing = try? context.fetch(descriptor).first {
+        if let existing = safeFetchFirst(descriptor, context: "saveTask.fetch") {
             existing.agentId = task.agentId
             existing.sessionId = task.sessionId
             existing.type = task.type.rawValue
@@ -291,7 +302,7 @@ final class DataController {
         let descriptor = FetchDescriptor<TaskEntity>(
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
-        let entities = (try? context.fetch(descriptor)) ?? []
+        let entities = safeFetch(descriptor, context: "fetchTasks", fallback: [])
         return entities.map { $0.toTask() }
     }
 
@@ -302,7 +313,7 @@ final class DataController {
         let descriptor = FetchDescriptor<TaskEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
-        if let entity = try? context.fetch(descriptor).first {
+        if let entity = safeFetchFirst(descriptor, context: "deleteTask.fetch") {
             context.delete(entity)
             save()
         }
@@ -347,7 +358,7 @@ final class DataController {
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
         descriptor.fetchLimit = limit
-        return (try? context.fetch(descriptor)) ?? []
+        return safeFetch(descriptor, context: "fetchActivities", fallback: [])
     }
 
     /// 清空全部活动日志。
@@ -355,21 +366,48 @@ final class DataController {
     /// 与 Android `ActivityDao.clearAll()` 的 `DELETE FROM activity_log` 对齐。
     func clearActivities() {
         let descriptor = FetchDescriptor<ActivityLogEntity>()
-        if let entities = try? context.fetch(descriptor) {
-            for entity in entities {
-                context.delete(entity)
-            }
-            save()
+        let entities = safeFetch(descriptor, context: "clearActivities.fetch", fallback: [])
+        for entity in entities {
+            context.delete(entity)
         }
+        save()
     }
 
     // MARK: - Private
 
     /// 提交当前上下文的变更到持久化存储。
     ///
-    /// 失败时忽略错误（与 Room 自动事务语义对齐）。SwiftData 的 `save()`
-    /// 在 mainContext 上调用时通常不会抛出，使用 `try?` 仅作兜底保护。
+    /// C8 修复：原 `try? context.save()` 静默吞掉错误，数据丢失但 UI 无感知。
+    /// 改为 do-catch 并通过 logger.error + lastError 暴露给上层。
+    /// save() 失败时 mainContext 仍保留未提交的变更，下次 save() 会重试。
     private func save() {
-        try? context.save()
+        do {
+            try context.save()
+            // 成功时不清空 lastError（保留历史错误供 UI 一次性展示）
+        } catch {
+            let msg = "save() failed: \(error.localizedDescription)"
+            Self.logger.error("\(msg, privacy: .public)")
+            lastError = msg
+        }
+    }
+
+    /// 通用 fetch 包装：捕获错误、记录日志、写入 lastError、返回 nil 或空数组。
+    ///
+    /// C8 修复：把 16 处 `try? context.fetch(...)` 统一收口到此处，
+    /// 避免 logger 调用散落各处。`fallback` 控制失败时返回 nil 还是空数组。
+    private func safeFetch<T>(_ descriptor: FetchDescriptor<T>, context: String, fallback: [T]) -> [T] {
+        do {
+            return try context.fetch(descriptor)
+        } catch {
+            let msg = "\(context) failed: \(error.localizedDescription)"
+            Self.logger.error("\(msg, privacy: .public)")
+            lastError = msg
+            return fallback
+        }
+    }
+
+    /// 通用 fetch 包装（单值版本）：返回首条匹配或 nil。
+    private func safeFetchFirst<T>(_ descriptor: FetchDescriptor<T>, context: String) -> T? {
+        safeFetch(descriptor, context: context, fallback: []).first
     }
 }

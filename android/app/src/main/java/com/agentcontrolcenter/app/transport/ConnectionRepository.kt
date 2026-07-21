@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import javax.annotation.PreDestroy
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,7 +82,9 @@ class ConnectionRepository @Inject constructor(
 
     /** 网络回调，用于感知 WiFi ↔ 蜂窝切换并在恢复时重连。 */
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private var isNetworkAvailable = true
+    // C5 修复：原为普通 var，onLost/onAvailable 在 ConnectivityManager 工作线程写入，
+    // 主线程读取无内存可见性保证。改为 @Volatile 保证跨线程可见。
+    @Volatile private var isNetworkAvailable = true
 
     init {
         registerNetworkCallback()
@@ -174,5 +178,31 @@ class ConnectionRepository @Inject constructor(
         _transport.value = null
         lastConfig = null
         lastE2eKey = null
+    }
+
+    /**
+     * Hilt 销毁单例时调用，确保 NetworkCallback 注销 + repositoryScope 取消。
+     *
+     * C5 修复：原实现仅在 [shutdown] 中关闭 transport，从未注销 NetworkCallback
+     * 也未取消 repositoryScope（SupervisorJob 泄漏）。在多进程 / 测试 / 内存压力
+     * 进程重启场景下，回调绑定对象无法回收，且 ConnectivityManager 维护的 callback
+     * 列表会强引用 appContext 导致进程级泄漏。
+     */
+    @PreDestroy
+    fun onDispose() {
+        // 注销网络回调，避免 ConnectivityManager 持有 callback 强引用
+        networkCallback?.let { cb ->
+            try {
+                val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                cm?.unregisterNetworkCallback(cb)
+            } catch (_: Exception) {
+                // callback 已注销或未注册，忽略
+            }
+        }
+        networkCallback = null
+        // 取消所有 repositoryScope 启动的协程（含 stateIn 热流）
+        repositoryScope.cancel()
+        // 顺带 shutdown transport（防御性）
+        shutdown()
     }
 }

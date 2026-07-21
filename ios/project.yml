@@ -39,8 +39,12 @@ targets:
           - Widget
     resources:
       - path: AgentControlCenter/Resources/Assets.xcassets
+    # C4 修复：原文件存在两个 `dependencies:` 键（YAML 重复键），
+    # Yams 解析器会用后者覆盖前者，导致 Sentry SPM 依赖丢失、import Sentry 编译失败。
+    # 合并为单个 dependencies 列表，同时声明 SPM 包依赖与 target 依赖。
     dependencies:
       - package: Sentry
+      - target: AgentControlCenterWidgetExtension
     info:
       path: AgentControlCenter/Info.plist
       properties:
@@ -58,8 +62,6 @@ targets:
         # App Entitlements：声明 App Group / Keychain Sharing 等能力，
         # 缺失会导致 UserDefaults(suiteName:) 返回 nil，Widget 数据流断裂
         CODE_SIGN_ENTITLEMENTS: AgentControlCenter/AgentControlCenter.entitlements
-    dependencies:
-      - target: AgentControlCenterWidgetExtension
 
   AgentControlCenterWidgetExtension:
     type: app-extension

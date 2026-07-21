@@ -42,9 +42,11 @@ import com.agentcontrolcenter.app.widget.WidgetDataProvider
 import javax.inject.Inject
 import com.agentcontrolcenter.app.core.ui.VoiceChatManager
 import com.agentcontrolcenter.app.localmodel.LocalModelManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import android.graphics.Bitmap
@@ -1068,14 +1070,26 @@ class ChatViewModel @Inject constructor(
     fun setPendingAttachment(context: Context, uri: android.net.Uri, isImage: Boolean) {
         viewModelScope.launch {
             try {
-                val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-                val bytes = inputStream?.readBytes()
-                inputStream?.close()
-                if (bytes != null) {
+                // H-A2 修复：原代码在 viewModelScope.launch 默认 Main 调度器上做
+                // ContentResolver.openInputStream / readBytes / BitmapFactory.decodeByteArray
+                // 等磁盘 + CPU 密集型操作，会阻塞 UI 线程导致卡顿甚至 ANR。
+                // 将整段 I/O + Bitmap 处理移到 Dispatchers.IO，
+                // 仅在结束后再回到 Main 更新 _uiState。
+                //
+                // 返回值约定：Pair<状态码, Triple<type, base64, name>?>
+                //   "ok"        → 第二项为 Triple
+                //   "too_large" → 第二项为 null（UI 显示错误消息）
+                //   "empty"     → 第二项为 null（原实现静默忽略，保持兼容）
+                val result: Pair<String, Triple<String, String, String>?> = withContext(Dispatchers.IO) {
+                    val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes()
+                    inputStream?.close()
+                    if (bytes == null) {
+                        return@withContext "empty" to null
+                    }
                     // Warn if attachment is very large
                     if (bytes.size > 10 * 1024 * 1024) { // 10MB
-                        _uiState.update { it.copy(errorMessage = "Attachment too large (>10MB)") }
-                        return@launch
+                        return@withContext "too_large" to null
                     }
                     val finalBytes = if (isImage && bytes.size > 1_000_000) {
                         try {
@@ -1106,13 +1120,29 @@ class ChatViewModel @Inject constructor(
                     } else bytes
                     val base64 = Base64.encodeToString(finalBytes, Base64.NO_WRAP)
                     val name = uri.lastPathSegment ?: if (isImage) "image" else "file"
-                    _uiState.update {
-                        it.copy(
-                            pendingAttachmentType = if (isImage) "image" else "file",
-                            pendingAttachmentData = base64,
-                            pendingAttachmentName = name
-                        )
+                    "ok" to Triple(
+                        if (isImage) "image" else "file",
+                        base64,
+                        name
+                    )
+                }
+                when (result.first) {
+                    "too_large" -> {
+                        _uiState.update { it.copy(errorMessage = "Attachment too large (>10MB)") }
                     }
+                    "ok" -> {
+                        val payload = result.second
+                        if (payload != null) {
+                            _uiState.update {
+                                it.copy(
+                                    pendingAttachmentType = payload.first,
+                                    pendingAttachmentData = payload.second,
+                                    pendingAttachmentName = payload.third
+                                )
+                            }
+                        }
+                    }
+                    "empty" -> { /* bytes == null：原实现静默忽略，保持兼容 */ }
                 }
             } catch (_: Exception) {
                 _uiState.update { it.copy(errorMessage = "Failed to load attachment") }

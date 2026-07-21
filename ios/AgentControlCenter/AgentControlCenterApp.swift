@@ -186,9 +186,32 @@ struct AgentControlCenterApp: App {
     private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "App")
 
     /// 清理超过 7 天的崩溃日志（已在 init 中注册为 BG processing 任务的实际工作）
+    ///
+    /// C6 修复：原代码读取 `caches/CrashLogs/`，但 NSSetUncaughtExceptionHandler
+    /// 实际写入 `caches/Crashes/`（见 init 中的 crashDir 常量），路径不一致导致
+    /// 崩溃日志永不被清理，最终撑爆 caches 目录。此处统一为 `Crashes/`，
+    /// 并顺带迁移历史 `CrashLogs/` 中的旧文件（删除空目录）。
     private func cleanupOldCrashLogs() {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-        guard let crashDir = caches?.appendingPathComponent("CrashLogs", isDirectory: true) else { return }
+        guard let cachesDir = caches else { return }
+        let crashDir = cachesDir.appendingPathComponent("Crashes", isDirectory: true)
+        let legacyDir = cachesDir.appendingPathComponent("CrashLogs", isDirectory: true)
+
+        // 迁移旧目录中的 .log 文件到新目录
+        if FileManager.default.fileExists(atPath: legacyDir.path),
+           let legacyFiles = try? FileManager.default.contentsOfDirectory(at: legacyDir, includingPropertiesForKeys: nil) {
+            for file in legacyFiles where file.pathExtension == "log" {
+                let dest = crashDir.appendingPathComponent(file.lastPathComponent)
+                try? FileManager.default.moveItem(at: file, to: dest)
+            }
+            // 旧目录为空时移除
+            if let remaining = try? FileManager.default.contentsOfDirectory(at: legacyDir, includingPropertiesForKeys: nil),
+               remaining.isEmpty {
+                try? FileManager.default.removeItem(at: legacyDir)
+            }
+        }
+
+        // 清理超过 7 天的崩溃日志
         guard let files = try? FileManager.default.contentsOfDirectory(at: crashDir, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
         let threshold = Date().addingTimeInterval(-7 * 24 * 3600)
         for file in files {

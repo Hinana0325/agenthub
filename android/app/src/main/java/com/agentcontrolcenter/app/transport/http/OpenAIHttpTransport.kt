@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.security.UrlValidator
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.client.HttpClient
@@ -178,6 +179,12 @@ class OpenAIHttpTransport(
     private suspend fun probeEndpoint(config: AgentConfig): Boolean {
         val base = config.serverUrl.trimEnd('/')
         val probeUrl = if (base.endsWith("/v1")) "$base/models" else "$base/v1/models"
+        // H-S1 修复：原代码直接用 probeUrl 发起 GET，未校验目标 URL。
+        // 攻击者控制 Agent 配置可触发 SSRF（如 http://169.254.169.254/...），
+        // 且 Authorization 头会携带 apiKey 一起发往元数据服务。
+        if (UrlValidator.validate(probeUrl, allowLocalhost = true) == null) {
+            return false
+        }
         return try {
             val response = withTimeout(5000) {
                 client.get(probeUrl) {
@@ -222,6 +229,11 @@ class OpenAIHttpTransport(
             responseAccumulator.setLength(0)
 
             val url = config.serverUrl.trimEnd('/') + "/v1/chat/completions"
+            // H-S1 修复：sendMessage 路径同样需要校验 URL（防 SSRF + apiKey 泄漏）
+            if (UrlValidator.validate(url, allowLocalhost = true) == null) {
+                _events.send(AgentEvent.Error("Invalid or blocked server URL"))
+                return
+            }
             val requestBody = mapOf(
                 "model" to config.model,
                 // 多轮对话：messages 数组由本 session 的历史快照构成，包含此前

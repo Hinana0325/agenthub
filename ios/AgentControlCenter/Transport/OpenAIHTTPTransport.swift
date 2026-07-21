@@ -412,7 +412,10 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
     private func probeEndpoint(serverUrl: String, apiKey: String) async -> Bool {
         let base = serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let probePath = base.hasSuffix("/v1") ? "\(base)/models" : "\(base)/v1/models"
-        guard let url = URL(string: probePath) else { return false }
+        // H-S2 修复：原代码用 URL(string:) 直接构造，未调用 URLValidator.validate，
+        // 攻击者可配置 serverUrl=http://169.254.169.254/... 让 probe 携带 Bearer apiKey
+        // 访问云元数据服务。改为统一过 URLValidator（与 sendMessage 一致）。
+        guard let url = URLValidator.validate(probePath, allowLocalhost: true) else { return false }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"

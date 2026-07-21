@@ -102,7 +102,10 @@ final class LocalModelManager {
     /// { "models": [{ "name": "llama3:8b", "size": 4661224676 }] }
     /// ```
     private nonisolated func fetchOllamaModels(from url: String) async -> [LocalModel] {
-        guard let url = URL(string: "\(url)/api/tags") else { return [] }
+        // H-S4 修复：原代码 URL(string:) 直接构造未过 URLValidator。
+        // 当前 url 来自 defaultEndpoints 静态数组，但方法签名接受任意字符串，
+        // 未来扩展为用户输入即 SSRF 入口。补防御性校验。
+        guard let url = URLValidator.validate("\(url)/api/tags", allowLocalhost: true) else { return [] }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
 
@@ -135,7 +138,8 @@ final class LocalModelManager {
     /// { "data": [{ "id": "meta-llama/Llama-3-8B-Instruct-q4" }] }
     /// ```
     private nonisolated func fetchLmStudioModels(from url: String) async -> [LocalModel] {
-        guard let url = URL(string: "\(url)/v1/models") else { return [] }
+        // H-S4 修复：补防御性 URLValidator 校验（与 fetchOllamaModels 一致）
+        guard let url = URLValidator.validate("\(url)/v1/models", allowLocalhost: true) else { return [] }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
 
@@ -165,7 +169,8 @@ final class LocalModelManager {
     /// llama.cpp 的 /health 端点不返回模型列表，仅用于确认服务可用性。
     /// 成功时返回一个占位模型条目，表示服务已就绪。
     private nonisolated func fetchLlamaCppModels(from url: String) async -> [LocalModel] {
-        guard let url = URL(string: "\(url)/health") else { return [] }
+        // H-S4 修复：补防御性 URLValidator 校验（与 fetchOllamaModels 一致）
+        guard let url = URLValidator.validate("\(url)/health", allowLocalhost: true) else { return [] }
         guard let (_, response) = try? await URLSession.shared.data(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
         // llama.cpp health 端点不返回模型列表，仅确认可用

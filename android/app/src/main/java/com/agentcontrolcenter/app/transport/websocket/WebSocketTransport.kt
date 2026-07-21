@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app.transport.websocket
 
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.security.UrlValidator
 import com.agentcontrolcenter.app.data.model.MessageRole
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -126,6 +127,14 @@ class WebSocketTransport(
             .replace("http://", "ws://")
             .replace("https://", "wss://")
             .trimEnd('/') + "/ws"
+
+        // H-S1 修复：原代码直接用 wsUrl 连接 WebSocket，未校验目标 URL。
+        // 攻击者控制 Agent 配置可触发 SSRF（如 ws://169.254.169.254/...），
+        // 且 auth frame 会携带 apiKey 一起发往元数据服务。
+        if (UrlValidator.validate(wsUrl, allowLocalhost = true) == null) {
+            _events.send(AgentEvent.Error("Invalid or blocked WebSocket URL"))
+            return
+        }
 
         var retryCount = 0
         val maxRetries = 3

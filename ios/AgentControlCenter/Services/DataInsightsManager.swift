@@ -310,7 +310,9 @@ final class DataInsightsManager {
             if seenSessionIds.contains(session.id) { continue }
             seenSessionIds.insert(session.id)
             let date = Date(timeIntervalSince1970: TimeInterval(session.createdAt) / 1000)
-            let dateKey = formatter.string(from: date)
+            // C1 修复：原代码引用未定义的 `formatter`（仅 `dateStyle` 在作用域内），
+            // 改为使用与上方 msg 循环一致的 `date.formatted(dateStyle)`。
+            let dateKey = date.formatted(dateStyle)
             if var activity = dailyMap[dateKey] {
                 activity.sessionCount += 1
                 dailyMap[dateKey] = activity

@@ -21,6 +21,7 @@ import com.agentcontrolcenter.app.core.common.PerformanceMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.SecureRandom
 import javax.inject.Inject
@@ -170,19 +172,27 @@ class SettingsViewModel @Inject constructor(
     fun exportChatHistory(context: Context) {
         viewModelScope.launch {
             try {
-                val sessions = repository.getAllSessionsList()
-                val allMessages = sessions.flatMap { session ->
-                    repository.getMessagesBySessionList(session.id)
+                // H-A3 修复：原代码在 viewModelScope.launch 默认 Main 调度器上做
+                // 数据库全表扫描（getAllSessionsList + 每会话 getMessagesBySessionList）
+                // + Gson 序列化大对象 + 文件写入 Downloads，全部为磁盘/IO 密集型操作，
+                // 在数据量稍大时会阻塞 UI 线程导致卡顿。将整段移到 Dispatchers.IO，
+                // 仅在结束后回到 Main 更新 _uiState。
+                val (fileName, saved) = withContext(Dispatchers.IO) {
+                    val sessions = repository.getAllSessionsList()
+                    val allMessages = sessions.flatMap { session ->
+                        repository.getMessagesBySessionList(session.id)
+                    }
+                    val backup = ChatBackup(
+                        version = "2.2.0",
+                        exportedAt = System.currentTimeMillis(),
+                        sessions = sessions,
+                        messages = allMessages
+                    )
+                    val json = Gson().toJson(backup)
+                    val name = "agentcontrolcenter-backup-${System.currentTimeMillis()}.json"
+                    val ok = writeJsonToDownloads(context, name, json)
+                    name to ok
                 }
-                val backup = ChatBackup(
-                    version = "2.2.0",
-                    exportedAt = System.currentTimeMillis(),
-                    sessions = sessions,
-                    messages = allMessages
-                )
-                val json = Gson().toJson(backup)
-                val fileName = "agentcontrolcenter-backup-${System.currentTimeMillis()}.json"
-                val saved = writeJsonToDownloads(context, fileName, json)
                 _uiState.update {
                     it.copy(
                         backupMessage = if (saved) context.getString(R.string.backup_saved, fileName)
@@ -232,12 +242,23 @@ class SettingsViewModel @Inject constructor(
     fun importChatHistory(context: Context, uri: Uri) {
         viewModelScope.launch {
             try {
-                val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
-                if (json != null) {
+                // H-A4 修复：原代码在 viewModelScope.launch 默认 Main 调度器上做
+                // ContentResolver.openInputStream + readText（读取可能很大的 JSON 文件）
+                // + Gson 反序列化 + repository.importBackup 事务批量插入，
+                // 全部为磁盘/IO 密集型操作，会阻塞 UI 线程。将整段移到 Dispatchers.IO，
+                // 仅在结束后回到 Main 更新 _uiState。
+                val (sessionCount, messageCount) = withContext(Dispatchers.IO) {
+                    val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+                    if (json == null) {
+                        return@withContext 0 to 0
+                    }
                     val backup = Gson().fromJson(json, ChatBackup::class.java)
                     // 用事务原子导入：任一插入失败则整体回滚，避免半导入状态。
                     repository.importBackup(backup.sessions, backup.messages)
-                    _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, backup.sessions.size, backup.messages.size)) }
+                    backup.sessions.size to backup.messages.size
+                }
+                if (sessionCount > 0 || messageCount > 0) {
+                    _uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, sessionCount, messageCount)) }
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e

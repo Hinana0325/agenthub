@@ -125,7 +125,8 @@ final class AppState {
         agentManager = AgentManager()
         sessionManager = SessionManager()
         taskManager = TaskManager()
-        workflowEngine = WorkflowEngine()
+        // C9 修复：注入 dataController，让 WorkflowEngine 能解析 AGENT 节点配置。
+        workflowEngine = WorkflowEngine(dataController: dataController)
         mcpBridge = McpBridge()
         pluginExecutor = PluginExecutor()
         voiceInputManager = VoiceInputManager()

@@ -47,8 +47,7 @@ class AgentControlCenterWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_input, inputPending)
 
             // Sprint 8: 发送按钮同样拉起 WidgetInputActivity。
-            // 此前指向 WidgetSendReceiver 的广播并未在 Manifest 注册（死代码），
-            // 改为统一打开输入弹窗，保证按钮始终可用。
+            // 统一打开输入弹窗，保证按钮始终可用。
             val sendIntent = Intent(context, WidgetInputActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
@@ -140,7 +139,6 @@ class AgentControlCenterWidget : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_WIDGET_SEND = "com.agentcontrolcenter.app.WIDGET_SEND"
         const val ACTION_WIDGET_VOICE = "com.agentcontrolcenter.app.WIDGET_VOICE"
 
         // Sprint 8: Widget PendingIntent 请求码
@@ -156,36 +154,6 @@ class AgentControlCenterWidget : AppWidgetProvider() {
             if (ids.isNotEmpty()) {
                 AgentControlCenterWidget().onUpdate(context, manager, ids)
             }
-        }
-    }
-}
-
-/**
- * Widget 快捷发送按钮的 BroadcastReceiver
- */
-class WidgetSendReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val prefs = context.getSharedPreferences("agent_control_center_widget_prefs", Context.MODE_PRIVATE)
-        val pendingText = prefs.getString("widget_pending_input", "") ?: ""
-
-        if (pendingText.isNotBlank()) {
-            // 将待发送文本保存，由 App 读取并发送
-            prefs.edit().remove("widget_pending_input").apply()
-
-            // 打开 App 并传递发送指令
-            val openIntent = Intent(context, MainActivity::class.java).apply {
-                putExtra("widget_action", "send_message")
-                putExtra("widget_message", pendingText)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            context.startActivity(openIntent)
-        } else {
-            // 没有输入文本，打开 App 聊天界面
-            val openIntent = Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_MAIN
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            context.startActivity(openIntent)
         }
     }
 }

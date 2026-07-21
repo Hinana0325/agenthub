@@ -46,8 +46,11 @@ final class PluginExecutor {
         let encodedInput = input.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? input
         let urlString = http.url.replacingOccurrences(of: "{query}", with: encodedInput)
 
-        guard let url = URL(string: urlString) else {
-            return PluginResult(content: "Error: Invalid URL")
+        // H-S3 修复：原代码用 URL(string:) 直接构造，未调用 URLValidator.validate，
+        // 恶意插件可设置 url=http://169.254.169.254/... 触发 SSRF 并可覆盖 Authorization
+        // 等 header。改为过 URLValidator（插件不应访问本地服务，allowLocalhost=false）。
+        guard let url = URLValidator.validate(urlString, allowLocalhost: false) else {
+            return PluginResult(content: "Error: URL not allowed (blocked by URLValidator)")
         }
 
         var request = URLRequest(url: url)

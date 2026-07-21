@@ -54,6 +54,17 @@ final class WorkflowEngine {
     /// Agent 调用超时时间（秒），对应 Android 的 withTimeoutOrNull(60_000L)
     private let agentTimeoutSeconds: TimeInterval = 60
 
+    /// C9 修复：注入 DataController，让 AGENT 节点能从持久化存储读取真实配置。
+    /// 原实现 `defaultConfig` 直接返回空 serverUrl/apiKey/model 占位配置，
+    /// 导致工作流中的 AGENT 节点必然连接失败（TransportFactory 用空 URL 连接）。
+    private let dataController: DataController
+
+    /// 创建 WorkflowEngine。
+    /// - Parameter dataController: 用于查询 AGENT 节点配置的持久化控制器。
+    init(dataController: DataController) {
+        self.dataController = dataController
+    }
+
     // MARK: - Public
 
     /// 执行工作流
@@ -273,8 +284,9 @@ final class WorkflowEngine {
     ///   - prompt: 提示词
     /// - Returns: Agent 输出文本，出错时返回 "Error: ..." 字符串
     private func executeAgent(agentType: AgentType, prompt: String) async -> String {
-        // 使用默认配置（AgentConfigDao 尚未实现）
-        let config = Self.defaultConfig(for: agentType)
+        // C9 修复：从持久化存储查找匹配 agentType 的 AgentConfig，
+        // 找不到时才退回到 defaultConfig 占位（保留原行为，便于空库启动场景）。
+        let config = resolveConfig(for: agentType)
         let transport = TransportFactory.create(agentType)
 
         // 1. 建立连接
@@ -435,10 +447,32 @@ final class WorkflowEngine {
 
     // MARK: - Default Config
 
-    /// 为指定 Agent 类型生成默认配置
+    /// C9 修复：为指定 Agent 类型解析实际配置。
     ///
-    /// AgentConfigDao 尚未实现，此处使用占位配置。
-    /// 实际项目中应从持久化存储查询匹配 agentType 的 AgentConfig。
+    /// 查询顺序：
+    /// 1. 从 `dataController` 读取全部 AgentConfig，取第一个 `type` 匹配的条目
+    ///    （按 `name` 升序，与列表展示一致，便于用户通过重命名控制优先级）。
+    /// 2. 未找到匹配项时，退回到 `defaultConfig(for:)` 占位配置
+    ///    （serverUrl/apiKey/model 为空字符串，保留原有空库启动行为）。
+    ///
+    /// 此前实现（C9 Critical）始终返回占位配置，导致工作流中 AGENT 节点
+    /// 100% 连接失败（空 URL 无法发起请求）。修复后用户在 Agent 设置页配置
+    /// 的 serverUrl/apiKey/model 会被工作流正确使用。
+    ///
+    /// - Parameter agentType: Agent 类型
+    /// - Returns: 解析到的 AgentConfig（可能是真实配置或占位配置）
+    private func resolveConfig(for agentType: AgentType) -> AgentConfig {
+        let allConfigs = dataController.fetchAgentConfigs()
+        if let matched = allConfigs.first(where: { $0.type == agentType }) {
+            return matched
+        }
+        return Self.defaultConfig(for: agentType)
+    }
+
+    /// 为指定 Agent 类型生成默认配置（占位）
+    ///
+    /// 仅在持久化存储中找不到匹配 `agentType` 的配置时使用，
+    /// serverUrl/apiKey/model 为空字符串，与原 C9 修复前的行为兼容。
     ///
     /// - Parameter agentType: Agent 类型
     /// - Returns: 默认 AgentConfig
