@@ -8,7 +8,7 @@ import Foundation
 ///
 /// 事件流通过 AsyncStream 暴露，调用方用 `for await event in transport.events` 消费。
 /// 连接状态通过 @Observable 属性暴露，便于 SwiftUI 直接绑定。
-protocol AgentTransport: AnyObject {
+protocol AgentTransport: AnyObject, Sendable {
     /// 事件流
     var events: AsyncStream<AgentEvent> { get }
 
