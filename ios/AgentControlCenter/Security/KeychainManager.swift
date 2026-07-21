@@ -20,6 +20,14 @@ enum KeychainManager {
     private static let prefix = "AKS:"
     private static let ivLength = 12
 
+    // CI-fix: 当 Keychain 不可用（CI 模拟器无 entitlement / errSecMissingEntitlement）
+    // 时，saveKey 静默失败，loadKey 返回 nil，getOrCreateKey 会生成新密钥 —
+    // 同进程内 encrypt/decrypt 用不同密钥，AES-GCM 认证失败导致 decrypt 永远返回 nil。
+    // 此 in-memory 缓存作为 Keychain 不可用时的降级：保证同一进程内 encrypt 与
+    // decrypt 使用同一密钥。生产环境（真机 / 有 entitlement 的模拟器）Keychain 写
+    // 入成功，不会进入此分支。`nonisolated(unsafe)` 因为静态枚举本身就是进程级单例。
+    nonisolated(unsafe) private static var inMemoryFallbackKey: Data?
+
     // MARK: - Key Management
 
     /// 获取或创建主密钥（AES-256），存储在 Keychain 中
@@ -31,6 +39,11 @@ enum KeychainManager {
         let key = SymmetricKey(size: .bits256)
         let keyData = key.withUnsafeBytes { Data($0) }
         saveKey(keyData)
+        // CI-fix: Keychain 写入失败时回退到 in-memory 缓存，保证同一进程内
+        // encrypt/decrypt 使用相同密钥（避免 CI 模拟器无 entitlement 导致测试失败）
+        if inMemoryFallbackKey == nil {
+            inMemoryFallbackKey = keyData
+        }
         return key
     }
 
@@ -43,7 +56,11 @@ enum KeychainManager {
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        return status == errSecSuccess ? result as? Data : nil
+        if status == errSecSuccess, let data = result as? Data {
+            return data
+        }
+        // CI-fix: Keychain 不可用时回退到 in-memory 缓存
+        return inMemoryFallbackKey
     }
 
     private static func saveKey(_ data: Data) {
@@ -61,6 +78,9 @@ enum KeychainManager {
                 [kSecValueData as String: data] as CFDictionary
             )
         }
+        // CI-fix: 无论 SecItemAdd 是否成功，都同步更新 in-memory 缓存
+        // （写入失败时下次 loadKey 仍可拿到同一密钥）
+        inMemoryFallbackKey = data
     }
 
     // MARK: - Encrypt / Decrypt

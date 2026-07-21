@@ -44,9 +44,13 @@ enum URLValidator {
             return nil
         }
 
-        // localhost 显式放行（若 allowLocalhost）
-        if allowLocalhost && (host == "localhost" || host == "ip6-localhost" || host == "::1") {
-            return url
+        // localhost / loopback hostname 处理
+        // CI-fix: 原代码 `if allowLocalhost && ...` 在 allowLocalhost=false 时直接落入后续
+        // IPv4 字面量校验，但 "localhost" 既不是合法 IPv4 也不含 ":"（IPv6 分支），
+        // 最终落到末尾的 "域名校验" 分支无条件 return url — 仍然放行。
+        // 修复：allowLocalhost=false 时显式拒绝 localhost 系列主机名。
+        if host == "localhost" || host == "ip6-localhost" || host == "::1" {
+            return allowLocalhost ? url : nil
         }
 
         // IPv4 字面量校验
