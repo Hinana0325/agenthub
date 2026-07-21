@@ -119,8 +119,16 @@ final class LocalNotificationManager: @unchecked Sendable {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-        UNUserNotificationCenter.current().add(request) { [weak self] _ in
-            Task { await self?.refreshPendingNotifications() }
+        // CI-fix: 避免 `UNUserNotificationCenter.add(_:completionHandler:)` 的
+        // completion 闭包被作为 `sending` 参数传递触发 Swift 6.2 数据竞争检查。
+        // 改用 async 版 `add(_:)`，整体包裹在 Task 中。
+        Task { [weak self] in
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+            } catch {
+                // 通知添加失败，忽略错误（与原 completion 回调忽略 error 行为一致）
+            }
+            await self?.refreshPendingNotifications()
         }
     }
 
@@ -149,8 +157,14 @@ final class LocalNotificationManager: @unchecked Sendable {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-        UNUserNotificationCenter.current().add(request) { [weak self] _ in
-            Task { await self?.refreshPendingNotifications() }
+        // CI-fix: 同 scheduleMessageNotification，改用 async 版 add
+        Task { [weak self] in
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+            } catch {
+                // 通知添加失败，忽略错误
+            }
+            await self?.refreshPendingNotifications()
         }
     }
 
