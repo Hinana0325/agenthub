@@ -116,10 +116,9 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
+    // D3: AGP 9 移除了 android { kotlinOptions {} } block（Kotlin 已内置）。
+    // 改用顶级 kotlin { compilerOptions {} } 配置 jvmTarget，与 compileOptions 同步为 17。
+    // 见 https://kotl.in/gradle/kotlin-options
     packaging {
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
@@ -136,6 +135,13 @@ android {
             xml.required.set(false)
             txt.required.set(false)
         }
+    }
+}
+
+// D3: AGP 9 内置 Kotlin 后的编译器选项配置（替代原 android.kotlinOptions）
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
