@@ -127,9 +127,11 @@ struct AppleOptimizer {
 
     /// 生成 CoreML 模型加载配置。
     func makeCoreMLConfig() -> MLModelConfiguration {
-        let config = MLModelConfiguration()
-        config.computeUnits = config.coreMLComputeUnits
-        return config
+        let mlConfig = MLModelConfiguration()
+        // CI-fix: 原代码 `config.coreMLComputeUnits` 引用了 MLModelConfiguration 上
+        // 不存在的成员。意图是读取 `self.config`（OptimizationConfig）的 coreMLComputeUnits。
+        mlConfig.computeUnits = self.config.coreMLComputeUnits
+        return mlConfig
     }
 
     // MARK: 热降频
@@ -204,14 +206,22 @@ struct AppleOptimizer {
     /// 获取 Metal GPU 设备详细信息。
     func getMetalDeviceInfo() -> MetalDeviceInfo? {
         guard let device = MTLCreateSystemDefaultDevice() else { return nil }
+        // CI-fix: `supportsMeshShaders` 是 iOS 26+ / Metal 4 新增 API，
+        // iOS 18 SDK 上不存在该成员。用 #if compiler(>=6.2) 编译时门控，
+        // 低版本编译器走 false 兜底（与原本"近似判断"的注释语义一致）。
+        #if compiler(>=6.2)
+        let supportsMeshShaders = device.supportsMeshShaders
+        #else
+        let supportsMeshShaders = false
+        #endif
         return MetalDeviceInfo(
             name: device.name,
             supportsRayTracing: device.supportsRaytracing,
-            supportsMeshShaders: device.supportsMeshShaders,
+            supportsMeshShaders: supportsMeshShaders,
             unifiedMemory: device.hasUnifiedMemory,
             recommendedMaxWorkingSetSize: device.recommendedMaxWorkingSetSize,
             maxThreadgroupMemoryLength: device.maxThreadgroupMemoryLength,
-            supportsMetal4: device.supportsMeshShaders // 近似判断
+            supportsMetal4: supportsMeshShaders // 近似判断
         )
     }
 

@@ -114,7 +114,9 @@ struct BackupData: Codable {
     ///
     /// 注意：明文备份时 `apiKey` 已被脱敏为 `"***"`，无法还原；
     /// 加密备份时保留原始 `apiKey`，可解密还原。
-    let agentConfigs: [AgentConfig]
+    //
+    // CI-fix: 声明为 `var` 以便在 exportToFile / exportEncrypted 中重新赋值脱敏后的列表。
+    var agentConfigs: [AgentConfig]
     /// 设置快照
     let settings: BackupSettings
 
@@ -199,6 +201,7 @@ struct BackupData: Codable {
 ///
 /// 与 Android 端 `com.agentcontrolcenter.app.data.backup.BackupManager` 行为一致。
 @Observable
+@MainActor
 final class BackupManager {
 
     // MARK: - 常量
@@ -295,10 +298,10 @@ final class BackupManager {
     /// - Returns: 成功返回 `BackupData`；失败返回 `nil` 并设置 `lastError`
     func importFromFile(_ url: URL) -> BackupData? {
         lastError = nil
-        let needsScopeAccess = url.startAccessingSecurityScopedResource
-        if needsScopeAccess {
-            _ = url.startAccessingSecurityScopedResource()
-        }
+        // CI-fix: `url.startAccessingSecurityScopedResource` 是方法不是属性，
+        // 需带 `()` 调用才能拿到 Bool 返回值。原代码写成属性引用导致
+        // "function produces expected type 'Bool'; did you mean to call it with '()'"。
+        let needsScopeAccess = url.startAccessingSecurityScopedResource()
         defer {
             if needsScopeAccess {
                 url.stopAccessingSecurityScopedResource()
@@ -381,16 +384,18 @@ final class BackupManager {
     /// - Returns: 成功返回 `BackupData`；失败返回 `nil` 并设置 `lastError`
     func importEncrypted(_ url: URL) -> BackupData? {
         lastError = nil
-        let needsScopeAccess = url.startAccessingSecurityScopedResource
-        if needsScopeAccess {
-            _ = url.startAccessingSecurityScopedResource()
-        }
+        // CI-fix: 同 importFromFile，方法需带 `()` 调用
+        let needsScopeAccess = url.startAccessingSecurityScopedResource()
         defer {
             if needsScopeAccess {
                 url.stopAccessingSecurityScopedResource()
             }
         }
-        guard let payload = String(data: try? Data(contentsOf: url) ?? Data(), encoding: .utf8) else {
+        // CI-fix: `try?` 优先级低于 `??`，原 `try? Data(...) ?? Data()` 解析为
+        // `try? (Data(...) ?? Data())` —— 但 `Data(...)` 是 throwing 不是 Optional，
+        // `?? Data()` 不合法。显式加括号 `(try? Data(...)) ?? Data()` 先得到 `Data?`，
+        // 再用 `??` 解包。
+        guard let payload = String(data: (try? Data(contentsOf: url)) ?? Data(), encoding: .utf8) else {
             lastError = String(localized: "error.encrypted.read")
             return nil
         }

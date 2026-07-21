@@ -83,6 +83,7 @@ struct AgentUsage: Identifiable, Codable, Equatable {
 /// - 英文按 4 字符 ≈ 1 token
 /// - 混合内容取两者较大值作为上界估算
 @Observable
+@MainActor
 final class DataInsightsManager {
 
     // MARK: - 依赖

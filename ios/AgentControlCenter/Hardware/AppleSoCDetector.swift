@@ -332,7 +332,9 @@ struct AppleSoCDetector {
 
     private static func availableMemory() -> Double {
         var vmStats = vm_statistics64()
-        var count = mach_vm.size_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
+        // CI-fix: 原代码 `mach_vm.size_t(...)` —— `mach_vm` 不是类型名，
+        // `host_statistics64` 的 count 参数类型为 `mach_msg_type_number_t`。
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
         let hostPort = mach_host_self()
         let result = withUnsafeMutablePointer(to: &vmStats) {
             $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
@@ -340,7 +342,10 @@ struct AppleSoCDetector {
             }
         }
         guard result == KERN_SUCCESS else { return 0 }
-        let pageSize = UInt64(vm_kernel_page_size)
+        // CI-fix: `vm_kernel_page_size` 是 mach 头文件中的全局可变变量，Swift 6
+        // 标记为非并发安全。改用 POSIX `getpagesize()`（const 函数返回值），
+        // 语义等价（iOS 上 vm_kernel_page_size == getpagesize() == 4096）。
+        let pageSize = UInt64(getpagesize())
         let free = UInt64(vmStats.free_count) * pageSize
         return Double(free) / (1024 * 1024 * 1024)
     }

@@ -337,10 +337,8 @@ final class ChatRepository {
     @discardableResult
     func importSession(from url: URL) -> ChatSession? {
         // 需要读取外部文件（如用户通过文件选择器选取的文档），使用 startAccessingSecurityScopedResource
-        let needsScopeAccess = url.startAccessingSecurityScopedResource
-        if needsScopeAccess {
-            _ = url.startAccessingSecurityScopedResource()
-        }
+        // CI-fix: 方法需带 `()` 调用，原代码写成属性引用导致编译错误
+        let needsScopeAccess = url.startAccessingSecurityScopedResource()
         defer {
             if needsScopeAccess {
                 url.stopAccessingSecurityScopedResource()

@@ -801,9 +801,9 @@ struct ChatView: View {
             content: text,
             timestamp: now,
             status: .sent,
-            attachmentName: attachmentName,
-            attachmentData: attachmentBase64,
             attachmentType: attachmentType,
+            attachmentData: attachmentBase64,
+            attachmentName: attachmentName,
             replyToId: replyToId
         )
         messages.append(userMessage)

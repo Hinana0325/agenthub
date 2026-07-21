@@ -70,7 +70,13 @@ struct TransportFactory: TransportFactorying, Sendable {
 
     /// 可注入的工厂提供者。生产环境使用 `TransportFactory.shared`，
     /// 测试中可在 `setUp()` 替换为 mock 工厂，并在 `tearDown()` 恢复。
-    @MainActor static var provider: TransportFactorying = TransportFactory.shared
+    //
+    // CI-fix: 原 `@MainActor static var provider` 与 Sendable struct 中的
+    // nonisolated `static func create` 冲突 —— 非 MainActor 上下文无法访问
+    // `provider`。改为 `nonisolated(unsafe)`：变量本身仅在测试 setUp/tearDown
+    // 中（单线程）替换，生产代码从不修改；`TransportFactorying` 已是 Sendable
+    // 协议，调用 `.create(_:)` 返回 Sendable `AgentTransport`，跨 actor 安全。
+    nonisolated(unsafe) static var provider: TransportFactorying = TransportFactory.shared
 
     /// 实例方法（协议要求）
     func create(_ agentType: AgentType) -> AgentTransport {

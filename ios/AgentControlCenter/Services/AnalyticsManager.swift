@@ -103,8 +103,13 @@ final class AnalyticsManager {
     ///
     /// 标记 `@ObservationIgnored` 因为事件写入频繁（每次 logEvent），
     /// 不应触发 SwiftUI 视图重绘。UI 通过 `getEvents()` 获取快照。
+    //
+    // CI-fix: 本类 @MainActor，但 `ringBuffer` 由 `bufferQueue`（concurrent + barrier）
+    // 串行化所有读写。从 `bufferQueue.async { ... }` 的 @Sendable 闭包中访问
+    // `ringBuffer` 时，MainActor 隔离检查会拒绝。标记 `nonisolated(unsafe)` 让编译器
+    // 放行 —— 运行时安全由 `bufferQueue` 的 barrier 语义保证。
     @ObservationIgnored
-    private var ringBuffer: [AnalyticsRecord] = []
+    nonisolated(unsafe) private var ringBuffer: [AnalyticsRecord] = []
 
     /// Ring buffer 读写队列（concurrent + barrier 实现读者-写者锁）。
     @ObservationIgnored

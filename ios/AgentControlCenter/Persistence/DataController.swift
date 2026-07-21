@@ -413,7 +413,9 @@ final class DataController {
     /// 避免 logger 调用散落各处。`fallback` 控制失败时返回 nil 还是空数组。
     private func safeFetch<T>(_ descriptor: FetchDescriptor<T>, context: String, fallback: [T]) -> [T] {
         do {
-            return try context.fetch(descriptor)
+            // CI-fix: 参数 `context: String` 与类属性 `var context: ModelContext` 同名遮蔽。
+            // 日志标签用参数 `context`，fetch 操作用 `self.context` 显式引用 ModelContext。
+            return try self.context.fetch(descriptor)
         } catch {
             let msg = "\(context) failed: \(error.localizedDescription)"
             Self.logger.error("\(msg, privacy: .public)")
