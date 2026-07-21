@@ -13,6 +13,18 @@ final class PluginExecutor {
 
     private let session: URLSession
 
+    /// F19: 插件 HTTP 请求禁止设置的敏感 header 黑名单（小写匹配）。
+    /// 参考 fetch 标准的 forbidden header names + OAuth/安全相关头。
+    private static let blockedHeaderFields: Set<String> = [
+        "authorization", "proxy-authorization",
+        "cookie", "set-cookie", "cookie2", "set-cookie2",
+        "host", "content-length", "connection",
+        "upgrade", "transfer-encoding", "te",
+        "trailer", "expect",
+        "www-authenticate", "proxy-authenticate",
+        "x-api-key", "x-auth-token", "x-session-token"
+    ]
+
     init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
@@ -56,8 +68,14 @@ final class PluginExecutor {
         var request = URLRequest(url: url)
         request.httpMethod = http.method
 
-        // 设置请求头
+        // F19 修复：header key 黑名单过滤。
+        // 插件 headers 来自用户/marketplace 配置，若不限制可注入 Authorization / Cookie /
+        // Host / Set-Cookie 等敏感头，冒充用户凭据或绕过同源策略。仅允许安全的自定义头。
         for (key, value) in http.headers {
+            let lowercasedKey = key.lowercased()
+            if Self.blockedHeaderFields.contains(lowercasedKey) {
+                continue
+            }
             request.setValue(value.replacingOccurrences(of: "{query}", with: input), forHTTPHeaderField: key)
         }
 

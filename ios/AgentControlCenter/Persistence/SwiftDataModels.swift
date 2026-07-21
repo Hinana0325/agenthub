@@ -481,6 +481,7 @@ extension AgentConfigEntity {
     /// - 空字符串原样返回
     /// - 已加密（带 `AKS:` 前缀）原样返回，避免双重加密
     /// - 明文加密为 `AKS:` + Base64(IV ‖ ciphertext)
+    /// - 加密失败 → 存空串占位（F16 修复：禁止明文落库）
     ///
     /// 与 Android `AgentConfig.toEntity()` 行为一致。
     /// - Parameter config: 领域模型（apiKey 为明文）
@@ -490,7 +491,10 @@ extension AgentConfigEntity {
             name: config.name,
             type: config.type.rawValue,
             serverUrl: config.serverUrl,
-            apiKey: KeychainManager.encrypt(config.apiKey) ?? config.apiKey,
+            // F16 修复：原 `?? config.apiKey` 在加密失败时回退明文落库，
+            // 让加密机制形同虚设。改为回退空串占位，由调用方（DataController.saveAgentConfig）
+            // 检测失败并通过 lastError 暴露给 UI。
+            apiKey: config.apiKey.isEmpty ? "" : (KeychainManager.encrypt(config.apiKey) ?? ""),
             model: config.model,
             systemPrompt: config.systemPrompt,
             temperature: config.temperature,

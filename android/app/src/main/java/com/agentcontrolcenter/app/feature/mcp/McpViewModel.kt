@@ -14,6 +14,7 @@ import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
@@ -59,8 +61,19 @@ class McpViewModel @Inject constructor(
     private val gson = Gson()
     private val prefs = context.getSharedPreferences(MCP_PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _uiState = MutableStateFlow(loadInitialState())
+    // F20 修复：原 `MutableStateFlow(loadInitialState())` 在字段初始化器中同步执行
+    // SharedPreferences 读取 + KeystoreManager.decryptOrRaw（硬件 Keystore AES-GCM）
+    // + Gson 反序列化，全部阻塞 ViewModel 构造（即 Main 线程）。改为空初始值 + init 异步加载。
+    private val _uiState = MutableStateFlow(McpUiState())
     val uiState: StateFlow<McpUiState> = _uiState.asStateFlow()
+
+    init {
+        // F20: 异步加载已持久化的 servers，避免阻塞 ViewModel 构造
+        viewModelScope.launch {
+            val loaded = withContext(Dispatchers.IO) { loadInitialState() }
+            _uiState.value = loaded
+        }
+    }
 
     /**
      * 组合后的渲染模型：每个 [McpServer] 附带其当前连接状态。
@@ -120,20 +133,25 @@ class McpViewModel @Inject constructor(
     /**
      * 保存服务器（新增或更新）。
      * 写入 SharedPreferences 持久化，对齐 iOS saveServers()。
+     *
+     * F20 修复：原 `copyAndPersist` 在 `_uiState.update` lambda 内同步执行
+     * KeystoreManager.encrypt + prefs.edit（Main 线程）。改为先同步更新 UI 状态，
+     * 再异步在 IO 调度器中加密并写盘。
      */
     fun saveServer(server: McpServer) {
         val normalized = server.copy(
             name = server.name.ifBlank { "MCP Server" }
         )
-        _uiState.update { current ->
+        val newServers = _uiState.value.let { current ->
             val exists = current.servers.any { it.id == normalized.id }
-            val newServers = if (exists) {
+            if (exists) {
                 current.servers.map { if (it.id == normalized.id) normalized else it }
             } else {
                 current.servers + normalized
             }
-            copyAndPersist(current.copy(servers = newServers, showForm = false, editingServer = null))
         }
+        _uiState.update { it.copy(servers = newServers, showForm = false, editingServer = null) }
+        viewModelScope.launch { persistServers(newServers) }
     }
 
     /**
@@ -148,10 +166,9 @@ class McpViewModel @Inject constructor(
             } catch (_: Exception) {
                 // 忽略断开失败，仍要移除本地配置
             }
-            _uiState.update { current ->
-                val newServers = current.servers.filter { it.id != serverId }
-                copyAndPersist(current.copy(servers = newServers))
-            }
+            val newServers = _uiState.value.servers.filter { it.id != serverId }
+            _uiState.update { it.copy(servers = newServers) }
+            persistServers(newServers)
         }
     }
 
@@ -219,12 +236,16 @@ class McpViewModel @Inject constructor(
     /**
      * 将 servers 列表 JSON 编码后加密并写入 SharedPreferences。
      * 使用 KeystoreManager AES-256-GCM 加密，保护服务器 URL 等敏感配置。
+     *
+     * F20 修复：原 `copyAndPersist` 同步执行 KeystoreManager.encrypt + prefs.edit
+     * （Main 线程）。改为 suspend + withContext(Dispatchers.IO)，由调用方在协程中调用。
      */
-    private fun copyAndPersist(state: McpUiState): McpUiState {
-        val json = gson.toJson(state.servers)
-        val encrypted = KeystoreManager.encrypt(json)
-        prefs.edit().putString(MCP_SERVERS_KEY, encrypted).apply()
-        return state
+    private suspend fun persistServers(servers: List<McpServer>) {
+        withContext(Dispatchers.IO) {
+            val json = gson.toJson(servers)
+            val encrypted = KeystoreManager.encrypt(json)
+            prefs.edit().putString(MCP_SERVERS_KEY, encrypted).apply()
+        }
     }
 
     /**

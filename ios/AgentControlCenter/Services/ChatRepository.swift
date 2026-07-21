@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import Observation
 import os
 
@@ -108,9 +109,38 @@ final class ChatRepository {
         rootDirectoryURL.appendingPathComponent(Self.sessionsFileName)
     }
 
-    /// 指定会话的消息文件 URL
+    /// 指定会话的消息文件 URL。
+    ///
+    /// F18 修复：sessionId 来自外部输入（导入备份 / MCP / Intent Router），原实现直接
+    /// `"\(sessionId)_messages.json"` 拼接，若 sessionId 含 `../` 或绝对路径片段
+    /// （如 `../../etc/passwd`），`appendingPathComponent` 会解析路径片段导致
+    /// 读写到 rootDirectory 之外的任意文件（路径遍历）。
+    ///
+    /// 修复策略：对 sessionId 做白名单校验，仅允许 `[A-Za-z0-9_-]` 字符。
+    /// 非法 sessionId 退化为 hash 后的安全文件名，保证不抛错但也不会越界写盘。
     private func messagesFileURL(forSessionId sessionId: String) -> URL {
-        rootDirectoryURL.appendingPathComponent("\(sessionId)_messages.json")
+        let safeName = Self.sanitizeSessionId(sessionId)
+        return rootDirectoryURL.appendingPathComponent("\(safeName)_messages.json")
+    }
+
+    /// 校验并净化 sessionId，防止路径遍历。
+    /// - 合法（仅含字母/数字/下划线/连字符）→ 原样返回
+    /// - 非法（含 `/`、`\`、`..`、空字符等）→ 返回 SHA256 前 16 字符的 hash 名
+    private static func sanitizeSessionId(_ sessionId: String) -> String {
+        // 空串或仅空白
+        guard !sessionId.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return "empty"
+        }
+        // 白名单：字母、数字、下划线、连字符，长度 1..200
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+        if sessionId.unicodeScalars.allSatisfy({ allowed.contains($0) }),
+           sessionId.count <= 200 {
+            return sessionId
+        }
+        // 非法 sessionId：用 SHA256 hash 生成安全文件名，避免碰撞且不抛错
+        let hash = SHA256.hash(data: Data(sessionId.utf8))
+        let hashString = hash.map { String(format: "%02x", $0) }.joined()
+        return "sid_\(String(hashString.prefix(16)))"
     }
 
     // MARK: - 初始化

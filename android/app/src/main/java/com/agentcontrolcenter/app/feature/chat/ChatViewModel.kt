@@ -1043,7 +1043,11 @@ class ChatViewModel @Inject constructor(
 
     fun initVoiceInput(context: Context) {
         if (voiceInputManager == null) {
-            voiceInputManager = VoiceInputManager(context)
+            // F23 修复：原代码直接传入 Activity Context（来自 LocalContext.current），
+            // VoiceInputManager 会将其强引用为字段。ViewModel 生命周期长于 Activity，
+            // 导致 Activity 无法被 GC 回收（内存泄漏）。改用 applicationContext。
+            // SpeechRecognizer / TextToSpeech 均兼容 Application Context。
+            voiceInputManager = VoiceInputManager(context.applicationContext)
         }
     }
 
@@ -1173,7 +1177,8 @@ class ChatViewModel @Inject constructor(
 
     fun initVoiceChatMode(context: Context) {
         if (voiceChatManager == null) {
-            voiceChatManager = VoiceChatManager(context).apply {
+            // F23 修复：同 initVoiceInput，改用 applicationContext 避免 Activity 泄漏。
+            voiceChatManager = VoiceChatManager(context.applicationContext).apply {
                 onSpeechResult = { text ->
                     // 仅记录最近一次识别结果用于界面展示；实际发送统一由
                     // VoiceChatOverlay 的 LaunchedEffect(state.recognizedText)

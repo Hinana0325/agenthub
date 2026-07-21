@@ -9,12 +9,14 @@ import com.agentcontrolcenter.app.core.database.dao.SessionDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -71,12 +73,18 @@ class InsightsViewModel @Inject constructor(
     fun exportReport() {
         viewModelScope.launch {
             try {
-                val report = insightsManager.exportReport()
-                val dir = File(appContext.cacheDir, "insights")
-                dir.mkdirs()
-                val file = File(dir, "agentcontrolcenter_insights_${System.currentTimeMillis()}.txt")
-                file.writeText(report)
-                _exportEvent.send(ExportEvent.Success(file.absolutePath))
+                // F22 修复：原代码在 viewModelScope.launch 默认 Main 上做
+                // dir.mkdirs() + file.writeText(report)（文件 I/O），数据量稍大时卡 UI。
+                // 整段移入 withContext(Dispatchers.IO)，主线程仅接收结果发事件。
+                val filePath = withContext(Dispatchers.IO) {
+                    val report = insightsManager.exportReport()
+                    val dir = File(appContext.cacheDir, "insights")
+                    dir.mkdirs()
+                    val file = File(dir, "agentcontrolcenter_insights_${System.currentTimeMillis()}.txt")
+                    file.writeText(report)
+                    file.absolutePath
+                }
+                _exportEvent.send(ExportEvent.Success(filePath))
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _exportEvent.send(ExportEvent.Failure(e.message ?: ""))

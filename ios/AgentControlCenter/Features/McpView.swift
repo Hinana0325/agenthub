@@ -82,18 +82,42 @@ struct McpView: View {
 
     // MARK: - 持久化
 
-    /// 将 servers 列表编码为 JSON 并写入 UserDefaults
+    /// 将 servers 列表编码为 JSON 并写入 UserDefaults。
+    ///
+    /// F17 修复：原实现直接 `JSONEncoder().encode(servers)`，apiKey 以明文写入
+    /// UserDefaults（plist 文件，iCloud 备份可提取）。现对每个 server 的 apiKey
+    /// 先经 `KeychainManager.encrypt` 加密为 `AKS:` 前缀格式再编码。
+    /// 内存中的 `servers` 仍保留明文（UI 层与连接逻辑需要明文）。
     private func saveServers() {
-        if let data = try? JSONEncoder().encode(servers) {
+        // 拷贝一份用于持久化，避免改动内存中的明文 servers
+        var encryptedServers = servers
+        for i in encryptedServers.indices {
+            if let key = encryptedServers[i].apiKey, !key.isEmpty {
+                // 加密失败（返回 nil）则置 nil，禁止明文落盘
+                encryptedServers[i].apiKey = KeychainManager.encrypt(key)
+            }
+        }
+        if let data = try? JSONEncoder().encode(encryptedServers) {
             UserDefaults.standard.set(data, forKey: Self.storageKey)
         }
     }
 
-    /// 从 UserDefaults 读取并解码 servers 列表
+    /// 从 UserDefaults 读取并解码 servers 列表。
+    ///
+    /// F17 修复：读取后对每个 server 的 apiKey 调用 `decryptOrRaw`：
+    /// - 无 `AKS:` 前缀 → 视为旧版明文，原样返回（向后兼容）
+    /// - `AKS:` 前缀但解密失败 → 返回空串（避免把损坏密文当明文使用）
+    /// - `AKS:` 前缀且解密成功 → 返回明文
     private func loadServers() {
         if let data = UserDefaults.standard.data(forKey: Self.storageKey),
            let decoded = try? JSONDecoder().decode([McpServer].self, from: data) {
-            servers = decoded
+            servers = decoded.map { server in
+                var s = server
+                if let key = s.apiKey, !key.isEmpty {
+                    s.apiKey = KeychainManager.decryptOrRaw(key)
+                }
+                return s
+            }
         }
     }
 }

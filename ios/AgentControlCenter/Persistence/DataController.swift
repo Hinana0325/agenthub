@@ -226,17 +226,33 @@ final class DataController {
         let descriptor = FetchDescriptor<AgentConfigEntity>(
             predicate: #Predicate { $0.id == targetId }
         )
+        // F16 修复：原 `KeychainManager.encrypt(config.apiKey) ?? config.apiKey` 在加密失败时
+        // 回退明文落库，让加密机制形同虚设。改为：非空 apiKey 加密失败时存空串占位并暴露 lastError。
+        let encryptedApiKey: String
+        if config.apiKey.isEmpty {
+            encryptedApiKey = ""
+        } else if let encrypted = KeychainManager.encrypt(config.apiKey) {
+            encryptedApiKey = encrypted
+        } else {
+            encryptedApiKey = ""
+            let msg = "saveAgentConfig: apiKey 加密失败，已存空串占位（原始 apiKey 未持久化，请重新输入）"
+            Self.logger.error("\(msg, privacy: .public)")
+            lastError = msg
+        }
         if let existing = safeFetchFirst(descriptor, context: "saveAgentConfig.fetch") {
             existing.name = config.name
             existing.type = config.type.rawValue
             existing.serverUrl = config.serverUrl
-            existing.apiKey = KeychainManager.encrypt(config.apiKey) ?? config.apiKey
+            existing.apiKey = encryptedApiKey
             existing.model = config.model
             existing.systemPrompt = config.systemPrompt
             existing.temperature = config.temperature
             existing.maxTokens = config.maxTokens
         } else {
-            context.insert(AgentConfigEntity(from: config))
+            // 插入路径：用已加密的 apiKey 构造临时 config，避免 entity init 再次加密（已加密串带 AKS: 前缀会被 encrypt 原样返回）
+            var configForInsert = config
+            configForInsert.apiKey = encryptedApiKey
+            context.insert(AgentConfigEntity(from: configForInsert))
         }
         save()
     }

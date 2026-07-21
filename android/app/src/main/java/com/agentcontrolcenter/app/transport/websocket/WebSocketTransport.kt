@@ -262,9 +262,19 @@ class WebSocketTransport(
                     _events.send(AgentEvent.Error(msg))
                 }
                 "ping" -> { }
+                else -> {
+                    // F25 修复：未知 type 的帧不再回显原文。
+                    // 原实现 fallthrough 到 catch 把原文当消息回显，可被恶意对端利用
+                    // 注入任意文本冒充 Agent 回复。改为记录并通知错误。
+                    _events.send(AgentEvent.Error("Unknown frame type: $type"))
+                }
             }
-        } catch (_: Exception) {
-            _events.send(AgentEvent.MessageReceived(text))
+        } catch (e: Exception) {
+            // F25 修复：原实现 `catch (_: Exception) { _events.send(AgentEvent.MessageReceived(text)) }`
+            // 把任何解析失败的对端帧原样作为「用户消息」回送 UI；攻击者/异常对端可注入恶意 JSON
+            // 文本冒充 Agent 回复。改为发送 Error 事件，让 UI 明确知道这是解析失败而非正常消息。
+            if (e is CancellationException) throw e
+            _events.send(AgentEvent.Error("Malformed frame from server: ${e.message ?: e.javaClass.simpleName}"))
         }
     }
 

@@ -233,10 +233,18 @@ enum CryptoManager {
     private static let saltLength = 16
     private static let pbkdf2Iterations = 600_000
 
+    /// PBKDF2 派生失败错误。
+    private enum KeyDerivationError: Error { case derivationFailed(OSStatus) }
+
     /// 通过 passphrase 派生 AES-256 密钥（PBKDF2-HMAC-SHA256）
     /// 与 Android 端 SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256") 完全兼容
     /// 600000 轮迭代，输出 32 字节密钥
-    private static func deriveKey(passphrase: String, salt: Data) -> SymmetricKey {
+    ///
+    /// F15 修复：PBKDF2 失败时抛错而非返回零密钥。原实现回退 `SymmetricKey(size: .bits256)`
+    /// 会产生一个全零密钥，调用方（encrypt/decrypt）无法区分「派生成功」与「派生失败」，
+    /// 结果 encrypt 会用零密钥加密成功并返回密文（无人可解），decrypt 会静默返回 nil，
+    /// E2E 加密在派生失败时静默失效。修复后失败立即抛错，由 encrypt/decrypt 转为 nil 返回。
+    private static func deriveKey(passphrase: String, salt: Data) throws -> SymmetricKey {
         let passphraseData = Data(passphrase.utf8)
         var derivedKeyBytes = [UInt8](repeating: 0, count: 32)
 
@@ -262,9 +270,7 @@ enum CryptoManager {
         }
 
         guard status == kCCSuccess else {
-            // PBKDF2 失败时返回空密钥，调用方应判定为加密失败而非回退明文
-            // 之前回退 SHA256(passphrase) 会导致与 Android 派生密钥不同 → 跨平台 E2E 失效
-            return SymmetricKey(size: .bits256)
+            throw KeyDerivationError.derivationFailed(status)
         }
 
         return SymmetricKey(data: derivedKeyBytes)
@@ -276,11 +282,19 @@ enum CryptoManager {
         guard !plaintext.isEmpty else { return "" }
 
         var saltData = Data(count: saltLength)
+        // F15 修复：原 `ptr.baseAddress!` 强解包，空 buffer 场景会崩；改为可选绑定。
         saltData.withUnsafeMutableBytes { ptr in
-            _ = SecRandomCopyBytes(kSecRandomDefault, saltLength, ptr.baseAddress!)
+            guard let base = ptr.baseAddress else { return }
+            _ = SecRandomCopyBytes(kSecRandomDefault, saltLength, base)
         }
 
-        let key = deriveKey(passphrase: passphrase, salt: saltData)
+        // F15 修复：派生失败转为 nil（不再用零密钥加密出无人可解的密文）
+        let key: SymmetricKey
+        do {
+            key = try deriveKey(passphrase: passphrase, salt: saltData)
+        } catch {
+            return nil
+        }
         let nonce = AES.GCM.Nonce()
         guard let sealedBox = try? AES.GCM.seal(Data(plaintext.utf8), using: key, nonce: nonce) else {
             return nil
@@ -305,7 +319,13 @@ enum CryptoManager {
         let tag = combined.suffix(16)
         let ciphertext = combined.dropFirst(ivLength + saltLength).dropLast(16)
 
-        let key = deriveKey(passphrase: passphrase, salt: salt)
+        // F15 修复：派生失败转为 nil（不再用零密钥尝试解密）
+        let key: SymmetricKey
+        do {
+            key = try deriveKey(passphrase: passphrase, salt: salt)
+        } catch {
+            return nil
+        }
         do {
             let sealedBox = try AES.GCM.SealedBox(
                 nonce: AES.GCM.Nonce(data: nonceData),
