@@ -133,6 +133,11 @@ android {
         config = files("${rootProject.projectDir}/config/detekt.yml")
         buildUponDefaultConfig = true
         parallel = true
+        // CI-fix: 添加 baseline 文件接受存量代码风格违规（LongMethod / LargeClass /
+        // TooManyFunctions 等 367 处，多为 Compose 长函数 + 复杂业务类）。
+        // baseline 化后：存量违规被接受，后续新增违规才会失败。
+        // 待存量清理后可删除 baseline 文件让规则重新生效。
+        baseline = file("${rootProject.projectDir}/config/detekt-baseline.xml")
         reports {
             html.required.set(true)
             xml.required.set(false)

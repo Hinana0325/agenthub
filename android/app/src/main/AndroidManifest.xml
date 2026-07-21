@@ -120,6 +120,10 @@
 
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- CI-fix: ConnectivityManager.registerNetworkCallback() 需要 ACCESS_NETWORK_STATE
+         权限（ConnectionRepository.kt:123 调用），否则 Android Lint 报 MissingPermissions
+         错误（3 处）。运行时也需要此权限才能监听网络状态变化。 -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

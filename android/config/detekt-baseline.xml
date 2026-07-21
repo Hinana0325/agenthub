@@ -1,0 +1,374 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues>
+  </ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:WorkflowEngine.kt$WorkflowEngine$suspend fun execute( workflow: Workflow, input: String ): String</ID>
+    <ID>LongMethod:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun McpServerCard( rowState: McpServerRowState, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit, onConnect: () -&gt; Unit, onDisconnect: () -&gt; Unit, onTest: () -&gt; Unit )</ID>
+    <ID>LongMethod:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun McpScreen( onBack: () -&gt; Unit = {}, viewModel: McpViewModel = hiltViewModel() )</ID>
+    <ID>LongMethod:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun McpServerFormDialog( server: McpServer, onSave: (McpServer) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>LongMethod:MarkdownParser.kt$MarkdownParser$fun parse(text: String): List&lt;MarkdownBlock&gt;</ID>
+    <ID>CyclomaticComplexMethod:MarkdownParser.kt$MarkdownParser$fun parse(text: String): List&lt;MarkdownBlock&gt;</ID>
+    <ID>ComplexCondition:MarkdownParser.kt$MarkdownParser$i &lt; lines.size &amp;&amp; lines[i].isNotBlank() &amp;&amp; !lines[i].trimStart().startsWith(&quot;```&quot;) &amp;&amp; !lines[i].trimStart().startsWith(&quot;#&quot;) &amp;&amp; !lines[i].startsWith(&quot;&gt;&quot;) &amp;&amp; !lines[i].trimStart().matches(UNORDERED_LIST_REGEX) &amp;&amp; !lines[i].trimStart().matches(ORDERED_LIST_REGEX) &amp;&amp; !lines[i].trim().matches(HR_REGEX)</ID>
+    <ID>LongMethod:VoiceChatScreen.kt$@Composable fun VoiceChatOverlay( voiceManager: VoiceChatManager, lastUserText: String = &quot;&quot;, lastAgentText: String = &quot;&quot;, onExit: () -&gt; Unit, onSendMessage: (String) -&gt; Unit )</ID>
+    <ID>LongMethod:ChatMarkdown.kt$@Composable private fun MarkdownBlockView( block: MarkdownBlock, baseStyle: androidx.compose.ui.text.TextStyle, baseColor: androidx.compose.ui.graphics.Color, uriHandler: androidx.compose.ui.platform.UriHandler )</ID>
+    <ID>LongMethod:ChatOverlays.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WizardOverlay( viewModel: ChatViewModel, onDismiss: () -&gt; Unit, onConnect: (String, String, AgentType) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:ChatOverlays.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WizardOverlay( viewModel: ChatViewModel, onDismiss: () -&gt; Unit, onConnect: (String, String, AgentType) -&gt; Unit )</ID>
+    <ID>LongParameterList:ChatInputBar.kt$( inputText: String, isStreaming: Boolean, onInputChange: (String) -&gt; Unit, onSend: () -&gt; Unit, onStop: () -&gt; Unit = {}, adaptive: AdaptiveConfig, isVoiceListening: Boolean = false, onVoiceToggle: () -&gt; Unit = {}, onAttachImage: () -&gt; Unit = {}, onAttachFile: () -&gt; Unit = {}, pendingAttachmentType: String? = null, pendingAttachmentName: String? = null, onClearAttachment: () -&gt; Unit = {}, isEditing: Boolean = false, onCancelEdit: () -&gt; Unit = {}, replyContent: String? = null, onCancelReply: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:ChatInputBar.kt$@Composable fun ChatInputBar( inputText: String, isStreaming: Boolean, onInputChange: (String) -&gt; Unit, onSend: () -&gt; Unit, onStop: () -&gt; Unit = {}, adaptive: AdaptiveConfig, isVoiceListening: Boolean = false, onVoiceToggle: () -&gt; Unit = {}, onAttachImage: () -&gt; Unit = {}, onAttachFile: () -&gt; Unit = {}, pendingAttachmentType: String? = null, pendingAttachmentName: String? = null, onClearAttachment: () -&gt; Unit = {}, isEditing: Boolean = false, onCancelEdit: () -&gt; Unit = {}, replyContent: String? = null, onCancelReply: () -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:ChatInputBar.kt$@Composable fun ChatInputBar( inputText: String, isStreaming: Boolean, onInputChange: (String) -&gt; Unit, onSend: () -&gt; Unit, onStop: () -&gt; Unit = {}, adaptive: AdaptiveConfig, isVoiceListening: Boolean = false, onVoiceToggle: () -&gt; Unit = {}, onAttachImage: () -&gt; Unit = {}, onAttachFile: () -&gt; Unit = {}, pendingAttachmentType: String? = null, pendingAttachmentName: String? = null, onClearAttachment: () -&gt; Unit = {}, isEditing: Boolean = false, onCancelEdit: () -&gt; Unit = {}, replyContent: String? = null, onCancelReply: () -&gt; Unit = {} )</ID>
+    <ID>LongParameterList:ChatScreen.kt$( message: Message, onDelete: () -&gt; Unit = {}, onCopy: () -&gt; Unit = {}, onReaction: () -&gt; Unit = {}, onEdit: (() -&gt; Unit)? = null, onReply: (() -&gt; Unit)? = null, // G4-2: 发送失败时的重试回调，仅对 User 消息且 status == Failed 时触发 onRetry: (() -&gt; Unit)? = null, // Phase 2.2: seenMessageIds 改为 SnapshotStateMap，由调用方在外层 remember // 并通过 Lambda 或直接传入。SnapshotStateMap 是 @Stable 的，读取其值会 // 正确参与 Compose 重组，不会导致所有可见 item 每次都重组。 seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap&lt;String, Unit&gt; = androidx.compose.runtime.mutableStateMapOf() )</ID>
+    <ID>LongMethod:ChatScreen.kt$@Composable private fun TabletChatLayout( uiState: ChatUiState, listState: androidx.compose.foundation.lazy.LazyListState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit, adaptive: AdaptiveConfig )</ID>
+    <ID>LongMethod:ChatScreen.kt$@Composable private fun PhoneChatLayout( uiState: ChatUiState, listState: androidx.compose.foundation.lazy.LazyListState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit, adaptive: AdaptiveConfig )</ID>
+    <ID>LongMethod:ChatScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ChatScreen( viewModel: ChatViewModel = hiltViewModel(), navController: NavHostController? = null, onNavigateToSettings: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:ChatScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun MessageBubble( message: Message, onDelete: () -&gt; Unit = {}, onCopy: () -&gt; Unit = {}, onReaction: () -&gt; Unit = {}, onEdit: (() -&gt; Unit)? = null, onReply: (() -&gt; Unit)? = null, // G4-2: 发送失败时的重试回调，仅对 User 消息且 status == Failed 时触发 onRetry: (() -&gt; Unit)? = null, // Phase 2.2: seenMessageIds 改为 SnapshotStateMap，由调用方在外层 remember // 并通过 Lambda 或直接传入。SnapshotStateMap 是 @Stable 的，读取其值会 // 正确参与 Compose 重组，不会导致所有可见 item 每次都重组。 seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap&lt;String, Unit&gt; = androidx.compose.runtime.mutableStateMapOf() )</ID>
+    <ID>LongMethod:ChatScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun ChatTopBar( uiState: ChatUiState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:ChatScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun MessageBubble( message: Message, onDelete: () -&gt; Unit = {}, onCopy: () -&gt; Unit = {}, onReaction: () -&gt; Unit = {}, onEdit: (() -&gt; Unit)? = null, onReply: (() -&gt; Unit)? = null, // G4-2: 发送失败时的重试回调，仅对 User 消息且 status == Failed 时触发 onRetry: (() -&gt; Unit)? = null, // Phase 2.2: seenMessageIds 改为 SnapshotStateMap，由调用方在外层 remember // 并通过 Lambda 或直接传入。SnapshotStateMap 是 @Stable 的，读取其值会 // 正确参与 Compose 重组，不会导致所有可见 item 每次都重组。 seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap&lt;String, Unit&gt; = androidx.compose.runtime.mutableStateMapOf() )</ID>
+    <ID>LongMethod:ChatViewModel.kt$ChatViewModel$private suspend fun handleAgentEvent(event: AgentEvent)</ID>
+    <ID>LargeClass:ChatViewModel.kt$ChatViewModel : AndroidViewModel</ID>
+    <ID>TooManyFunctions:ChatViewModel.kt$ChatViewModel : AndroidViewModel</ID>
+    <ID>TooManyFunctions:SettingsViewModel.kt$SettingsViewModel : AndroidViewModel</ID>
+    <ID>LongMethod:SettingsSecurity.kt$@Composable internal fun E2EPasswordDialog( uiState: SettingsUiState, viewModel: SettingsViewModel, onDismiss: () -&gt; Unit )</ID>
+    <ID>LongParameterList:SettingsScreen.kt$( settingsViewModel: SettingsViewModel = hiltViewModel(), onNavigateToAgents: () -&gt; Unit = {}, onNavigateToMarketplace: () -&gt; Unit = {}, onNavigateToDeviceSync: () -&gt; Unit = {}, onNavigateToPlugins: () -&gt; Unit = {}, onNavigateToInsights: () -&gt; Unit = {}, onNavigateToTasks: () -&gt; Unit = {}, onNavigateToMcp: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:SettingsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen( settingsViewModel: SettingsViewModel = hiltViewModel(), onNavigateToAgents: () -&gt; Unit = {}, onNavigateToMarketplace: () -&gt; Unit = {}, onNavigateToDeviceSync: () -&gt; Unit = {}, onNavigateToPlugins: () -&gt; Unit = {}, onNavigateToInsights: () -&gt; Unit = {}, onNavigateToTasks: () -&gt; Unit = {}, onNavigateToMcp: () -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:SettingsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen( settingsViewModel: SettingsViewModel = hiltViewModel(), onNavigateToAgents: () -&gt; Unit = {}, onNavigateToMarketplace: () -&gt; Unit = {}, onNavigateToDeviceSync: () -&gt; Unit = {}, onNavigateToPlugins: () -&gt; Unit = {}, onNavigateToInsights: () -&gt; Unit = {}, onNavigateToTasks: () -&gt; Unit = {}, onNavigateToMcp: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:TasksScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable private fun TaskItem( task: TaskManager.AgentTask, onCancel: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>LongMethod:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SessionsDualPaneLayout( sessionList: List&lt;Session&gt;, currentSessionId: String?, chatViewModel: ChatViewModel, adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig )</ID>
+    <ID>LongMethod:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SessionsSinglePaneLayout( sessionList: List&lt;Session&gt;, currentSessionId: String?, chatViewModel: ChatViewModel?, adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig, isLoading: Boolean = true )</ID>
+    <ID>LongMethod:CompareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CompareScreen( viewModel: CompareViewModel, onBack: () -&gt; Unit )</ID>
+    <ID>LongMethod:InsightsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun InsightsScreen( onBack: () -&gt; Unit = {}, viewModel: InsightsViewModel = hiltViewModel() )</ID>
+    <ID>LongMethod:ActivityScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ActivityScreen( activityViewModel: ActivityViewModel = hiltViewModel() )</ID>
+    <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentGridCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentsScreen( agentsViewModel: AgentsViewModel = hiltViewModel() )</ID>
+    <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AgentFormDialog( agent: AgentConfig, onSave: (AgentConfig) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>LongMethod:OnboardingScreen.kt$@Composable fun OnboardingScreen( onComplete: () -&gt; Unit )</ID>
+    <ID>LongMethod:WorkflowScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun WorkflowDetailScreen( workflow: Workflow, viewModel: WorkflowViewModel, executionState: WorkflowExecutionState, onBack: () -&gt; Unit )</ID>
+    <ID>LongMethod:WorkflowScreen.kt$@Composable private fun CreateWorkflowDialog( onDismiss: () -&gt; Unit, onCreate: (Workflow) -&gt; Unit )</ID>
+    <ID>LongMethod:WorkflowScreen.kt$@Composable private fun WorkflowCanvas( workflow: Workflow, executionState: WorkflowExecutionState, modifier: Modifier = Modifier )</ID>
+    <ID>CyclomaticComplexMethod:WorkflowScreen.kt$@Composable private fun WorkflowCanvas( workflow: Workflow, executionState: WorkflowExecutionState, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:PluginScreen.kt$@Composable private fun PluginDetailDialog( plugin: Plugin, runInput: String, onRunInputChange: (String) -&gt; Unit, onRun: () -&gt; Unit, onToggle: () -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>LongMethod:PluginScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PluginScreen( onBack: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:AgentMarketScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentMarketScreen( onInstall: (MarketplaceAgent) -&gt; Unit, onBack: () -&gt; Unit )</ID>
+    <ID>LongMethod:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, onInstall: () -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:AgentMarketScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentMarketScreen( onInstall: (MarketplaceAgent) -&gt; Unit, onBack: () -&gt; Unit )</ID>
+    <ID>LongMethod:DeviceSyncScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DeviceSyncScreen( viewModel: DeviceSyncViewModel = hiltViewModel(), onBack: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:DeviceSyncScreen.kt$@Composable private fun PairedDeviceCard( device: DeviceSyncManager.PairedDevice, onRemove: () -&gt; Unit )</ID>
+    <ID>TooManyFunctions:SessionDao.kt$SessionDao</ID>
+    <ID>TooManyFunctions:MessageDao.kt$MessageDao</ID>
+    <ID>CyclomaticComplexMethod:UrlValidator.kt$UrlValidator$fun validate(urlString: String, allowLocalhost: Boolean = true): URL?</ID>
+    <ID>NestedBlockDepth:UrlValidator.kt$UrlValidator$fun validate(urlString: String, allowLocalhost: Boolean = true): URL?</ID>
+    <ID>LargeClass:SoCOptimizer.kt$SoCOptimizer</ID>
+    <ID>TooManyFunctions:SoCOptimizer.kt$SoCOptimizer</ID>
+    <ID>LargeClass:SoCHardwareDetector.kt$SoCHardwareDetector</ID>
+    <ID>CyclomaticComplexMethod:SoCHardwareDetector.kt$SoCHardwareDetector$private fun estimateAITops(vendor: SoCVendor, model: String): Float</ID>
+    <ID>TooManyFunctions:SoCHardwareDetector.kt$SoCHardwareDetector</ID>
+    <ID>TooManyFunctions:VoiceChatManager.kt$VoiceChatManager</ID>
+    <ID>LargeClass:LocalModelManager.kt$LocalModelManager</ID>
+    <ID>NestedBlockDepth:LocalModelManager.kt$LocalModelManager$private fun sendOllamaPromptStream( model: LocalModel, prompt: String, systemPrompt: String, onDelta: (String) -&gt; Unit ): String</ID>
+    <ID>NestedBlockDepth:LocalModelManager.kt$LocalModelManager$private fun sendOpenAICompatiblePromptStream( model: LocalModel, prompt: String, systemPrompt: String, onDelta: (String) -&gt; Unit ): String</ID>
+    <ID>TooManyFunctions:LocalModelManager.kt$LocalModelManager</ID>
+    <ID>LongMethod:AppNavigation.kt$@OptIn(ExperimentalSharedTransitionApi::class) @Composable private fun AppNavHost( navController: androidx.navigation.NavHostController, chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>LongMethod:AppNavigation.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppNavigation()</ID>
+    <ID>LongParameterList:GlassModifier.kt$( onClick: () -&gt; Unit, modifier: Modifier = Modifier, enabled: Boolean = true, shape: Shape = CardDefaults.shape, colors: androidx.compose.material3.CardColors = CardDefaults.cardColors( containerColor = MaterialTheme.colorScheme.surfaceVariant ), elevation: androidx.compose.material3.CardElevation = CardDefaults.cardElevation(), border: BorderStroke? = null, interactionSource: MutableInteractionSource? = null, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>LongMethod:ExpressiveLoadingIndicator.kt$@Composable fun ExpressiveLoadingIndicator( modifier: Modifier = Modifier, label: String? = null )</ID>
+    <ID>CyclomaticComplexMethod:AdaptiveUtils.kt$@Composable fun currentAdaptiveConfig(): AdaptiveConfig</ID>
+    <ID>LongMethod:OpenAIHttpTransport.kt$OpenAIHttpTransport$override suspend fun sendMessage(sessionId: String, content: String)</ID>
+    <ID>LargeClass:OpenAIHttpTransport.kt$OpenAIHttpTransport : AgentTransport</ID>
+    <ID>LongMethod:WebSocketTransport.kt$WebSocketTransport$private suspend fun connectLoop(serverUrl: String, apiKey: String)</ID>
+    <ID>LargeClass:WebSocketTransport.kt$WebSocketTransport : AgentTransport</ID>
+    <ID>CyclomaticComplexMethod:WebSocketTransport.kt$WebSocketTransport$private suspend fun connectLoop(serverUrl: String, apiKey: String)</ID>
+    <ID>NestedBlockDepth:WebSocketTransport.kt$WebSocketTransport$private suspend fun connectLoop(serverUrl: String, apiKey: String)</ID>
+    <ID>NestedBlockDepth:WebSocketTransport.kt$WebSocketTransport$private suspend fun handleMessage(text: String)</ID>
+    <ID>LargeClass:ChatRepository.kt$ChatRepository</ID>
+    <ID>TooManyFunctions:ChatRepository.kt$ChatRepository</ID>
+    <ID>LongMethod:PluginManager.kt$PluginManager$private fun builtInPlugins(): List&lt;Plugin&gt;</ID>
+    <ID>LargeClass:MarkdownParserTest.kt$MarkdownParserTest</ID>
+    <ID>TooGenericExceptionCaught:StatusNotificationManager.kt$StatusNotificationManager$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:WorkflowEngine.kt$WorkflowEngine$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:McpViewModel.kt$McpViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ChatViewModel.kt$ChatViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SettingsViewModel.kt$SettingsViewModel$e: Exception</ID>
+    <ID>InstanceOfCheckForException:SettingsViewModel.kt$SettingsViewModel$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:InsightsViewModel.kt$InsightsViewModel$e: Exception</ID>
+    <ID>InstanceOfCheckForException:InsightsViewModel.kt$InsightsViewModel$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:AgentsViewModel.kt$AgentsViewModel$e: Exception</ID>
+    <ID>InstanceOfCheckForException:AgentsViewModel.kt$AgentsViewModel$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:RunSafely.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:McpBridge.kt$McpBridge$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:McpClient.kt$McpClient$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LocalModelManager.kt$LocalModelManager$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:LocalModelManager.kt$LocalModelManager$throw RuntimeException(&quot;Ollama API error: ${conn.responseCode}&quot;)</ID>
+    <ID>TooGenericExceptionThrown:LocalModelManager.kt$LocalModelManager$throw RuntimeException(&quot;API error: ${conn.responseCode}&quot;)</ID>
+    <ID>InstanceOfCheckForException:LocalModelManager.kt$LocalModelManager$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:OpenAIHttpTransport.kt$OpenAIHttpTransport$e: Exception</ID>
+    <ID>InstanceOfCheckForException:OpenAIHttpTransport.kt$OpenAIHttpTransport$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:WebSocketTransport.kt$WebSocketTransport$e: Exception</ID>
+    <ID>InstanceOfCheckForException:WebSocketTransport.kt$WebSocketTransport$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:AgentConnectionService.kt$AgentConnectionService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:UpdateManager.kt$UpdateManager$e: Exception</ID>
+    <ID>InstanceOfCheckForException:UpdateManager.kt$UpdateManager$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:MarketplaceClient.kt$MarketplaceClient$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:MarketplaceClient.kt$MarketplaceClient$throw Exception(&quot;HTTP ${connection.responseCode}&quot;)</ID>
+    <ID>InstanceOfCheckForException:MarketplaceClient.kt$MarketplaceClient$e is CancellationException</ID>
+    <ID>TooGenericExceptionCaught:PluginExecutor.kt$PluginExecutor$e: Exception</ID>
+    <ID>InstanceOfCheckForException:PluginExecutor.kt$PluginExecutor$e is CancellationException</ID>
+    <ID>VariableNaming:WorkflowEngine.kt$WorkflowEngine$val MAX_REQUEUES = 100</ID>
+    <ID>FunctionNaming:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun McpScreen( onBack: () -&gt; Unit = {}, viewModel: McpViewModel = hiltViewModel() )</ID>
+    <ID>FunctionNaming:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun McpServerCard( rowState: McpServerRowState, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit, onConnect: () -&gt; Unit, onDisconnect: () -&gt; Unit, onTest: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:McpScreen.kt$@Composable private fun CapabilityTag(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector)</ID>
+    <ID>FunctionNaming:McpScreen.kt$@Composable private fun ToolRow(name: String)</ID>
+    <ID>FunctionNaming:McpScreen.kt$@Composable private fun EmptyServersState()</ID>
+    <ID>FunctionNaming:McpScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun McpServerFormDialog( server: McpServer, onSave: (McpServer) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>MatchingDeclarationName:CommandPalette.kt$Command</ID>
+    <ID>FunctionNaming:CommandPalette.kt$@Composable fun CommandPalette( query: String, onCommandSelected: (String) -&gt; Unit, onDismiss: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:CommandPalette.kt$@Composable private fun CommandItem( command: Command, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:VoiceChatScreen.kt$@Composable fun VoiceChatOverlay( voiceManager: VoiceChatManager, lastUserText: String = &quot;&quot;, lastAgentText: String = &quot;&quot;, onExit: () -&gt; Unit, onSendMessage: (String) -&gt; Unit )</ID>
+    <ID>FunctionNaming:VoiceChatScreen.kt$@Composable private fun VoiceMicButton( isListening: Boolean, isSpeaking: Boolean, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:VoiceChatScreen.kt$@Composable private fun VoiceWaveform(modifier: Modifier = Modifier)</ID>
+    <ID>FunctionNaming:VoiceChatScreen.kt$@Composable private fun SpeakingAnimation(modifier: Modifier = Modifier)</ID>
+    <ID>FunctionNaming:ChatMarkdown.kt$@Composable fun MarkdownText( text: String, style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface )</ID>
+    <ID>FunctionNaming:ChatMarkdown.kt$@Composable private fun MarkdownBlockView( block: MarkdownBlock, baseStyle: androidx.compose.ui.text.TextStyle, baseColor: androidx.compose.ui.graphics.Color, uriHandler: androidx.compose.ui.platform.UriHandler )</ID>
+    <ID>FunctionNaming:ChatMarkdown.kt$@Composable private fun ClickableAnnotatedText( text: AnnotatedString, style: androidx.compose.ui.text.TextStyle, color: androidx.compose.ui.graphics.Color, uriHandler: androidx.compose.ui.platform.UriHandler )</ID>
+    <ID>FunctionNaming:ChatOverlays.kt$@Composable internal fun OfflineBanner(onConnect: () -&gt; Unit)</ID>
+    <ID>FunctionNaming:ChatOverlays.kt$@Composable fun EmptyChatPlaceholder( connectionState: ConnectionState, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:ChatOverlays.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WizardOverlay( viewModel: ChatViewModel, onDismiss: () -&gt; Unit, onConnect: (String, String, AgentType) -&gt; Unit )</ID>
+    <ID>FunctionNaming:ChatInputBar.kt$@Composable fun ChatInputBar( inputText: String, isStreaming: Boolean, onInputChange: (String) -&gt; Unit, onSend: () -&gt; Unit, onStop: () -&gt; Unit = {}, adaptive: AdaptiveConfig, isVoiceListening: Boolean = false, onVoiceToggle: () -&gt; Unit = {}, onAttachImage: () -&gt; Unit = {}, onAttachFile: () -&gt; Unit = {}, pendingAttachmentType: String? = null, pendingAttachmentName: String? = null, onClearAttachment: () -&gt; Unit = {}, isEditing: Boolean = false, onCancelEdit: () -&gt; Unit = {}, replyContent: String? = null, onCancelReply: () -&gt; Unit = {} )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ChatScreen( viewModel: ChatViewModel = hiltViewModel(), navController: NavHostController? = null, onNavigateToSettings: () -&gt; Unit = {} )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@Composable private fun PhoneChatLayout( uiState: ChatUiState, listState: androidx.compose.foundation.lazy.LazyListState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit, adaptive: AdaptiveConfig )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@Composable private fun TabletChatLayout( uiState: ChatUiState, listState: androidx.compose.foundation.lazy.LazyListState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit, adaptive: AdaptiveConfig )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun ChatTopBar( uiState: ChatUiState, viewModel: ChatViewModel, onNavigateToSettings: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@Composable private fun ChatContent( uiState: ChatUiState, listState: androidx.compose.foundation.lazy.LazyListState, viewModel: ChatViewModel, adaptive: AdaptiveConfig )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun MessageBubble( message: Message, onDelete: () -&gt; Unit = {}, onCopy: () -&gt; Unit = {}, onReaction: () -&gt; Unit = {}, onEdit: (() -&gt; Unit)? = null, onReply: (() -&gt; Unit)? = null, // G4-2: 发送失败时的重试回调，仅对 User 消息且 status == Failed 时触发 onRetry: (() -&gt; Unit)? = null, // Phase 2.2: seenMessageIds 改为 SnapshotStateMap，由调用方在外层 remember // 并通过 Lambda 或直接传入。SnapshotStateMap 是 @Stable 的，读取其值会 // 正确参与 Compose 重组，不会导致所有可见 item 每次都重组。 seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap&lt;String, Unit&gt; = androidx.compose.runtime.mutableStateMapOf() )</ID>
+    <ID>FunctionNaming:ChatScreen.kt$@Composable fun MessageStatusIndicator( status: MessageStatus, onRetry: (() -&gt; Unit)? = null )</ID>
+    <ID>FunctionNaming:ChatSearch.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable internal fun SearchOverlay( query: String, results: List&lt;Message&gt;, onQueryChange: (String) -&gt; Unit, onResultClick: (Message) -&gt; Unit, onClose: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:ChatSearch.kt$@Composable private fun SearchResultItem( message: Message, query: String, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsComponents.kt$@Composable internal fun CategoryItem( title: String, icon: ImageVector, isSelected: Boolean, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsComponents.kt$@Composable internal fun SettingsHeader(title: String)</ID>
+    <ID>FunctionNaming:SettingsComponents.kt$@Composable internal fun SettingsItem( title: String, subtitle: String, icon: ImageVector, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsComponents.kt$@Composable internal fun SettingsToggleItem( title: String, subtitle: String, icon: ImageVector, checked: Boolean, onCheckedChange: (Boolean) -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsComponents.kt$@Composable internal fun PerformanceMetricItem( title: String, value: String, icon: ImageVector )</ID>
+    <ID>FunctionNaming:SettingsSecurity.kt$@Composable internal fun E2EPasswordDialog( uiState: SettingsUiState, viewModel: SettingsViewModel, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsAppearance.kt$@Composable internal fun ThemePickerDialog( current: String, onSelect: (String) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsAppearance.kt$@Composable internal fun FontSizePickerDialog( current: String, onSelect: (String) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen( settingsViewModel: SettingsViewModel = hiltViewModel(), onNavigateToAgents: () -&gt; Unit = {}, onNavigateToMarketplace: () -&gt; Unit = {}, onNavigateToDeviceSync: () -&gt; Unit = {}, onNavigateToPlugins: () -&gt; Unit = {}, onNavigateToInsights: () -&gt; Unit = {}, onNavigateToTasks: () -&gt; Unit = {}, onNavigateToMcp: () -&gt; Unit = {} )</ID>
+    <ID>MatchingDeclarationName:SettingsAbout.kt$UpdateCheckResult</ID>
+    <ID>FunctionNaming:SettingsAbout.kt$@Composable internal fun UpdateCheckDialog( result: UpdateCheckResult, currentVersion: String, onDownload: (UpdateManager.UpdateInfo) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SettingsAbout.kt$@Composable internal fun VersionSettingsItem()</ID>
+    <ID>FunctionNaming:TasksScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable fun TasksScreen( onBack: () -&gt; Unit = {}, viewModel: TasksViewModel = hiltViewModel() )</ID>
+    <ID>FunctionNaming:TasksScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun TaskFilterRow( currentFilter: TaskFilter, onFilterSelected: (TaskFilter) -&gt; Unit )</ID>
+    <ID>FunctionNaming:TasksScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable private fun TaskItem( task: TaskManager.AgentTask, onCancel: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:TasksScreen.kt$@Composable private fun StatusBadge(status: TaskManager.TaskStatus)</ID>
+    <ID>MatchingDeclarationName:SessionsScreen.kt$SessionSortMode</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SessionsScreen( chatViewModel: ChatViewModel? = null )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SessionsDualPaneLayout( sessionList: List&lt;Session&gt;, currentSessionId: String?, chatViewModel: ChatViewModel, adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SessionsSinglePaneLayout( sessionList: List&lt;Session&gt;, currentSessionId: String?, chatViewModel: ChatViewModel?, adaptive: com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig, isLoading: Boolean = true )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SwipeableSessionListItem( session: Session, isSelected: Boolean, onSelect: () -&gt; Unit, onDelete: () -&gt; Unit, onTogglePin: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun SwipeableSessionCard( session: Session, isSelected: Boolean, onSelect: () -&gt; Unit, onDelete: () -&gt; Unit, onTogglePin: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@Composable private fun SessionListItem( session: Session, isSelected: Boolean, onSelect: () -&gt; Unit, onDelete: () -&gt; Unit, onTogglePin: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SessionsScreen.kt$@Composable private fun SessionCard( session: Session, isSelected: Boolean, onSelect: () -&gt; Unit, onDelete: () -&gt; Unit, onTogglePin: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:CompareScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CompareScreen( viewModel: CompareViewModel, onBack: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:CompareScreen.kt$@Composable private fun AgentLabel( name: String, modifier: Modifier = Modifier, isComplete: Boolean = false )</ID>
+    <ID>FunctionNaming:CompareScreen.kt$@Composable private fun ResponsePanel( response: String, isStreaming: Boolean, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:CompareScreen.kt$@Composable private fun ComparePreview( responseA: String, responseB: String, agentAName: String, agentBName: String, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:CompareScreen.kt$@Composable private fun CompareStat( label: String, chars: Int, words: Int )</ID>
+    <ID>FunctionNaming:InsightsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun InsightsScreen( onBack: () -&gt; Unit = {}, viewModel: InsightsViewModel = hiltViewModel() )</ID>
+    <ID>FunctionNaming:InsightsScreen.kt$@Composable private fun StatCard( modifier: Modifier = Modifier, label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color )</ID>
+    <ID>FunctionNaming:InsightsScreen.kt$@Composable private fun BarChart( data: Map&lt;String, Long&gt;, modifier: Modifier = Modifier, barColor: Color )</ID>
+    <ID>FunctionNaming:InsightsScreen.kt$@Composable private fun HourlyHeatmap( data: Map&lt;Int, Long&gt;, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:InsightsScreen.kt$@Composable private fun SimplePieChart( data: Map&lt;String, Long&gt;, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ActivityScreen( activityViewModel: ActivityViewModel = hiltViewModel() )</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun EmptyActivityHint()</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun ActivityListItem( activity: ActivityItem, isSelected: Boolean, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun ActivityDetailPanel(activity: ActivityItem)</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun DetailSection(title: String, content: @Composable () -&gt; Unit)</ID>
+    <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun ActivityCard(activity: ActivityItem)</ID>
+    <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentsScreen( agentsViewModel: AgentsViewModel = hiltViewModel() )</ID>
+    <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentGridCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun AgentFormDialog( agent: AgentConfig, onSave: (AgentConfig) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun TypeSelector( selected: AgentType, onSelect: (AgentType) -&gt; Unit )</ID>
+    <ID>FunctionNaming:OnboardingScreen.kt$@Composable fun OnboardingScreen( onComplete: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:OnboardingScreen.kt$@Composable private fun OnboardingPageContent(page: OnboardingPage)</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WorkflowScreen( viewModel: WorkflowViewModel = hiltViewModel(), onBack: () -&gt; Unit = {} )</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun WorkflowListScreen( onSelect: (Workflow) -&gt; Unit, onCreate: () -&gt; Unit, onBack: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@Composable private fun WorkflowCard( workflow: Workflow, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@Composable private fun WorkflowBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String)</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun WorkflowDetailScreen( workflow: Workflow, viewModel: WorkflowViewModel, executionState: WorkflowExecutionState, onBack: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@Composable private fun WorkflowCanvas( workflow: Workflow, executionState: WorkflowExecutionState, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:WorkflowScreen.kt$@Composable private fun CreateWorkflowDialog( onDismiss: () -&gt; Unit, onCreate: (Workflow) -&gt; Unit )</ID>
+    <ID>FunctionNaming:PluginScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun PluginScreen( onBack: () -&gt; Unit = {} )</ID>
+    <ID>FunctionNaming:PluginScreen.kt$@Composable private fun PluginStatsCard(total: Int, enabled: Int)</ID>
+    <ID>FunctionNaming:PluginScreen.kt$@Composable private fun PluginCard( plugin: Plugin, onToggle: () -&gt; Unit, onClick: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:PluginScreen.kt$@Composable private fun PluginDetailDialog( plugin: Plugin, runInput: String, onRunInputChange: (String) -&gt; Unit, onRun: () -&gt; Unit, onToggle: () -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentMarketScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentMarketScreen( onInstall: (MarketplaceAgent) -&gt; Unit, onBack: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, onInstall: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DeviceSyncScreen( viewModel: DeviceSyncViewModel = hiltViewModel(), onBack: () -&gt; Unit = {} )</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun SyncToggleCard( isEnabled: Boolean, isSyncing: Boolean, onToggle: (Boolean) -&gt; Unit, onSyncNow: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun SyncStatusCard(syncState: DeviceSyncManager.SyncState)</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun SyncStatItem(label: String, value: String)</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun PairedDeviceCard( device: DeviceSyncManager.PairedDevice, onRemove: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun EmptyDevicesCard()</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun DevFeatureBanner()</ID>
+    <ID>FunctionNaming:DeviceSyncScreen.kt$@Composable private fun DiscoverDevicesDialog( devices: List&lt;DeviceSyncManager.DiscoveredDevice&gt;, isDiscovering: Boolean, onPair: (DeviceSyncManager.DiscoveredDevice) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:App.kt$@Composable fun AgentControlCenterApp()</ID>
+    <ID>FunctionNaming:AppNavigation.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppNavigation()</ID>
+    <ID>FunctionNaming:AppNavigation.kt$@OptIn(ExperimentalSharedTransitionApi::class) @Composable private fun AppNavHost( navController: androidx.navigation.NavHostController, chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel, modifier: Modifier = Modifier )</ID>
+    <ID>MatchingDeclarationName:Color.kt$AccentPalette</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppSurfaceBox( modifier: Modifier = Modifier, tintColor: Color = Color.White, borderColor: Color = Color.White, shape: Shape = RoundedCornerShape(16.dp), content: @Composable BoxScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppTopAppBar( title: @Composable () -&gt; Unit, modifier: Modifier = Modifier, navigationIcon: @Composable () -&gt; Unit = {}, actions: @Composable RowScope.() -&gt; Unit = {}, scrollBehavior: TopAppBarScrollBehavior? = null )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppNavigationBar( modifier: Modifier = Modifier, content: @Composable RowScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppNavigationRail( header: @Composable ColumnScope.() -&gt; Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppCard( onClick: () -&gt; Unit, modifier: Modifier = Modifier, enabled: Boolean = true, shape: Shape = CardDefaults.shape, colors: androidx.compose.material3.CardColors = CardDefaults.cardColors( containerColor = MaterialTheme.colorScheme.surfaceVariant ), elevation: androidx.compose.material3.CardElevation = CardDefaults.cardElevation(), border: BorderStroke? = null, interactionSource: MutableInteractionSource? = null, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppCard( modifier: Modifier = Modifier, shape: Shape = CardDefaults.shape, colors: androidx.compose.material3.CardColors = CardDefaults.cardColors( containerColor = MaterialTheme.colorScheme.surfaceVariant ), elevation: androidx.compose.material3.CardElevation = CardDefaults.cardElevation(), border: BorderStroke? = null, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppFAB( onClick: () -&gt; Unit, modifier: Modifier = Modifier, containerColor: Color = MaterialTheme.colorScheme.primary, contentColor: Color = MaterialTheme.colorScheme.onPrimary, shape: Shape = CircleShape, content: @Composable () -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppPill( onClick: (() -&gt; Unit)? = null, modifier: Modifier = Modifier, tintColor: Color = Color.White, content: @Composable RowScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppDropdownMenu( expanded: Boolean, onDismissRequest: () -&gt; Unit, modifier: Modifier = Modifier, offset: DpOffset = DpOffset(0.dp, 0.dp), content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@Composable fun AppDropdownMenuItem( text: @Composable () -&gt; Unit, onClick: () -&gt; Unit, modifier: Modifier = Modifier, leadingIcon: @Composable (() -&gt; Unit)? = null, trailingIcon: @Composable (() -&gt; Unit)? = null, enabled: Boolean = true, )</ID>
+    <ID>FunctionNaming:GlassModifier.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppModalBottomSheet( onDismissRequest: () -&gt; Unit, modifier: Modifier = Modifier, sheetState: SheetState = rememberModalBottomSheetState(), dragHandle: @Composable (() -&gt; Unit)? = { androidx.compose.material3.BottomSheetDefaults.DragHandle( color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) ) }, content: @Composable ColumnScope.() -&gt; Unit, )</ID>
+    <ID>MatchingDeclarationName:Theme.kt$ThemeMode</ID>
+    <ID>FunctionNaming:Theme.kt$@Composable fun AgentControlCenterTheme( themeMode: ThemeMode = ThemeMode.System, fontSize: String = &quot;medium&quot;, dynamicColor: Boolean = false, content: @Composable () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SkeletonListItems.kt$@Composable fun SessionSkeletonItem()</ID>
+    <ID>FunctionNaming:SkeletonListItems.kt$@Composable fun MessageSkeletonItem()</ID>
+    <ID>FunctionNaming:SkeletonListItems.kt$@Composable fun AgentCardSkeletonItem()</ID>
+    <ID>FunctionNaming:EmptyStateView.kt$@Composable fun EmptyStateView( icon: ImageVector = Icons.Default.Inbox, title: String, description: String? = null, actionText: String? = null, onAction: (() -&gt; Unit)? = null, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:ExpressiveLoadingIndicator.kt$@Composable fun ExpressiveLoadingIndicator( modifier: Modifier = Modifier, label: String? = null )</ID>
+    <ID>FunctionNaming:ExpressiveLoadingIndicator.kt$@Composable private fun LoadingDot( alpha: Float, scale: Float, color: androidx.compose.ui.graphics.Color )</ID>
+    <ID>FunctionNaming:ExpressiveLoadingIndicator.kt$@Composable fun ExpressiveSkeletonList( itemCount: Int = 5, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:SkeletonBox.kt$@Composable fun SkeletonBox( modifier: Modifier = Modifier, cornerRadius: Int = 8 )</ID>
+    <ID>FunctionNaming:PredictiveBackWrapper.kt$@Composable fun PredictiveBackWrapper( enabled: Boolean = true, onBack: () -&gt; Unit, content: @Composable () -&gt; Unit )</ID>
+    <ID>FunctionNaming:SnackbarComponents.kt$@Composable fun ErrorSnackbar( message: String, onDismiss: () -&gt; Unit, onRetry: (() -&gt; Unit)? = null, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:SnackbarComponents.kt$@Composable fun SuccessSnackbar( message: String, onDismiss: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
+    <ID>FunctionNaming:ErrorStateView.kt$@Composable fun ErrorStateView( title: String = stringResource(R.string.error_state_default_title), message: String, onRetry: (() -&gt; Unit)? = null, modifier: Modifier = Modifier )</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawAgent$val is_featured: Boolean</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPricing$val price_input_per_1k: Double</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPricing$val price_output_per_1k: Double</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPricing$val unlock_fee: Double</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPagination$val current_page: Int</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPagination$val last_page: Int</ID>
+    <ID>ConstructorParameterNaming:MarketplaceClient.kt$MarketplaceClient.OpenClawPagination$val per_page: Int</ID>
+    <ID>InvalidPackageDeclaration:AgentConnectionStateTest.kt$package com.agentcontrolcenter.app.transport.protocol</ID>
+    <ID>InvalidPackageDeclaration:AgentEventTest.kt$package com.agentcontrolcenter.app.transport.protocol</ID>
+    <ID>InvalidPackageDeclaration:TransportFactoryTest.kt$package com.agentcontrolcenter.app.transport</ID>
+    <ID>InvalidPackageDeclaration:WorkflowEngineTest.kt$package com.agentcontrolcenter.app.runtime.workflow</ID>
+    <ID>ImplicitDefaultLocale:AgentMarketScreen.kt$String.format(&quot;%.1f&quot;, rating)</ID>
+    <ID>MaxLineLength:LocalNotificationManager.kt$LocalNotificationManager$if</ID>
+    <ID>MaxLineLength:LocalNotificationManager.kt$LocalNotificationManager$ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED</ID>
+    <ID>MaxLineLength:TaskManager.kt$TaskManager$val</ID>
+    <ID>ThrowsCount:WorkflowEngine.kt$WorkflowEngine$private suspend fun executeAgent(agentType: AgentType, prompt: String): String</ID>
+    <ID>MaxLineLength:WorkflowEngine.kt$WorkflowEngine$throw IllegalStateException(&quot;Possible cycle detected in workflow at node '${node.label.ifEmpty { nodeId }}'&quot;)</ID>
+    <ID>MaxLineLength:WorkflowEngine.kt$WorkflowTemplates$prompt = &quot;Analyze the following code for potential issues, bugs, and improvements. Provide a structured analysis:\n\n{input}&quot;</ID>
+    <ID>MaxLineLength:WorkflowEngine.kt$WorkflowTemplates$prompt = &quot;Based on this code analysis, provide specific improvement suggestions with code examples:\n\n{input}&quot;</ID>
+    <ID>MaxLineLength:WorkflowEngine.kt$WorkflowTemplates$prompt = &quot;Research the following topic. Provide key facts, data points, and relevant information:\n\n{input}&quot;</ID>
+    <ID>LoopWithTooManyJumpStatements:WorkflowEngine.kt$WorkflowEngine$while</ID>
+    <ID>UseCheckOrError:WorkflowEngine.kt$WorkflowEngine$throw IllegalStateException(&quot;No INPUT node found&quot;)</ID>
+    <ID>UseCheckOrError:WorkflowEngine.kt$WorkflowEngine$throw IllegalStateException(&quot;Possible cycle detected in workflow at node '${node.label.ifEmpty { nodeId }}'&quot;)</ID>
+    <ID>MaxLineLength:McpViewModel.kt$McpViewModel$Log.w(MCP_TAG, &quot;loadInitialState: decode failed, fallback to empty: ${e.javaClass.simpleName}: ${e.message}&quot;)</ID>
+    <ID>MaxLineLength:McpScreen.kt$Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))</ID>
+    <ID>LoopWithTooManyJumpStatements:MarkdownParser.kt$MarkdownParser$while</ID>
+    <ID>MaxLineLength:ChatOverlays.kt$Text(stringResource(R.string.saved_agents, uiState.agentConfigs.size), style = MaterialTheme.typography.bodyMedium)</ID>
+    <ID>UnusedParameter:ChatOverlays.kt$connectionState: ConnectionState</ID>
+    <ID>MaxLineLength:ChatInputBar.kt$leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(20.dp)) }</ID>
+    <ID>MaxLineLength:ChatInputBar.kt$leadingIcon = { Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(20.dp)) }</ID>
+    <ID>MaxLineLength:ChatScreen.kt$Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(18.dp))</ID>
+    <ID>MaxLineLength:ChatScreen.kt$seenMessageIds: androidx.compose.runtime.snapshots.SnapshotStateMap&lt;String, Unit&gt; = androidx.compose.runtime.mutableStateMapOf()</ID>
+    <ID>MaxLineLength:ChatScreen.kt$val clip = android.content.ClipData.newPlainText(&quot;Agent Control Center Message&quot;, message.content)</ID>
+    <ID>MaxLineLength:ChatScreen.kt$Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.a11y_copy_message), modifier = Modifier.size(18.dp))</ID>
+    <ID>UnusedParameter:ChatScreen.kt$onCopy: () -&gt; Unit = {}</ID>
+    <ID>MaxLineLength:ChatSearch.kt$text = if (message.role == MessageRole.User) stringResource(R.string.search_role_user) else stringResource(R.string.search_role_agent)</ID>
+    <ID>MaxLineLength:ChatViewModel.kt$ChatViewModel$*</ID>
+    <ID>MaxLineLength:ChatViewModel.kt$ChatViewModel$errorMessage = app.getString(R.string.error_send_failed, e.message ?: app.getString(R.string.error_unknown))</ID>
+    <ID>MaxLineLength:ChatViewModel.kt$ChatViewModel$errorMessage = app.getString(R.string.error_retry_failed, e.message ?: app.getString(R.string.error_unknown))</ID>
+    <ID>MaxLineLength:ChatViewModel.kt$ChatViewModel$private val reactionEmojis = listOf(&quot;\uD83D\uDC4D&quot;, &quot;\u2764\uFE0F&quot;, &quot;\uD83D\uDE02&quot;, &quot;\uD83D\uDE2E&quot;, &quot;\uD83D\uDE22&quot;, &quot;\uD83D\uDD25&quot;, &quot;\uD83C\uDF89&quot;, &quot;\uD83D\uDC40&quot;)</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$_uiState.update { it.copy(backupMessage = context.getString(R.string.backup_export_failed, e.message ?: &quot;&quot;)) }</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$_uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restored, sessionCount, messageCount)) }</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$_uiState.update { it.copy(backupMessage = context.getString(R.string.backup_restore_failed, e.message ?: &quot;&quot;)) }</ID>
+    <ID>MaxLineLength:SettingsComponents.kt$modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp)</ID>
+    <ID>MaxLineLength:SettingsSecurity.kt$Text(stringResource(R.string.e2e_regenerate_key), style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>MaxLineLength:SettingsSecurity.kt$Toast.makeText(context, context.getString(R.string.e2e_key_imported), Toast.LENGTH_SHORT).show()</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$subtitle = if (isChecking) stringResource(R.string.checking_update) else &quot;v$currentVersion&quot;</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.device_sync_title)) }</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.smart_notif_title)) }</ID>
+    <ID>MaxLineLength:SettingsAbout.kt$&quot;\uD83D\uDD27 Agent Control Center v2.0.0\nDeveloped with \u2764\uFE0F by Agent Control Center Team\nBuilt with Kotlin + Jetpack Compose&quot;</ID>
+    <ID>MaxLineLength:TasksScreen.kt$Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(18.dp))</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$placeholder = { Text(stringResource(R.string.search_sessions), style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onSelect = { HapticFeedback.light(context); chatViewModel.switchToSession(session.id) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onDelete = { HapticFeedback.medium(context); chatViewModel.deleteSession(session.id) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onTogglePin = { HapticFeedback.light(context); chatViewModel.toggleSessionPin(session.id, !session.isPinned) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$text = selectedSession?.title?.ifEmpty { stringResource(R.string.untitled) } ?: stringResource(R.string.nav_sessions)</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onSelect = { HapticFeedback.light(context); chatViewModel?.switchToSession(session.id) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onDelete = { HapticFeedback.medium(context); chatViewModel?.deleteSession(session.id) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$onTogglePin = { HapticFeedback.light(context); chatViewModel?.toggleSessionPin(session.id, !session.isPinned) }</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$val sessionContentDescription = stringResource(R.string.cd_session_item, session.title.ifEmpty { untitled }, session.messageCount)</ID>
+    <ID>MaxLineLength:SessionsScreen.kt$contentDescription = &quot;Session: ${session.title.ifEmpty { &quot;untitled&quot; }}, ${session.messageCount} messages&quot;</ID>
+    <ID>UnusedParameter:SessionsScreen.kt$isSelected: Boolean</ID>
+    <ID>MaxLineLength:CompareViewModel.kt$CompareViewModel$viewModelScope.launch { repository.logActivity(&quot;compare&quot;, &quot;Starting compare: ${configA.name} vs ${configB.name}&quot;) }</ID>
+    <ID>MaxLineLength:CompareScreen.kt$if</ID>
+    <ID>MaxLineLength:InsightsScreen.kt$color = if (intensity &gt; 0.5f) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)</ID>
+    <ID>MaxLineLength:AgentsScreen.kt$leadingIcon = { Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(20.dp)) }</ID>
+    <ID>MaxLineLength:AgentsScreen.kt$leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }</ID>
+    <ID>MaxLineLength:AgentsScreen.kt$leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(20.dp)) }</ID>
+    <ID>MaxLineLength:AgentsScreen.kt$leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp)) }</ID>
+    <ID>MaxLineLength:AgentsScreen.kt$title = { Text(if (agent.serverUrl.isBlank()) stringResource(R.string.new_agent) else stringResource(R.string.btn_edit) + &quot; &quot; + agent.name) }</ID>
+    <ID>MaxLineLength:WorkflowScreen.kt$if</ID>
+    <ID>MaxLineLength:WorkflowScreen.kt$WorkflowNode(id = &quot;input&quot;, type = NodeType.INPUT, label = &quot;Input&quot;, positionX = 50f, positionY = 200f)</ID>
+    <ID>MaxLineLength:WorkflowScreen.kt$WorkflowNode(id = &quot;output&quot;, type = NodeType.OUTPUT, label = &quot;Output&quot;, positionX = 400f, positionY = 200f)</ID>
+    <ID>MaxLineLength:PluginScreen.kt$title = { Text(if (result.sendToAgent) stringResource(R.string.plugin_send_to_agent) else stringResource(R.string.plugin_result)) }</ID>
+    <ID>MaxLineLength:PluginScreen.kt$val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager</ID>
+    <ID>MaxLineLength:PluginScreen.kt$clipboard.setPrimaryClip(android.content.ClipData.newPlainText(&quot;Agent Control Center Plugin Prompt&quot;, result.content))</ID>
+    <ID>MaxLineLength:AgentMarketScreen.kt$Text(stringResource(R.string.marketplace_installed), style = MaterialTheme.typography.labelSmall)</ID>
+    <ID>UnusedPrivateProperty:AgentMarketScreen.kt$val context = LocalContext.current</ID>
+    <ID>UnusedPrivateProperty:AgentMarketScreen.kt$val adaptive = currentAdaptiveConfig()</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$db.execSQL(&quot;CREATE INDEX IF NOT EXISTS index_messages_sessionId_timestamp ON messages (sessionId, timestamp)&quot;)</ID>
+    <ID>MaxLineLength:TaskDao.kt$TaskDao$@Query(&quot;UPDATE tasks SET status = :status, result = :result, error = :error, completedAt = :completedAt WHERE id = :taskId&quot;)</ID>
+    <ID>UnusedPrivateProperty:SoCOptimizer.kt$SoCOptimizer$val isLowRam = am?.isLowRamDevice == true</ID>
+    <ID>MaxLineLength:SoCHardwareDetector.kt$SoCHardwareDetector.HardwareInfo$get</ID>
+    <ID>MaxLineLength:SoCHardwareDetector.kt$SoCHardwareDetector$hardware.contains(&quot;gs&quot;, ignoreCase = true) &amp;&amp; Regex(&quot;gs\\d{3}&quot;, RegexOption.IGNORE_CASE).containsMatchIn(cpuInfo)</ID>
+    <ID>UnusedParameter:SoCHardwareDetector.kt$SoCHardwareDetector$model: String</ID>
+    <ID>UnusedParameter:PerformanceMonitor.kt$PerformanceMonitor$context: Context</ID>
+    <ID>MaxLineLength:AgentControlCenterWidget.kt$AgentControlCenterWidget$views.setTextViewText(R.id.widget_last_message, context.getString(R.string.widget_last_message_empty))</ID>
+    <ID>MaxLineLength:McpBridge.kt$McpBridge$suspend</ID>
+    <ID>MaxLineLength:McpClient.kt$McpClient$content = listOf(McpContent.Text(&quot;JSON-RPC Error ${response.error.code}: ${response.error.message}&quot;))</ID>
+    <ID>MaxLineLength:LocalModelManager.kt$LocalModelManager$Log.d(TAG, &quot;Ollama stream chunk parse failed (len=${current.length}): ${e.javaClass.simpleName}&quot;)</ID>
+    <ID>MaxLineLength:LocalModelManager.kt$LocalModelManager$Log.d(TAG, &quot;OpenAI-compat stream chunk parse failed (len=${current.length}): ${e.javaClass.simpleName}&quot;)</ID>
+    <ID>LoopWithTooManyJumpStatements:LocalModelManager.kt$LocalModelManager$while</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsStateWithLifecycle(initialValue = true)</ID>
+    <ID>MaxLineLength:MainActivity.kt$MainActivity$*</ID>
+    <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$val isDark = isSystemInDarkTheme()</ID>
+    <ID>MaxLineLength:AppNavigation.kt$icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) }</ID>
+    <ID>MaxLineLength:AppNavigation.kt$label = { Text(text = stringResource(screen.stringResId), style = MaterialTheme.typography.labelSmall) }</ID>
+    <ID>MaxLineLength:Type.kt$titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.15.sp)</ID>
+    <ID>MaxLineLength:Type.kt$titleSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp)</ID>
+    <ID>MaxLineLength:Type.kt$bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.25.sp)</ID>
+    <ID>MaxLineLength:Type.kt$labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.1.sp)</ID>
+    <ID>MaxLineLength:Type.kt$labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.5.sp)</ID>
+    <ID>UnusedParameter:GlassModifier.kt$tintColor: Color = Color.White</ID>
+    <ID>UnusedParameter:GlassModifier.kt$borderColor: Color = Color.White</ID>
+    <ID>UnusedParameter:GlassModifier.kt$shape: Shape = RoundedCornerShape(16.dp)</ID>
+    <ID>UnusedParameter:GlassModifier.kt$animateShine: Boolean = true</ID>
+    <ID>UnusedParameter:GlassMotion.kt$fromRadius: Dp = 16.dp</ID>
+    <ID>MaxLineLength:Theme.kt$displayLarge = base.displayLarge.copy(fontSize = base.displayLarge.fontSize * factor, lineHeight = base.displayLarge.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$displayMedium = base.displayMedium.copy(fontSize = base.displayMedium.fontSize * factor, lineHeight = base.displayMedium.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$headlineLarge = base.headlineLarge.copy(fontSize = base.headlineLarge.fontSize * factor, lineHeight = base.headlineLarge.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$headlineMedium = base.headlineMedium.copy(fontSize = base.headlineMedium.fontSize * factor, lineHeight = base.headlineMedium.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$titleLarge = base.titleLarge.copy(fontSize = base.titleLarge.fontSize * factor, lineHeight = base.titleLarge.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$titleMedium = base.titleMedium.copy(fontSize = base.titleMedium.fontSize * factor, lineHeight = base.titleMedium.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$titleSmall = base.titleSmall.copy(fontSize = base.titleSmall.fontSize * factor, lineHeight = base.titleSmall.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$bodyLarge = base.bodyLarge.copy(fontSize = base.bodyLarge.fontSize * factor, lineHeight = base.bodyLarge.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$bodyMedium = base.bodyMedium.copy(fontSize = base.bodyMedium.fontSize * factor, lineHeight = base.bodyMedium.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$bodySmall = base.bodySmall.copy(fontSize = base.bodySmall.fontSize * factor, lineHeight = base.bodySmall.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$labelLarge = base.labelLarge.copy(fontSize = base.labelLarge.fontSize * factor, lineHeight = base.labelLarge.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$labelMedium = base.labelMedium.copy(fontSize = base.labelMedium.fontSize * factor, lineHeight = base.labelMedium.lineHeight * factor)</ID>
+    <ID>MaxLineLength:Theme.kt$labelSmall = base.labelSmall.copy(fontSize = base.labelSmall.fontSize * factor, lineHeight = base.labelSmall.lineHeight * factor)</ID>
+    <ID>LoopWithTooManyJumpStatements:OpenAIHttpTransport.kt$OpenAIHttpTransport$while</ID>
+    <ID>MaxLineLength:AgentConnectionService.kt$AgentConnectionService$Log.w(TAG, &quot;reconnect failed (backoff=${backoffMs}ms): ${e.javaClass.simpleName}: ${e.message}&quot;)</ID>
+    <ID>UnusedParameter:CollaborationManager.kt$CollaborationManager$message: Message</ID>
+    <ID>MaxLineLength:DataInsightsManager.kt$DataInsightsManager$private</ID>
+    <ID>UnusedParameter:DeviceSyncManager.kt$DeviceSyncManager$deviceId: String</ID>
+    <ID>UnusedPrivateProperty:DeviceSyncManager.kt$DeviceSyncManager$private val _discoveredDevices = MutableStateFlow&lt;List&lt;PairedDevice&gt;&gt;(emptyList())</ID>
+    <ID>MaxLineLength:PluginManager.kt$permissions = runCatching { gson.fromJson&lt;List&lt;String&gt;&gt;(permissionsJson, listType) }.getOrElse { emptyList&lt;String&gt;() }</ID>
+    <ID>MaxLineLength:PluginExecutor.kt$PluginExecutor$private suspend</ID>
+  </CurrentIssues>
+</SmellBaseline>
