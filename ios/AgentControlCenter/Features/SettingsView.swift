@@ -11,11 +11,20 @@ struct SettingsView: View {
 
     // ============ Agent 默认配置 ============
     @AppStorage("defaultModel") private var defaultModel: String = "gpt-4"
-    @AppStorage("temperature") private var temperature: Float = 0.7
+    // CI-fix: 原 `temperature: Float = 0.7` 在 Xcode 16.4 / Swift 6 strict
+    // concurrency 下触发 "@AppStorage 宏展开 no exact matches in call to
+    // initializer"。改为 `Double` — `Slider` 与 `String(format:)` 均有 Double
+    // 重载，行为等价；同时 Double 是 SwiftUI 中浮点 @AppStorage 的更常用类型。
+    @AppStorage("temperature") private var temperature: Double = 0.7
     @AppStorage("maxTokens") private var maxTokens: Int = 4096
 
     // ============ 字体大小 ============
-    @AppStorage("fontSize") private var fontSize: FontSize = .medium
+    // CI-fix: 原 `@AppStorage("fontSize") private var fontSize: FontSize = .medium`
+    // 在 Xcode 16.4 下报 "no exact matches in call to initializer"（即使 FontSize
+    // 是 String-backed RawRepresentable，宏展开在该 SDK 版本下无法解析枚举类型）。
+    // 改为手动 UserDefaults 桥接：@State 持有内存值，.onChange 写回 UserDefaults。
+    // 与 ChatView 中的相同模式保持一致。
+    @State private var fontSize: FontSize = FontSize.loadFromUserDefaults()
 
     // ============ 外观主题 ============
     @AppStorage("theme") private var theme: AppThemePreference = .system
@@ -98,6 +107,10 @@ struct SettingsView: View {
                 } else {
                     KeychainManager.savePassphrase(newValue)
                 }
+            }
+            // CI-fix: fontSize 改为手动 UserDefaults 桥接（替代 @AppStorage）
+            .onChange(of: fontSize) { _, newValue in
+                newValue.saveToUserDefaults()
             }
             // 剪贴板复制提示
             .overlay {
@@ -547,6 +560,22 @@ enum FontSize: String, CaseIterable, Identifiable {
         case .medium: return .body
         case .large: return .title3
         }
+    }
+
+    /// UserDefaults 存储 key
+    static let userDefaultsKey = "fontSize"
+
+    /// 从 UserDefaults 读取字体大小偏好，缺失或非法值时回退到 `.medium`。
+    /// 用于替代 `@AppStorage("fontSize")`（Xcode 16.4 下对 RawRepresentable
+    /// 枚举的宏展开存在 bug，编译报 "no exact matches in call to initializer"）。
+    static func loadFromUserDefaults() -> FontSize {
+        let raw = UserDefaults.standard.string(forKey: userDefaultsKey) ?? FontSize.medium.rawValue
+        return FontSize(rawValue: raw) ?? .medium
+    }
+
+    /// 将当前值写回 UserDefaults。
+    func saveToUserDefaults() {
+        UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
     }
 }
 

@@ -15,8 +15,12 @@ struct ChatView: View {
     @AppStorage("encryptionEnabled") private var encryptionEnabled: Bool = false
     /// E2E 加密密钥（从 Keychain 读取，不进入 UserDefaults；视图出现时加载到内存）
     @State private var encryptionPassphrase: String = ""
-    /// 字体大小偏好(P1-4):与设置页共用 @AppStorage 键,注入环境后供 MessageBubble / MarkdownText 使用
-    @AppStorage("fontSize") private var fontSize: FontSize = .medium
+    /// 字体大小偏好(P1-4):与设置页共用 UserDefaults 键,注入环境后供 MessageBubble / MarkdownText 使用
+    //
+    // CI-fix: 原 `@AppStorage("fontSize") private var fontSize: FontSize = .medium`
+    // 在 Xcode 16.4 下报 "no exact matches in call to initializer"。改为手动
+    // UserDefaults 桥接（@State + .onChange 写回），与 SettingsView 保持一致。
+    @State private var fontSize: FontSize = FontSize.loadFromUserDefaults()
 
     // MARK: - 参数
     /// 目标会话 ID
@@ -135,6 +139,10 @@ struct ChatView: View {
         }
         // 注入字体大小偏好到环境,MessageBubble 内的 Text 与 MarkdownText 均可读取(P1-4)
         .environment(\.appFontSize, fontSize)
+        // CI-fix: fontSize 改为手动 UserDefaults 桥接（替代 @AppStorage）
+        .onChange(of: fontSize) { _, newValue in
+            newValue.saveToUserDefaults()
+        }
         .navigationTitle(sessionTitle)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showHelpSheet) {
