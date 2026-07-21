@@ -18,7 +18,13 @@ final class LocalModelManager {
     var discoveredEndpoints: [DiscoveredEndpoint] = []
 
     /// SW-M3: 端点探测日志器（网络失败是预期行为，记 debug；JSON 解析失败记 warning）
-    private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "LocalModelManager")
+    ///
+    /// CI-fix: 标注 `nonisolated` — `Logger` 是 Sendable 的值类型，
+    /// 但 `@MainActor` 类的 `static let` 默认会被 MainActor 隔离，
+    /// 导致 `nonisolated` 的 `fetchOllamaModels` 等方法调用 `Self.logger`
+    /// 时报 "expression is 'async' but is not marked with 'await'"。
+    /// `nonisolated` 让该常量可在任意 actor 上下文中直接访问。
+    nonisolated private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "LocalModelManager")
 
     /// 是否正在扫描中
     var isScanning: Bool = false
@@ -182,7 +188,13 @@ final class LocalModelManager {
     /// 将字节数格式化为人类可读的 GB 字符串
     /// - Parameter bytes: 文件大小（字节数），nil 时返回 nil
     /// - Returns: 格式化后的字符串，如 "4.3 GB"
-    private static func formatSize(_ bytes: Int64?) -> String? {
+    ///
+    /// CI-fix: 标注 `nonisolated` — 纯计算函数无 MainActor 状态访问，
+    /// 但 `@MainActor` 类的 `static func` 默认会被 MainActor 隔离。
+    /// `fetchOllamaModels` 等 `nonisolated` 方法调用 `Self.formatSize`
+    /// 时会触发 "call to main actor-isolated static method in a synchronous
+    /// nonisolated context" 错误。`nonisolated` 让该方法可在任意上下文调用。
+    nonisolated private static func formatSize(_ bytes: Int64?) -> String? {
         guard let bytes else { return nil }
         let gb = Double(bytes) / 1_073_741_824.0
         return String(format: "%.1f GB", gb)

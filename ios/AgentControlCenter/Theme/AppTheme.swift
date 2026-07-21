@@ -126,27 +126,18 @@ enum AppTheme {
     ///   - size: 字号档位（小 / 中 / 大）
     ///   - weight: 字重
     /// - Returns: 对应的 SwiftUI Font
+    ///
+    /// CI-fix: 此前 `enum AppTheme` 内嵌套了一个 `FontSize` 枚举（与
+    /// `SettingsView.swift` 顶层的 `FontSize` 同义但不同类型），导致
+    /// `SettingsView` 中 `@AppStorage("fontSize") private var fontSize: FontSize`
+    /// 在 Swift 6 strict concurrency 下出现 "no exact matches in call to initializer"
+    /// （`@AppStorage` 宏展开时类型解析存在歧义）。移除嵌套定义，统一使用顶层
+    /// `FontSize: String, CaseIterable, Identifiable` 即可。
     static func dynamicFont(size: FontSize = .medium, weight: Font.Weight = .regular) -> Font {
         switch size {
         case .small:  return .system(.subheadline, design: .default, weight: weight)
         case .medium: return .system(.body,        design: .default, weight: weight)
         case .large:  return .system(.title3,      design: .default, weight: weight)
-        }
-    }
-
-    /// 字号档位（与 `SettingsView` 中既有的顶层 `FontSize` 同义，此处为命名空间下的等价定义）
-    enum FontSize: String, CaseIterable {
-        case small = "小"
-        case medium = "中"
-        case large = "大"
-
-        /// 缩放系数，可用于手动缩放自定义文本
-        var scaleFactor: CGFloat {
-            switch self {
-            case .small:  0.85
-            case .medium: 1.0
-            case .large:  1.15
-            }
         }
     }
 

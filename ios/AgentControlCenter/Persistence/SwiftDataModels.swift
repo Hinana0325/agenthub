@@ -72,7 +72,11 @@ final class SessionEntity {
     /// 会话摘要
     var summary: String = ""
     /// 会话下的全部消息（一对多关系，删除会话时级联删除消息）
-    @Relationship(.cascade, inverse: \MessageEntity.session)
+    ///
+    /// CI-fix: `@Relationship` 第一个参数为 `Schema.Attribute.Option` 不对，
+    /// `Schema.Relationship.Option` 没有 `.cascade` 成员。正确写法是用
+    /// `deleteRule:` 关键字参数显式指定删除规则。
+    @Relationship(deleteRule: .cascade, inverse: \MessageEntity.session)
     var messages: [MessageEntity] = []
 
     /// 创建会话实体
@@ -238,8 +242,11 @@ final class PluginEntity {
     /// CI-fix: 原属性名 `description` 与 SwiftData `@Model` 宏合成的
     /// `CustomStringConvertible.description` 冲突，编译报
     /// "A stored property cannot be named 'description'"。重命名为 `descriptionText`，
-    /// 通过 `@Attribute(name: "description")` 保留 DB 列名以与 Android 端 schema 对齐。
-    @Attribute(name: "description") var descriptionText: String
+    /// 通过 `@Attribute(originalName: "description")` 保留 DB 列名以与 Android 端
+    /// schema 对齐。`originalName:` 是 SwiftData `@Attribute` 宏的正式参数，
+    /// 用于声明持久化层使用的列名（v1 schema 也生效），早期尝试的
+    /// `@Attribute(name:)` 不存在该参数标签，编译报 "extraneous argument label"。
+    @Attribute(originalName: "description") var descriptionText: String
     /// 图标标识
     var icon: String
     /// 是否启用

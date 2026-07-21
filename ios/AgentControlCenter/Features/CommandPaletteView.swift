@@ -325,6 +325,13 @@ enum CommandCategory: String, CaseIterable {
 /// 负责注册和查询命令、维护最近使用历史。
 /// 命令通过 `register(_:)` 注册，`action` 闭包由调用方在运行时绑定具体行为
 /// （如切换导航、打开页面等）。
+///
+/// CI-fix: 增加 `@MainActor` 隔离。该 Manager 仅被 SwiftUI 视图
+/// （CommandPaletteView）访问，所有调用点都在 MainActor 上下文中。
+/// `@MainActor` 让 `static let shared` 自动满足 Sendable 要求，
+/// 消除 "static property 'shared' is not concurrency-safe" 编译错误。
+/// 与 LocalModelManager 等其它 @Observable Manager 保持一致的隔离策略。
+@MainActor
 @Observable
 final class CommandPaletteManager {
 

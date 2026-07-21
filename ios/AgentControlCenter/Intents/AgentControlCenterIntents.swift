@@ -32,13 +32,18 @@ enum ShortcutIntentNotification {
 struct NewChatIntent: AppIntent {
 
     /// 在 Shortcuts / Siri 中显示的标题
-    static var title: LocalizedStringResource = "新对话"
+    ///
+    /// CI-fix: `static var` 在 Swift 6 strict concurrency 下被判定为
+    /// "nonisolated global shared mutable state"。`AppIntent` 协议的
+    /// `title` / `description` / `openAppWhenRun` 实际上都是不可变配置，
+    /// 改为 `static let` 即可满足 Sendable 要求。
+    static let title: LocalizedStringResource = "新对话"
 
     /// 详细描述，显示在 Shortcuts 应用的意图详情中
-    static var description = IntentDescription("启动 Agent Control Center 并打开新聊天")
+    static let description = IntentDescription("启动 Agent Control Center 并打开新聊天")
 
     /// 执行意图时是否将应用拉到前台 — 导航类意图必须为 `true`
-    static var openAppWhenRun: Bool = true
+    static let openAppWhenRun: Bool = true
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     ///
@@ -64,13 +69,13 @@ struct NewChatIntent: AppIntent {
 struct NewAgentIntent: AppIntent {
 
     /// 在 Shortcuts / Siri 中显示的标题
-    static var title: LocalizedStringResource = "新 Agent"
+    static let title: LocalizedStringResource = "新 Agent"
 
     /// 详细描述
-    static var description = IntentDescription("启动 Agent Control Center 并打开 Agent 创建页面")
+    static let description = IntentDescription("启动 Agent Control Center 并打开 Agent 创建页面")
 
     /// 执行意图时是否将应用拉到前台
-    static var openAppWhenRun: Bool = true
+    static let openAppWhenRun: Bool = true
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     func perform() async throws -> some IntentResult {
@@ -93,13 +98,13 @@ struct NewAgentIntent: AppIntent {
 struct OpenSettingsIntent: AppIntent {
 
     /// 在 Shortcuts / Siri 中显示的标题
-    static var title: LocalizedStringResource = "设置"
+    static let title: LocalizedStringResource = "设置"
 
     /// 详细描述
-    static var description = IntentDescription("启动 Agent Control Center 并打开设置")
+    static let description = IntentDescription("启动 Agent Control Center 并打开设置")
 
     /// 执行意图时是否将应用拉到前台
-    static var openAppWhenRun: Bool = true
+    static let openAppWhenRun: Bool = true
 
     /// 执行意图：发布通知并由 IntentRouter 路由。
     func perform() async throws -> some IntentResult {

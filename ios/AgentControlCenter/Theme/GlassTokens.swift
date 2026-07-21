@@ -45,13 +45,18 @@ enum GlassTokens {
     // MARK: - 弹簧（对齐 Android GlassMotion）
 
     /// 弹跳弹簧 —— 用于浮动元素按压 / 入场（对应 Android `SpringBounce`）
-    static let bounceSpring: Spring = .spring(response: 0.35, dampingFraction: 0.7)
+    ///
+    /// CI-fix: 原使用 `.spring(response:dampingFraction:)` 静态工厂方法，
+    /// 该方法在 Xcode 16.4 / iOS 18 SDK 中尚不可用（仅 iOS 26+ SDK 提供）。
+    /// 改为直接调用 `Spring(response:dampingFraction:)` 构造器，
+    /// 该 init 自 iOS 17 起公开可用，行为等价。
+    static let bounceSpring: Spring = Spring(response: 0.35, dampingFraction: 0.7)
 
     /// 平滑弹簧 —— 用于展开 / 折叠过渡（对应 Android `SpringSmooth`）
-    static let smoothSpring: Spring = .spring(response: 0.5, dampingFraction: 0.85)
+    static let smoothSpring: Spring = Spring(response: 0.5, dampingFraction: 0.85)
 
     /// 退出弹簧 —— 用于消失动画（对应 Android `SpringExit`）
-    static let exitSpring: Spring = .spring(response: 0.3, dampingFraction: 0.9)
+    static let exitSpring: Spring = Spring(response: 0.3, dampingFraction: 0.9)
 
     // MARK: - 形状
 

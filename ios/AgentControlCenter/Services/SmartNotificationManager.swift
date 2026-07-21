@@ -40,23 +40,28 @@ final class SmartNotificationManager {
 
     // MARK: - 正则规则
     //
-    // 使用 Swift Regex 字面量（编译期检查，无需 try!），case-insensitive 通过 `i` 标志开启。
-    // 字面量在首次访问时由 Swift 运行时编译并缓存，性能与 NSRegularExpression 相当。
+    // CI-fix: 原使用 Swift Regex 字面量 `/\b...\b/i`，在 Xcode 16.4 / Swift 6 strict
+    // concurrency 下有两个问题：
+    // 1. Regex 字面量解析报 "consecutive declarations on a line must be separated by ';'"
+    //    （特定 Swift 版本对带 flag 的字面量解析异常）
+    // 2. `Regex<Substring>` 非 Sendable，`static let` 触发 "is not concurrency-safe"
+    // 改为 `try! Regex("...").ignoresCase()` 初始化器形式，并用 `nonisolated(unsafe)`
+    // 标注（Regex 实例本身线程安全，仅类型未标注 Sendable）。
 
     /// 高优先级规则 1：错误 / 异常 / 失败 / 崩溃
-    private static let highPriorityErrorPattern = /\b(?:error|exception|failed|crash)\b/i
+    nonisolated(unsafe) private static let highPriorityErrorPattern = try! Regex(#"\b(?:error|exception|failed|crash)\b"#).ignoresCase()
 
     /// 高优先级规则 2：警告
-    private static let highPriorityWarningPattern = /\b(?:warning|warn)\b/i
+    nonisolated(unsafe) private static let highPriorityWarningPattern = try! Regex(#"\b(?:warning|warn)\b"#).ignoresCase()
 
     /// 高优先级规则 3：紧急请求
-    private static let highPriorityUrgentPattern = /\b(?:please|need|require|urgent)\b/i
+    nonisolated(unsafe) private static let highPriorityUrgentPattern = try! Regex(#"\b(?:please|need|require|urgent)\b"#).ignoresCase()
 
     /// 低优先级规则 1：心跳 / 保活
-    private static let lowPriorityHeartbeatPattern = /\b(?:heartbeat|ping|alive)\b/i
+    nonisolated(unsafe) private static let lowPriorityHeartbeatPattern = try! Regex(#"\b(?:heartbeat|ping|alive)\b"#).ignoresCase()
 
     /// 低优先级规则 2：完成确认
-    private static let lowPriorityDonePattern = /\b(?:ok|done|finished)\b/i
+    nonisolated(unsafe) private static let lowPriorityDonePattern = try! Regex(#"\b(?:ok|done|finished)\b"#).ignoresCase()
 
     // MARK: - 优先级判断
 
