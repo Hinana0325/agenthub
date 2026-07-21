@@ -232,6 +232,7 @@ struct WorkflowView: View {
             if !result.hasPrefix("Error:") {
                 inputText = ""
             }
+            return result
         }
     }
 
