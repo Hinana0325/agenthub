@@ -17,6 +17,14 @@ import UserNotifications
 /// - `SmartNotificationManager` 负责「是否应该通知」的过滤逻辑（优先级、免打扰）
 /// - `LocalNotificationManager` 负责「如何通知」的执行层（UNUserNotificationCenter 调度）
 /// 二者可配合使用：先由 SmartNotificationManager 判断，再由本类调度。
+//
+// CI-fix: 标记 `@MainActor`。原 `@Observable final class` 既非 @MainActor 也
+// 非 Sendable，但 `init` / 各方法在 Task / UNUserNotificationCenter 回调中
+// 通过 `[weak self]` 捕获 self，触发 Swift 6 "sending 'self' risks causing
+// data races"。`@MainActor` 类在 Swift 6 下隐式 Sendable，所有 self 捕获
+// 跨 actor 边界均安全（MainActor 串行化所有属性访问）。
+// 调用方均为 SwiftUI 视图（MainActor），不受影响。
+@MainActor
 @Observable
 final class LocalNotificationManager {
 

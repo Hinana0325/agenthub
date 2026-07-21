@@ -120,7 +120,12 @@ final class McpBridge {
         guard let (serverId, _) = registry.findTool(toolName) else { return nil }
         guard let server = registry.servers[serverId] else { return nil }
 
-        guard let result = await client.callTool(server, toolName: toolName, arguments: arguments) else {
+        // CI-fix: `[String: Any]` 非 Sendable，跨 await 边界传给 client.callTool
+        // 会触发 Swift 6 "sending 'arguments' risks causing data races"。
+        // AnyCodable 是 `@unchecked Sendable`，先用 mapValues 包装成
+        // `[String: AnyCodable]` 再传递；client 侧再解包回 [String: Any]。
+        let sendableArguments = arguments.mapValues { AnyCodable($0) }
+        guard let result = await client.callTool(server, toolName: toolName, arguments: sendableArguments) else {
             return nil
         }
         return result.asText
@@ -138,7 +143,9 @@ final class McpBridge {
         guard let (serverId, _) = registry.findTool(toolName) else { return nil }
         guard let server = registry.servers[serverId] else { return nil }
 
-        return await client.callTool(server, toolName: toolName, arguments: arguments)
+        // CI-fix: 同 callTool，包装为 AnyCodable 后再跨 await 传递
+        let sendableArguments = arguments.mapValues { AnyCodable($0) }
+        return await client.callTool(server, toolName: toolName, arguments: sendableArguments)
     }
 
     /// 断开 MCP Server 连接。

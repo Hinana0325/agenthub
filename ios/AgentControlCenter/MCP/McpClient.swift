@@ -183,16 +183,23 @@ final class McpClient: @unchecked Sendable {
     /// - Parameters:
     ///   - server: 目标 MCP Server
     ///   - toolName: 工具名
-    ///   - arguments: 调用参数（任意 JSON 可序列化结构）
+    ///   - arguments: 调用参数（Sendable 包装，调用方负责将 [String: Any] 转 [String: AnyCodable]）
     /// - Returns: 工具执行结果；URL 无效或网络错误返回 nil；JSON-RPC 错误返回带错误描述的结果
+    //
+    // CI-fix: 原 `arguments: [String: Any]` 非 Sendable，跨 actor 调用触发
+    // Swift 6 data race 检查。改为 `[String: AnyCodable]` —— AnyCodable 是
+    // `@unchecked Sendable`，字典整体即可 Sendable。函数内部解包回 [String: Any]
+    // 后再用 AnyCodable 包装为 JSON-RPC params，行为与原实现等价。
     func callTool(
         _ server: McpServer,
         toolName: String,
-        arguments: [String: Any]
+        arguments: [String: AnyCodable]
     ) async -> McpToolResult? {
+        // 解包 AnyCodable 回 [String: Any]，再统一包装为 JSON-RPC params
+        let anyArguments: [String: Any] = arguments.mapValues { $0.value }
         let params: [String: AnyCodable] = [
             "name": AnyCodable(toolName),
-            "arguments": AnyCodable(arguments)
+            "arguments": AnyCodable(anyArguments)
         ]
 
         let request = JsonRpcRequest(

@@ -93,7 +93,11 @@ final class IntentRouter {
     private weak var appState: AppState?
 
     /// NotificationCenter 观察者 token（用于 deinit 时移除）
-    private var observers: [NSObjectProtocol] = []
+    // CI-fix: `deinit` 隐式 nonisolated，无法访问 @MainActor 隔离的 `observers`
+    // ([NSObjectProtocol] 非 Sendable)。`NotificationCenter.removeObserver` 是
+    // 线程安全的 C API，deinit 时已无其他引用，标记 `nonisolated(unsafe)` 即可。
+    // 写入仍由 MainActor 串行化（registerObservers 在 MainActor 上调用）。
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
 
     // MARK: - 初始化
 
