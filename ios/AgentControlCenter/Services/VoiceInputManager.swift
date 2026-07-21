@@ -4,7 +4,12 @@ import AVFoundation
 
 /// 语音输入管理器 — 封装 SFSpeechRecognizer
 /// 对应 Android VoiceInputManager (SpeechRecognizer)
+//
+// CI-fix: 标记 @MainActor。VoiceInputManager 由 ChatView (@MainActor View) 持有，
+// `await voiceManager.startListening()` 跨 actor 边界要求 voiceManager Sendable。
+// @MainActor 类自动 Sendable，且与 View 共享隔离，调用无需跨边界。
 @Observable
+@MainActor
 final class VoiceInputManager {
 
     // CI-fix: 添加 `Equatable` 协议。`state == .listening` 等比较需要 Equatable，
@@ -54,14 +59,19 @@ final class VoiceInputManager {
         let engine = AVAudioEngine()
         let node = engine.inputNode
         let format = node.outputFormat(forBus: 0)
-        node.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            self?.recognitionRequest?.append(buffer)
-        }
 
-        // 3. 配置 RecognitionRequest
+        // 3. 配置 RecognitionRequest（先创建以便 installTap 闭包直接捕获，
+        //    避免 MainActor 隔离的 self.recognitionRequest 跨线程访问）
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         recognitionRequest = request
+
+        // CI-fix: AVAudioNode installTap 回调在音频线程触发（非 MainActor），
+        // 不能访问 MainActor 隔离的 self.recognitionRequest。改为捕获局部
+        // `request`（class 引用，闭包按值捕获），通过 nonisolated 方法 append(buffer)。
+        node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            request.append(buffer)
+        }
 
         // 4. 创建 RecognitionTask
         let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-Hans"))
@@ -71,12 +81,16 @@ final class VoiceInputManager {
         }
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
-            guard let self else { return }
-            if let result {
-                self.recognizedText = result.bestTranscription.formattedString
-            }
-            if error != nil || (result?.isFinal ?? false) {
-                self.stopListening()
+            // CI-fix: SFSpeechRecognitionTask 回调可能在非 MainActor 线程触发，
+            // 用 Task { @MainActor in } 桥接到 MainActor 访问 self 的属性。
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let result {
+                    self.recognizedText = result.bestTranscription.formattedString
+                }
+                if error != nil || (result?.isFinal ?? false) {
+                    self.stopListening()
+                }
             }
         }
 

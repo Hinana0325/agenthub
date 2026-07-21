@@ -7,6 +7,15 @@ import os
 // MARK: - AgentControlCenterApp
 // iOS App 入口，对应 Android com.agentcontrolcenter.app.AgentControlCenterApplication + MainActivity
 
+/// 文件级全局变量，保存 `NSSetUncaughtExceptionHandler` 注册前的上一个 handler。
+///
+/// CI-fix: `NSSetUncaughtExceptionHandler` 的回调是 `@convention(c)` 函数指针，
+/// 不能捕获 Swift 上下文。把 previousHandler 存到此处，回调内通过全局变量读取。
+/// `NSUncaughtExceptionHandler` 是 C 函数指针 (`@convention(c)`)，本身就是
+/// 跨线程安全的（Sentry 注册时也是这样保存的）。标记 `nonisolated(unsafe)` 让
+/// Swift 6 严格并发放行。
+nonisolated(unsafe) private var previousUncaughtExceptionHandler: (@convention(c) (NSException) -> Void)?
+
 /// 应用入口 — Agent Control Center iOS 应用。
 ///
 /// 职责：
@@ -50,7 +59,13 @@ struct AgentControlCenterApp: App {
         // Install local crash logger (chains with Sentry's handler).
         // Writes crash details to a local file as a secondary safety net,
         // then delegates to Sentry's handler for cloud reporting.
-        let previousHandler = NSGetUncaughtExceptionHandler()
+        //
+        // CI-fix: `NSSetUncaughtExceptionHandler` 接收 `@convention(c)` 函数指针，
+        // 闭包不能捕获上下文。原代码捕获了 `previousHandler`，编译报
+        // "a C function pointer cannot be formed from a closure that captures context"。
+        // 改为把 previousHandler 存到文件级 `nonisolated(unsafe)` 全局变量，
+        // 闭包内通过全局变量读取，不捕获上下文。
+        previousUncaughtExceptionHandler = NSGetUncaughtExceptionHandler()
         NSSetUncaughtExceptionHandler { exception in
             // Write to local file — 使用 caches 目录（不进 iCloud 备份，不暴露给 iTunes），
             // 并显式指定 completeFileProtectionUntilFirstUserAuthentication 保护级别。
@@ -64,7 +79,7 @@ struct AgentControlCenterApp: App {
                 formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
                 // 对 reason 做关键词过滤，避免 apiKey / Bearer / AKS: 等敏感串落地
                 let rawReason = exception.reason ?? "Unknown"
-                let sanitizedReason = Self.sanitizeCrashReason(rawReason)
+                let sanitizedReason = AgentControlCenterApp.sanitizeCrashReason(rawReason)
                 let crashText = """
                 Time: \(formatter.string(from: Date()))
                 Name: \(exception.name.rawValue)
@@ -77,12 +92,12 @@ struct AgentControlCenterApp: App {
                     options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
                 )
                 // 清理 7 天前的旧崩溃日志
-                Self.cleanupOldCrashLogs(in: crashDir)
+                AgentControlCenterApp.cleanupOldCrashLogs(in: crashDir)
             } catch {
                 // Best-effort logging; never swallow the original exception
             }
             // Delegate to previous handler (Sentry's)
-            previousHandler?(exception)
+            previousUncaughtExceptionHandler?(exception)
         }
 
         // Register background task scheduler
