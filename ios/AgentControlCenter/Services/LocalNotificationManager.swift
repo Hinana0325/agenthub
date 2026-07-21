@@ -18,15 +18,23 @@ import UserNotifications
 /// - `LocalNotificationManager` 负责「如何通知」的执行层（UNUserNotificationCenter 调度）
 /// 二者可配合使用：先由 SmartNotificationManager 判断，再由本类调度。
 //
-// CI-fix: 标记 `@MainActor`。原 `@Observable final class` 既非 @MainActor 也
-// 非 Sendable，但 `init` / 各方法在 Task / UNUserNotificationCenter 回调中
-// 通过 `[weak self]` 捕获 self，触发 Swift 6 "sending 'self' risks causing
-// data races"。`@MainActor` 类在 Swift 6 下隐式 Sendable，所有 self 捕获
-// 跨 actor 边界均安全（MainActor 串行化所有属性访问）。
-// 调用方均为 SwiftUI 视图（MainActor），不受影响。
-@MainActor
+// CI-fix: 标记 `@unchecked Sendable`。原 `@Observable final class` 既非
+// @MainActor 也非 Sendable，但 init / 各方法在 Task / UNUserNotificationCenter
+// 回调中通过 `[weak self]` 捕获 self，触发 Swift 6 "sending 'self' risks
+// causing data races"。
+//
+// 之所以用 `@unchecked Sendable` 而非 `@MainActor`：本类调用
+// `UNUserNotificationCenter.current().notificationSettings()` 和
+// `.pendingNotificationRequests()`，两者均 nonisolated async 且返回
+// 非 Sendable 类型 (UNNotificationSettings / [UNNotificationRequest])。
+// 若类为 @MainActor，结果需跨 actor 边界返回 MainActor，但非 Sendable 类型
+// 无法跨边界。`@unchecked Sendable` 让 self 可被 Task 捕获，同时不改变
+// 类的隔离，await 结果留在 nonisolated 上下文使用，无需跨边界。
+//
+// 线程安全：所有可变属性 (hasPermission / pendingNotifications) 的写入均
+// 通过 `await MainActor.run { ... }` 串行化到 MainActor，运行时安全。
 @Observable
-final class LocalNotificationManager {
+final class LocalNotificationManager: @unchecked Sendable {
 
     // MARK: - 通知标识符前缀
 
