@@ -209,7 +209,7 @@ struct WorkflowView: View {
 
     /// 是否允许执行
     private var canExecute: Bool {
-        guard let workflow = selectedWorkflow else { return false }
+        guard selectedWorkflow != nil else { return false }
         return !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !executionState.isRunning
     }
