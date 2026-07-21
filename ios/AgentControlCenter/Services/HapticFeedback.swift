@@ -13,6 +13,15 @@ import UIKit
 /// HapticFeedback.error()
 /// HapticFeedback.success()
 /// ```
+///
+/// CI-fix: `UIImpactFeedbackGenerator` / `UINotificationFeedbackGenerator` /
+/// `UISelectionFeedbackGenerator` 在 Swift 6 strict concurrency 下均为
+/// MainActor-isolated（其 `init(style:)` / `prepare()` / `impactOccurred()` /
+/// `notificationOccurred(_:)` / `selectionChanged()` 均标注为 MainActor）。
+/// 将 `HapticFeedback` 整体声明为 `@MainActor`，所有静态方法即可在
+/// MainActor 上下文中调用这些 API。所有调用方均为 SwiftUI 视图
+/// （Button action / 触摸回调），天然 MainActor-isolated，不受影响。
+@MainActor
 enum HapticFeedback {
 
     // MARK: - Impact Feedback

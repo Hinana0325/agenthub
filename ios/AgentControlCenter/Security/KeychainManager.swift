@@ -251,18 +251,22 @@ enum CryptoManager {
         // 第 1 个参数必须是 kCCPBKDF2（值=2），CCPseudoRandomAlgorithm 才用 kCCPRFHmacAlgSHA256
         // 修复前误传 CCPBKDFAlgorithm(kCCPRFHmacAlgSHA256)（值=3，无效），导致 PBKDF2 必然失败，
         // 回退为单次 SHA256(passphrase)，与 Android PBKDF2 派生的密钥不同，AH1 密文跨平台不可解。
+        //
+        // CI-fix: Xcode 16.4 下 CommonCrypto 的 `CCKeyDerivationPBKDF` Swift overlay 要求
+        // `algorithm` 为 `CCPBKDFAlgorithm`（UInt32）、`prf` 为 `CCPseudoRandomAlgorithm`
+        // （UInt32），而 `kCCPBKDF2` / `kCCPRFHmacAlgSHA256` 在 C 头文件中是 Int 字面量枚举值，
+        // 需显式构造为对应类型。同时移除原代码中多余的 `nil, 0` 两个参数（签名只接受 9 个参数，
+        // derivedKey/derivedKeyLen 应直接为 `&derivedKeyBytes` / `32`）。
         let status = passphraseData.withUnsafeBytes { passphraseBytes in
             salt.withUnsafeBytes { saltBytes in
                 CCKeyDerivationPBKDF(
-                    kCCPBKDF2,
-                    passphraseBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                    CCPBKDFAlgorithm(kCCPBKDF2),
+                    passphraseBytes.baseAddress?.assumingMemoryBound(to: CChar.self),
                     passphraseData.count,
                     saltBytes.baseAddress?.assumingMemoryBound(to: UInt8.self),
                     salt.count,
-                    kCCPRFHmacAlgSHA256,
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
                     UInt32(pbkdf2Iterations),
-                    nil,
-                    0,
                     &derivedKeyBytes,
                     32
                 )

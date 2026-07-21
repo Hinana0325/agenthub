@@ -163,7 +163,11 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
             // 仅 cancel Task 无法终止 session.bytes(for:) 的 AsyncSequence，必须显式持有 task。
             do {
                 let (bytes, response) = try await withTaskCancellationHandler {
-                    session.bytes(for: request)
+                    // CI-fix: withTaskCancellationHandler 的 operation 闭包签名为
+                    // `() async throws -> T`，调用 `session.bytes(for:)`（async throws）
+                    // 需显式 `try await`，否则报 "call can throw, but it is not marked
+                    // with 'try'" + "expression is 'async' but is not marked with 'await'"。
+                    try await session.bytes(for: request)
                 } onCancel: {
                     // Task 取消时，invalidateAndCancel 终止 session 上所有 task，
                     // 使 bytes AsyncSequence 抛 URLError(.cancelled) 退出 for await。
@@ -360,15 +364,19 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
     // MARK: - History Management
 
     func clearHistory(sessionId: String) async {
-        historyLock.lock()
-        history.removeValue(forKey: sessionId)
-        historyLock.unlock()
+        // CI-fix: Swift 6 strict concurrency 下 `NSLock.lock()` / `.unlock()` 标记为
+        // `@_unavailableFromAsync`，禁止从 async 上下文直接调用。改用 `NSLocking`
+        // 扩展提供的 `withLock(_:)` —— 它是同步函数，内部调 lock/unlock 不会被
+        // async 检查器拦截，且保证异常路径下也能 unlock（语义等价、行为更安全）。
+        historyLock.withLock {
+            history.removeValue(forKey: sessionId)
+        }
     }
 
     func clearAllHistory() async {
-        historyLock.lock()
-        history.removeAll()
-        historyLock.unlock()
+        historyLock.withLock {
+            history.removeAll()
+        }
     }
 
     private func appendHistory(sessionId: String, role: String, content: String) {

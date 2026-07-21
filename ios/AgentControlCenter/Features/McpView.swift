@@ -209,7 +209,12 @@ private struct AddMcpServerSheet: View {
                     TextField("名称", text: $name)
                     TextField("传输地址 (URL)", text: $transportUrl)
                         .keyboardType(.URL)
-                        .textInputAutocapitalization(.disabled)
+                        // CI-fix: `TextInputAutocapitalization` 仅有 `.never / .words /
+                        // .sentences / .characters` 四个 case，无 `.disabled`。原代码
+                        // `.disabled` 是 `View.disabled(_:)` 修饰符的命名空间，不属于
+                        // `TextInputAutocapitalization`，导致隐式成员表达式解析失败、
+                        // Section 的 ViewBuilder 无法推断泛型 V。
+                        .textInputAutocapitalization(.never)
                     SecureField("API Key (可选)", text: $apiKey)
 
                     Picker("传输类型", selection: $transportType) {
