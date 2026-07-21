@@ -78,14 +78,16 @@ object CertificatePinnerFactory {
      * 构建一个 [CertificatePinner] 实例。
      *
      * @param enabled 是否启用证书锁定。
-     *   - `false`（默认）：返回 [CertificatePinner.EMPTY]，不锁定任何主机。
+     *   - `false`（默认）：返回空 pinner（`Builder().build()`），不锁定任何主机。
      *   - `true`：将 [PUBLIC_API_PINS] 中的条目加入 pinner。
      *   即使 `enabled = true`，若 [PUBLIC_API_PINS] 为空，也不会锁定任何主机。
      * @return 配置好的 [CertificatePinner]。
      */
     fun buildPinner(enabled: Boolean = false): CertificatePinner {
         if (!enabled || PUBLIC_API_PINS.isEmpty()) {
-            return CertificatePinner.EMPTY
+            // CertificatePinner.Builder().build() 创建一个不锁定任何主机的空 pinner，
+            // 跨 OkHttp 3.x/4.x/5.x 版本兼容（EMPTY 常量在部分版本中不可见）。
+            return CertificatePinner.Builder().build()
         }
         val builder = CertificatePinner.Builder()
         PUBLIC_API_PINS.forEach { (host, pins) ->

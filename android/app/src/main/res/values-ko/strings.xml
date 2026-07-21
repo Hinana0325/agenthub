@@ -186,7 +186,7 @@
     <string name="a11y_close_search">검색 닫기</string>
     <string name="a11y_message_from_user">나의 메시지</string>
     <string name="a11y_message_from_agent">Agent의 메시지</string>
-    <string name="a11y_session_item">세션：%s, %d개 메시지</string>
+    <string name="a11y_session_item">세션：%1$s, %2$d개 메시지</string>
     <string name="a11y_pin_session">세션 고정</string>
     <string name="a11y_unpin_session">고정 해제</string>
     <string name="a11y_delete_session">세션 삭제</string>
@@ -367,7 +367,7 @@
 
     <string name="a11y_message_user">내 메시지: %s</string>
     <string name="a11y_message_agent">Agent 메시지: %s</string>
-    <string name="a11y_agent_item">Agent: %s, %s</string>
+    <string name="a11y_agent_item">Agent: %1$s, %2$s</string>
     <string name="a11y_offline_banner">Agent에 연결되지 않음</string>
     <string name="a11y_empty_chat">메시지가 없습니다. 메시지를 보내 대화를 시작하세요.</string>
 
@@ -432,7 +432,7 @@
     <string name="mcp_disconnected">연결 끊김</string>
 
     <!-- Hardware -->
-    <string name="hardware_info_title">하드웨어 정보</string>
+    <string name="hardware_info">하드웨어 정보</string>
     <string name="vendor_qualcomm">Qualcomm</string>
     <string name="vendor_mediatek">MediaTek</string>
     <string name="vendor_samsung">Samsung</string>

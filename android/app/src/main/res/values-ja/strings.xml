@@ -186,7 +186,7 @@
     <string name="a11y_close_search">検索を閉じる</string>
     <string name="a11y_message_from_user">あなたからのメッセージ</string>
     <string name="a11y_message_from_agent">Agent からのメッセージ</string>
-    <string name="a11y_session_item">セッション：%s、%d 件のメッセージ</string>
+    <string name="a11y_session_item">セッション：%1$s、%2$d 件のメッセージ</string>
     <string name="a11y_pin_session">セッションをピン留め</string>
     <string name="a11y_unpin_session">ピン留めを解除</string>
     <string name="a11y_delete_session">セッションを削除</string>
@@ -365,7 +365,7 @@
 
     <string name="a11y_message_user">あなたのメッセージ：%s</string>
     <string name="a11y_message_agent">Agentメッセージ：%s</string>
-    <string name="a11y_agent_item">Agent：%s、%s</string>
+    <string name="a11y_agent_item">Agent：%1$s、%2$s</string>
     <string name="a11y_offline_banner">Agentに接続されていません</string>
     <string name="a11y_empty_chat">メッセージがありません。メッセージを送信して会話を開始してください。</string>
 

@@ -212,7 +212,7 @@
     <string name="a11y_close_search">Close search</string>
     <string name="a11y_message_from_user">Message from you</string>
     <string name="a11y_message_from_agent">Message from agent</string>
-    <string name="a11y_session_item">Session: %s, %d messages</string>
+    <string name="a11y_session_item">Session: %1$s, %2$d messages</string>
     <string name="a11y_pin_session">Pin session</string>
     <string name="a11y_unpin_session">Unpin session</string>
     <string name="a11y_delete_session">Delete session</string>
@@ -227,7 +227,7 @@
 
     <string name="a11y_message_user">Your message: %s</string>
     <string name="a11y_message_agent">Agent message: %s</string>
-    <string name="a11y_agent_item">Agent: %s, %s</string>
+    <string name="a11y_agent_item">Agent: %1$s, %2$s</string>
     <string name="a11y_offline_banner">Not connected to any agent</string>
     <string name="a11y_empty_chat">No messages yet. Send a message to start chatting.</string>
 
