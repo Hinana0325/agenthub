@@ -234,7 +234,12 @@ final class PluginEntity {
     /// 插件名称
     var name: String
     /// 插件描述
-    var description: String
+    ///
+    /// CI-fix: 原属性名 `description` 与 SwiftData `@Model` 宏合成的
+    /// `CustomStringConvertible.description` 冲突，编译报
+    /// "A stored property cannot be named 'description'"。重命名为 `descriptionText`，
+    /// 通过 `@Attribute(name: "description")` 保留 DB 列名以与 Android 端 schema 对齐。
+    @Attribute(name: "description") var descriptionText: String
     /// 图标标识
     var icon: String
     /// 是否启用
@@ -252,7 +257,7 @@ final class PluginEntity {
     init(id: String, name: String, description: String, icon: String) {
         self.id = id
         self.name = name
-        self.description = description
+        self.descriptionText = description
         self.icon = icon
     }
 }

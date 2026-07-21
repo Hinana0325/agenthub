@@ -38,6 +38,7 @@ struct GlassContainer<Content: View>: View {
     }
 
     var body: some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             GlassEffectContainer(spacing: spacing, content: content)
         } else {
@@ -46,5 +47,9 @@ struct GlassContainer<Content: View>: View {
             // 会自动走各自的 ultraThinMaterial 回退分支。
             content()
         }
+        #else
+        // CI-fix: Xcode 16 构建 — GlassEffectContainer 不可用，直接渲染内容
+        content()
+        #endif
     }
 }

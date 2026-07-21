@@ -11,6 +11,12 @@ import SwiftUI
 /// R3: 部署目标回退到 iOS 18 后，所有方法使用 `@ViewBuilder` + `if #available(iOS 26, *)`
 /// 双分支。iOS 26 走真正的 Liquid Glass；iOS 18 回退到 `.ultraThinMaterial`，
 /// 视觉上为普通半透明材质（无 lensing / morph），但保留浮动控件的层次感。
+///
+/// CI-fix: 由于 `Glass` 类型与 `.glassEffect()` / `.glassEffectID()` 方法仅存在于
+/// Xcode 26（Swift 6.2）的 iOS 26 SDK 中，Xcode 16.4 编译时无法解析这些符号。
+/// `if #available(iOS 26, *)` 是运行时检查，不能让旧 SDK 编译器解析新类型。
+/// 因此所有引用 iOS 26 Glass API 的分支均用 `#if compiler(>=6.2)` 做编译时门控，
+/// 在 Xcode 16.4 上直接走 `#else` 回退分支（ultraThinMaterial）。
 extension View {
 
     /// 浮动药丸玻璃 —— 用于状态条 / 录制药丸 / 快捷动作
@@ -19,12 +25,16 @@ extension View {
     /// - Returns: 应用了液态玻璃效果的视图
     @ViewBuilder
     func glassPill() -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant, in: GlassTokens.pillShape)
         } else {
-            // R3: iOS 18 回退 —— ultraThinMaterial 模拟半透明药丸背景
             self.background(.ultraThinMaterial, in: GlassTokens.pillShape)
         }
+        #else
+        // Xcode 16 构建 — Glass API 不可用，使用 ultraThinMaterial 回退
+        self.background(.ultraThinMaterial, in: GlassTokens.pillShape)
+        #endif
     }
 
     /// 圆形浮动按钮玻璃 —— 用于 FAB / 录音按钮 / 发送按钮
@@ -33,12 +43,15 @@ extension View {
     /// - Returns: 应用了液态玻璃效果的视图
     @ViewBuilder
     func glassFloating() -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant, in: GlassTokens.circleShape)
         } else {
-            // R3: iOS 18 回退
             self.background(.ultraThinMaterial, in: GlassTokens.circleShape)
         }
+        #else
+        self.background(.ultraThinMaterial, in: GlassTokens.circleShape)
+        #endif
     }
 
     /// 通用交互式玻璃 —— 用于 CommandPalette / 自定义悬浮控件
@@ -48,12 +61,15 @@ extension View {
     /// - Returns: 应用了液态玻璃效果的视图
     @ViewBuilder
     func glassInteractive<S: Shape>(in shape: S) -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant, in: shape)
         } else {
-            // R3: iOS 18 回退
             self.background(.ultraThinMaterial, in: shape)
         }
+        #else
+        self.background(.ultraThinMaterial, in: shape)
+        #endif
     }
 
     /// 非交互式玻璃 —— 用于纯展示型浮动元素（无按压反馈）
@@ -64,12 +80,15 @@ extension View {
     /// - Returns: 应用了液态玻璃效果的视图
     @ViewBuilder
     func glassStatic<S: Shape>(in shape: S) -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.regularVariant, in: shape)
         } else {
-            // R3: iOS 18 回退
             self.background(.ultraThinMaterial, in: shape)
         }
+        #else
+        self.background(.ultraThinMaterial, in: shape)
+        #endif
     }
 
     /// 带 tint 的交互式玻璃 —— 用于状态条 / 录音按钮 / 发送按钮等需要状态色的浮动控件
@@ -84,12 +103,11 @@ extension View {
     /// - Returns: 应用了 tint 玻璃效果的视图
     @ViewBuilder
     func glassTinted<S: Shape>(_ tint: Color, in shape: S) -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant.tint(tint), in: shape)
         } else {
-            // R4: iOS 18 回退 —— tint 色块叠加在 ultraThinMaterial 之上，
-            // 顺序：content > tint > material，让 tint 与 frosted 背景混合，
-            // 视觉上近似 Liquid Glass 的 tint 效果（无 lensing）
+            // R4: iOS 18 回退 —— tint 色块叠加在 ultraThinMaterial 之上
             self.background {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
@@ -97,6 +115,15 @@ extension View {
                 }
             }
         }
+        #else
+        // Xcode 16 构建 — Glass API 不可用，使用 ultraThinMaterial + tint 回退
+        self.background {
+            ZStack {
+                shape.fill(.ultraThinMaterial)
+                shape.fill(tint)
+            }
+        }
+        #endif
     }
 
     /// 玻璃 morph ID 兼容包装 —— 用于 `GlassEffectContainer` 内子视图间的形变过渡
@@ -111,11 +138,16 @@ extension View {
     /// - Returns: 应用了 morph ID 的视图
     @ViewBuilder
     func glassMorphID<ID: Hashable>(_ id: ID, in namespace: Namespace.ID) -> some View {
+        #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffectID(id, in: namespace)
         } else {
             // R4: iOS 18 回退 —— 无 morph 动画
             self
         }
+        #else
+        // Xcode 16 构建 — glassEffectID 不可用，直接返回原视图
+        self
+        #endif
     }
 }

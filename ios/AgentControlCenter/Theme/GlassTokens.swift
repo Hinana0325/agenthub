@@ -20,6 +20,13 @@ enum GlassTokens {
     /// R3: `Glass` 类型本身为 iOS 26+ API，故该属性需标注 `@available(iOS 26, *)`。
     /// iOS 18 调用点应通过 `if #available(iOS 26, *)` 守卫后再访问此属性，
     /// 回退分支使用 `.ultraThinMaterial` 等普通材质（见 GlassPresets.swift）。
+    ///
+    /// CI-fix: 用 `#if compiler(>=6.2)` 编译时门控。`Glass` 类型仅存在于 Xcode 26
+    /// （Swift 6.2）的 iOS 26 SDK 中；Xcode 16.4 的 iOS 18 SDK 不含此类型，
+    /// `@available(iOS 26, *)` 是运行时检查，无法让编译器在旧 SDK 上解析 `Glass`。
+    /// 在 Xcode 16.4 上这两个属性被编译排除，调用点（GlassPresets.swift）通过
+    /// 同样的 `#if compiler(>=6.2)` 门控走 ultraThinMaterial 回退分支。
+    #if compiler(>=6.2)
     @available(iOS 26, *)
     static let regularVariant: Glass = .regular
 
@@ -28,6 +35,7 @@ enum GlassTokens {
     /// R3: 同上，`Glass` 类型仅 iOS 26+ 可用。
     @available(iOS 26, *)
     static let interactiveVariant: Glass = .regular.interactive()
+    #endif
 
     // MARK: - 间距
 

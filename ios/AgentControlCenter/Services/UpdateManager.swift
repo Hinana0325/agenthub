@@ -58,9 +58,15 @@ final class UpdateManager {
     ///
     /// 优先从 Bundle 读取 CFBundleShortVersionString；
     /// 若读取失败则使用硬编码的兜底值。
-    private lazy var currentVersion: String = {
+    ///
+    /// CI-fix: 原 `private lazy var ... = { ... }()` 与 `@Observable` 宏不兼容 ——
+    /// `@Observable` 宏在转换存储属性时会注入 observation 追踪逻辑，
+    /// `lazy` 存储属性的延迟初始化语义与宏注入冲突，编译报
+    /// "'lazy' cannot be used on a computed property"。改为计算属性，
+    /// `Bundle.main` 读取开销极小（纳秒级），无需缓存。
+    private var currentVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "2.2.0"
-    }()
+    }
 
     // MARK: - 公开接口
 

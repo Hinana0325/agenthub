@@ -8,6 +8,11 @@ final class GlassPresetsTests: XCTestCase {
     // MARK: - GlassTokens 测试
 
     /// 验证默认玻璃 variant 为 .regular
+    ///
+    /// CI-fix: 用 `#if compiler(>=6.2)` 门控 — `GlassTokens.regularVariant` 仅在
+    /// Xcode 26（Swift 6.2）构建时存在。Xcode 16.4 编译时该属性被 `#if` 排除，
+    /// 测试方法也需同步排除，否则会报 "unresolved identifier 'regularVariant'"。
+    #if compiler(>=6.2)
     @available(iOS 26, *)
     func testRegularVariantIsRegularGlass() {
         // Glass.regular 与 GlassTokens.regularVariant 应为同一 variant
@@ -22,6 +27,7 @@ final class GlassPresetsTests: XCTestCase {
         let _ = GlassTokens.interactiveVariant
         XCTAssertTrue(true, "interactiveVariant 应可正常访问")
     }
+    #endif
 
     /// 验证容器间距默认值为 16pt
     func testContainerSpacingDefaultValue() {
