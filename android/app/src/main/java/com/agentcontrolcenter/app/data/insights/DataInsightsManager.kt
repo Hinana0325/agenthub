@@ -3,6 +3,8 @@ package com.agentcontrolcenter.app.data.insights
 import com.agentcontrolcenter.app.core.database.dao.MessageDao
 import com.agentcontrolcenter.app.core.database.dao.SessionDao
 import com.agentcontrolcenter.app.core.database.entity.MessageEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -35,28 +37,34 @@ class DataInsightsManager(
     // 且 SimpleDateFormat 非线程安全，作为共享成员存在并发隐患，已删除。
 
     suspend fun generateInsights(): Insights {
+        // Room suspend DAO 自身已切换到 Dispatchers.IO，无需在此包裹。
         val messages = messageDao.getAllMessages()
         val sessions = sessionDao.getAllSessionsForInsights()
         val messageCount = messageDao.getMessageCount()
         val sessionCount = sessionDao.getSessionCount()
 
-        val userMessages = messages.filter { it.role == "User" }
-        val assistantMessages = messages.filter { it.role == "Assistant" }
+        // F31 修复：后续聚合（filter / groupBy / sort / SimpleDateFormat.parse）属 CPU 密集计算，
+        // 原实现直接在调用方协程（通常为 viewModelScope.launch → Dispatchers.Main.immediate）执行，
+        // 消息量大时会卡主线程。统一包裹 withContext(Dispatchers.Default) 切到默认调度器。
+        return withContext(Dispatchers.Default) {
+            val userMessages = messages.filter { it.role == "User" }
+            val assistantMessages = messages.filter { it.role == "Assistant" }
 
-        return Insights(
-            totalMessages = messageCount,
-            totalSessions = sessionCount,
-            avgResponseTime = calculateAvgResponseTime(messages),
-            mostActiveHour = findMostActiveHour(messages),
-            topAgentType = findTopAgentType(sessions),
-            messagesByDay = groupByDay(messages),
-            messagesByAgent = groupByAgent(sessions),
-            avgMessageLength = calculateAvgLength(messages),
-            longestStreak = calculateLongestStreak(messages),
-            messagesByHour = groupByHour(messages),
-            userMessageCount = userMessages.size.toLong(),
-            assistantMessageCount = assistantMessages.size.toLong()
-        )
+            Insights(
+                totalMessages = messageCount,
+                totalSessions = sessionCount,
+                avgResponseTime = calculateAvgResponseTime(messages),
+                mostActiveHour = findMostActiveHour(messages),
+                topAgentType = findTopAgentType(sessions),
+                messagesByDay = groupByDay(messages),
+                messagesByAgent = groupByAgent(sessions),
+                avgMessageLength = calculateAvgLength(messages),
+                longestStreak = calculateLongestStreak(messages),
+                messagesByHour = groupByHour(messages),
+                userMessageCount = userMessages.size.toLong(),
+                assistantMessageCount = assistantMessages.size.toLong()
+            )
+        }
     }
 
     private fun calculateAvgResponseTime(messages: List<MessageEntity>): Long {

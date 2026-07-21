@@ -89,6 +89,10 @@ final class AppState {
     /// - Note: 值为 `nil` 时表示无待处理请求；非 `nil` 时 ContentView 应立即导航并置回 `nil`
     var pendingShortcutDestination: AppShortcutDestination?
 
+    /// F27: 待打开的会话 ID — 由外部 URL Scheme（`agentcontrolcenter://open-session?sessionId=xxx`）
+    /// 触发，由 `ContentView` 观察并消费（打开会话后清空）。
+    var pendingOpenSessionId: String?
+
     /// 命令面板显示绑定。
     ///
     /// 由 App 级 `.commands { CommandMenu }` 中的 ⌘K 快捷键触发，

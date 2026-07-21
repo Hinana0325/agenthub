@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app.ui.adaptive
 
 import android.app.Activity
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
@@ -28,13 +29,27 @@ import androidx.window.layout.WindowInfoTracker
  * 否则 `context as Activity` 会抛出 ClassCastException。本 App 的
  * [com.agentcontrolcenter.app.MainActivity] 继承自 ComponentActivity，
  * 在 Compose 树中取到的 [LocalContext] 即为 Activity 实例。
+ *
+ * F34 修复：原 `context as Activity` 在 Compose Preview / Service /
+ * Application context / 嵌套 Wrapper 上下文中会抛 ClassCastException
+ * 导致整个 Compose 树崩溃。改为 `as? Activity` 安全转型，转型失败时
+ * 记录 Log.w 并直接 return（保留 initialValue = null），避免崩溃。
  */
 @Composable
 fun currentFoldingFeature(): State<FoldingFeature?> {
     val context = LocalContext.current
     return produceState<FoldingFeature?>(initialValue = null, context) {
+        // F34: 安全转型 — Preview / 非 Activity 上下文返回 null，不抛 CCE
+        val activity = context as? Activity
+        if (activity == null) {
+            Log.w(
+                "FoldableDetector",
+                "currentFoldingFeature: LocalContext 不是 Activity (${context.javaClass.simpleName})，跳过折叠屏检测"
+            )
+            return@produceState
+        }
         val windowInfoTracker = WindowInfoTracker.getOrCreate(context)
-        windowInfoTracker.windowLayoutInfo(context as Activity).collect { layoutInfo ->
+        windowInfoTracker.windowLayoutInfo(activity).collect { layoutInfo ->
             value = layoutInfo.displayFeatures
                 .filterIsInstance<FoldingFeature>()
                 .firstOrNull()

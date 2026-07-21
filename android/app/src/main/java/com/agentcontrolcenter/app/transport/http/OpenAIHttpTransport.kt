@@ -462,7 +462,9 @@ class OpenAIHttpTransport(
         } catch (e: Exception) {
             // Don't break the stream; log and continue so subsequent deltas still emit.
             if (e is CancellationException) throw e
-            Log.w(TAG, "Failed to parse SSE delta: ${e.message}; data=$data")
+            // F32 修复：原 `data=$data` 会把整段 SSE 内容（含用户提问 / Agent 回复 / 可能的鉴权错误）
+            // 全量打到 logcat，存在敏感信息泄露风险。改为截断到 200 字符，仅够排查解析错误。
+            Log.w(TAG, "Failed to parse SSE delta: ${e.message}; data=${sanitizeForLog(data)}")
         }
     }
 
@@ -481,7 +483,8 @@ class OpenAIHttpTransport(
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.w(TAG, "Failed to parse full JSON: ${e.message}; json=$jsonText")
+            // F32 修复：同 emitDelta，截断 jsonText 防止完整回复内容落 logcat。
+            Log.w(TAG, "Failed to parse full JSON: ${e.message}; json=${sanitizeForLog(jsonText)}")
         }
     }
 
@@ -520,5 +523,21 @@ class OpenAIHttpTransport(
          * 超出时按滑动窗口从头部裁剪，避免请求体无限增长导致 token 超限。
          */
         private const val MAX_HISTORY_MESSAGES = 20
+
+        /**
+         * F32: 截断 SSE / JSON 原文到 [MAX_LOG_PAYLOAD] 字符，避免把完整回复内容
+         * （可能含用户隐私 / 鉴权错误细节）打到 logcat。截断后追加 `...` 标记。
+         * 同时把换行替换为 `\n` 字面量，保证单行日志可读。
+         */
+        private const val MAX_LOG_PAYLOAD = 200
+
+        internal fun sanitizeForLog(raw: String): String {
+            val collapsed = raw.replace("\r", "\\r").replace("\n", "\\n")
+            return if (collapsed.length <= MAX_LOG_PAYLOAD) {
+                collapsed
+            } else {
+                collapsed.substring(0, MAX_LOG_PAYLOAD) + "..."
+            }
+        }
     }
 }

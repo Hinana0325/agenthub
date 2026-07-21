@@ -141,22 +141,24 @@ final class DeviceSyncManager {
         syncStatus = .syncing
 
         // 异步导出并通过 MCSession 发送
-        Task {
+        // F30 修复：补 [weak self]，避免 DeviceSyncManager 在同步进行中被释放后仍被 Task 强引用
+        Task { [weak self] in
+            guard let self else { return }
             do {
-                let data = try await getExportData()
+                let data = try await self.getExportData()
 
                 // TODO: 通过 MCSession 发送数据到目标设备
                 // session.sendResource(at: tempFileURL, withName: "acc-sync-\(Date().timeIntervalSince1970)", toPeer: targetPeerID)
 
                 // 更新设备同步时间
-                if let index = discoveredDevices.firstIndex(where: { $0.id == device.id }) {
-                    discoveredDevices[index].lastSyncTime = Date()
+                if let index = self.discoveredDevices.firstIndex(where: { $0.id == device.id }) {
+                    self.discoveredDevices[index].lastSyncTime = Date()
                 }
-                peerDeviceMap[device.id]?.lastSyncTime = Date()
+                self.peerDeviceMap[device.id]?.lastSyncTime = Date()
 
-                syncStatus = .idle
+                self.syncStatus = .idle
             } catch {
-                syncStatus = .error("数据导出失败: \(error.localizedDescription)")
+                self.syncStatus = .error("数据导出失败: \(error.localizedDescription)")
             }
         }
     }

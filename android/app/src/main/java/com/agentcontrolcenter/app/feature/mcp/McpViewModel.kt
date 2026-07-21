@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app.feature.mcp
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.mcp.bridge.McpBridge
@@ -37,6 +38,7 @@ import javax.inject.Inject
  */
 private const val MCP_PREFS_NAME = "mcp_prefs"
 private const val MCP_SERVERS_KEY = "mcp_servers"
+private const val MCP_TAG = "McpViewModel"
 
 /**
  * UI 状态：服务器列表 + 操作消息 + 测试连接中的 serverId 集合。
@@ -163,8 +165,9 @@ class McpViewModel @Inject constructor(
                 mcpBridge.disconnectServer(serverId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                // 忽略断开失败，仍要移除本地配置
+            } catch (e: Exception) {
+                // F33：原静默吞错，用户看不到删除时连接清理失败的原因
+                Log.w(MCP_TAG, "deleteServer($serverId): disconnect failed: ${e.javaClass.simpleName}: ${e.message}")
             }
             val newServers = _uiState.value.servers.filter { it.id != serverId }
             _uiState.update { it.copy(servers = newServers) }
@@ -181,7 +184,9 @@ class McpViewModel @Inject constructor(
                 mcpBridge.connectServer(server)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                // F33：原静默吞错；记录失败原因便于排查连接问题
+                Log.w(MCP_TAG, "connectServer(${server.id}): ${e.javaClass.simpleName}: ${e.message}")
                 false
             }
             _uiState.update {
@@ -199,8 +204,9 @@ class McpViewModel @Inject constructor(
                 mcpBridge.disconnectServer(serverId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
-                // 忽略
+            } catch (e: Exception) {
+                // F33：原 `// 忽略` 静默吞错
+                Log.w(MCP_TAG, "disconnectServer($serverId): ${e.javaClass.simpleName}: ${e.message}")
             }
         }
     }
@@ -215,7 +221,9 @@ class McpViewModel @Inject constructor(
                 mcpBridge.connectServer(server)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                // F33：原静默吞错；测试连接失败时记录原因，便于排查
+                Log.w(MCP_TAG, "testConnection(${server.id}): ${e.javaClass.simpleName}: ${e.message}")
                 false
             }
             _uiState.update {
@@ -270,7 +278,10 @@ class McpViewModel @Inject constructor(
                 )
             } ?: emptyList()
             McpUiState(servers = servers)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // F33：原静默吞错 — 用户感知到的现象是「已保存的 MCP 服务器列表消失」，
+            // 实际是反序列化失败。记录原因便于排查（如版本不兼容 / 数据损坏）。
+            Log.w(MCP_TAG, "loadInitialState: decode failed, fallback to empty: ${e.javaClass.simpleName}: ${e.message}")
             McpUiState()
         }
     }

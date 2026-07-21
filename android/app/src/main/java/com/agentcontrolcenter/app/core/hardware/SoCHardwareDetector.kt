@@ -368,7 +368,10 @@ object SoCHardwareDetector {
         return try {
             val cls = Class.forName("libcore.io.Os")
             val os = cls.getMethod("getDefault").invoke(null)
-            val pageSize = cls.getMethod("sysconf", String::class.java).invoke(os, "SC_PAGE_SIZE") as Long
+            // F34 修复：原 `as Long` 在反射返回 null 或非 Long 类型时会抛 ClassCastException
+            // （虽然被外层 catch 兜底，但语义错误，且某些 OEM 实现可能返回 Int）。
+            // 改为 `as? Long`，转型失败返回 false。
+            val pageSize = cls.getMethod("sysconf", String::class.java).invoke(os, "SC_PAGE_SIZE") as? Long
             pageSize == 16384L
         } catch (_: Exception) { false }
     }

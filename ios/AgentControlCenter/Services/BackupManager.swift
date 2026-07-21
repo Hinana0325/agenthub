@@ -328,12 +328,27 @@ final class BackupManager {
     /// 加密后的文件只能在持有相同 Keychain 密钥的设备上解密，适合作为设备本地
     /// 的安全备份（如上传至用户私有的云存储）。
     ///
+    /// F28 修复：加密备份同样对 `agentConfigs[].apiKey` 做脱敏（与明文分支一致）。
+    /// 原实现直接对 `collectBackupData()` 整体加密，备份包内含明文 apiKey。
+    /// 由于 `restoreBackup` 仅恢复 sessions/messages，不恢复 agentConfigs，
+    /// 备份中的 apiKey 实际从未被使用，脱敏不影响恢复功能，却消除了
+    /// 「加密文件被破解/误分享后 apiKey 明文泄漏」的风险。
+    ///
     /// - Returns: 成功返回导出文件的 `URL`；失败返回 `nil` 并设置 `lastError`
     @discardableResult
     func exportEncrypted() -> URL? {
         lastError = nil
         do {
-            let json = try encodeBackupString(collectBackupData())
+            var backup = collectBackupData()
+            // F28: 对 apiKey 脱敏，与明文分支 exportToFile 保持一致
+            backup.agentConfigs = backup.agentConfigs.map { config in
+                var masked = config
+                if !masked.apiKey.isEmpty {
+                    masked.apiKey = "***"
+                }
+                return masked
+            }
+            let json = try encodeBackupString(backup)
             // KeychainManager.encrypt 输出 `AKS:` 前缀的 Base64 字符串；加密失败返回 nil
             guard let encrypted = KeychainManager.encrypt(json) else {
                 lastError = String(localized: "error.encrypt.failed")

@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.localmodel
 
+import android.util.Log
 import com.agentcontrolcenter.app.core.hardware.SoCOptimizer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -51,6 +52,7 @@ class LocalModelManager {
     val state: StateFlow<LocalModelState> = _state.asStateFlow()
 
     companion object {
+        private const val TAG = "LocalModelManager"
         private const val CONNECT_TIMEOUT = 3000
         private const val READ_TIMEOUT = 30000
         private const val DEFAULT_OLLAMA = "http://localhost:11434"
@@ -73,7 +75,11 @@ class LocalModelManager {
                 allModels.addAll(ollamaModels)
                 discovered.add(LocalProvider.OLLAMA)
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            // F33：原 `catch (_: Exception) { }` 静默吞错，用户看不到为何 Ollama 未被发现。
+            if (e is CancellationException) throw e
+            Log.w(TAG, "Ollama discovery failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
 
         // 尝试连接 LM Studio (OpenAI-compatible API)
         try {
@@ -82,7 +88,10 @@ class LocalModelManager {
                 allModels.addAll(lmStudioModels)
                 discovered.add(LocalProvider.LM_STUDIO)
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w(TAG, "LM Studio discovery failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
 
         // 尝试连接 llama.cpp
         try {
@@ -91,7 +100,10 @@ class LocalModelManager {
                 allModels.addAll(llamaCppModels)
                 discovered.add(LocalProvider.LLAMA_CPP)
             }
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w(TAG, "llama.cpp discovery failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
 
         _state.value = _state.value.copy(
             models = allModels,
@@ -256,7 +268,13 @@ class LocalModelManager {
                             fullResponse.append(content)
                             onDelta(content)
                         }
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        // F33：单 chunk 解析失败不应中断流式响应，但完全静默会让协议错误不可见。
+                        // 用 Log.d（非 WARN）避免每 chunk 一条日志刷屏；排查时用
+                        // `adb shell setprop log.tag.LocalModelManager DEBUG` 开启。
+                        if (e is CancellationException) throw e
+                        Log.d(TAG, "Ollama stream chunk parse failed (len=${current.length}): ${e.javaClass.simpleName}")
+                    }
                 }
             }
             return fullResponse.toString()
@@ -383,7 +401,11 @@ class LocalModelManager {
                             fullResponse.append(content)
                             onDelta(content)
                         }
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        // F33：同 Ollama 分支，单 chunk 解析失败用 Log.d，避免刷屏。
+                        if (e is CancellationException) throw e
+                        Log.d(TAG, "OpenAI-compat stream chunk parse failed (len=${current.length}): ${e.javaClass.simpleName}")
+                    }
                 }
             }
             return fullResponse.toString()

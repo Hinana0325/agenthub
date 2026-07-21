@@ -164,8 +164,18 @@ final class AnalyticsManager {
     /// 顺序为时间正序（最旧到最新）。
     ///
     /// - Returns: 事件列表的不可变快照
-    func getEvents() -> [AnalyticsRecord] {
-        bufferQueue.sync { ringBuffer }
+    ///
+    /// - Note F29 修复：原实现使用 `bufferQueue.sync { ringBuffer }`，由于本类标记
+    ///   `@MainActor`，`getEvents()` 默认在主线程被调用；`bufferQueue` 是 concurrent
+    ///   队列，`sync` 不会死锁但会阻塞主线程等待 barrier 写入完成（高频 `logEvent`
+    ///   时可能造成 UI 卡顿）。改为 `async`，内部用 `bufferQueue.async` 异步读取，
+    ///   通过 `withCheckedContinuation` 把结果回传给调用协程。
+    func getEvents() async -> [AnalyticsRecord] {
+        await withCheckedContinuation { (continuation: CheckedContinuation<[AnalyticsRecord], Never>) in
+            bufferQueue.async {
+                continuation.resume(returning: self.ringBuffer)
+            }
+        }
     }
 
     /// 导出所有事件为 JSON 字符串。
@@ -184,8 +194,11 @@ final class AnalyticsManager {
     /// 导出后不自动清空 ring buffer，如需清空请显式调用 `clearEvents()`。
     ///
     /// - Returns: JSON 格式的事件列表字符串；序列化失败时返回 `"[]"`
-    func exportEvents() -> String {
-        let events = getEvents()
+    ///
+    /// - Note F29：随 `getEvents()` 一并改为 `async`，避免在 `@MainActor` 上下文中
+    ///   阻塞主线程。
+    func exportEvents() async -> String {
+        let events = await getEvents()
         let eventsArray: [[String: Any]] = events.map { event in
             [
                 "timestamp": event.timestamp,

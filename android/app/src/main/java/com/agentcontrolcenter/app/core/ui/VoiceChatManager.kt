@@ -32,6 +32,18 @@ class VoiceChatManager(private val context: Context) {
     private var speechRecognizer: SpeechRecognizer? = null
     private var ttsReady = false
 
+    // F35：自动重试计数 — 原 onError 逻辑在 ERROR_NO_MATCH / ERROR_SPEECH_TIMEOUT 等
+    // 持续触发的错误下会无限 postDelayed(1500ms) 重试，耗电且永不退出。
+    // 改为最多重试 MAX_RETRY 次，达到上限后停止并保留错误状态。
+    private var retryCount: Int = 0
+
+    companion object {
+        /** F35：连续错误自动重试上限 — 达到后停止重试，避免无限循环耗电 */
+        private const val MAX_RETRY = 3
+        /** F35：重试间隔（毫秒） */
+        private const val RETRY_DELAY_MS = 1500L
+    }
+
     data class VoiceState(
         val isVoiceMode: Boolean = false,
         val isSpeaking: Boolean = false,
@@ -94,6 +106,8 @@ class VoiceChatManager(private val context: Context) {
      * 进入语音模式
      */
     fun startVoiceMode() {
+        // F35：用户主动进入语音模式时重置重试计数，避免上轮失败累计影响本轮
+        retryCount = 0
         _state.value = _state.value.copy(isVoiceMode = true, error = null)
         startListening()
     }
@@ -197,19 +211,30 @@ class VoiceChatManager(private val context: Context) {
                             error = errorMsg
                         )
                         // Auto-retry listening in voice mode for certain errors
+                        // F35：原逻辑无重试上限，持续错误下会无限 postDelayed 重试。
+                        // 改为最多 MAX_RETRY 次，达到上限后停止；onResults 成功识别时重置计数。
                         if (_state.value.isVoiceMode &&
                             error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS &&
                             error != SpeechRecognizer.ERROR_CLIENT
                         ) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                if (_state.value.isVoiceMode) startListening()
-                            }, 1500)
+                            retryCount++
+                            if (retryCount <= MAX_RETRY) {
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    if (_state.value.isVoiceMode) startListening()
+                                }, RETRY_DELAY_MS)
+                            } else {
+                                _state.value = _state.value.copy(
+                                    error = "$errorMsg (已达重试上限 $MAX_RETRY 次，已停止自动重试)"
+                                )
+                            }
                         }
                     }
 
                     override fun onResults(results: Bundle?) {
                         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val text = matches?.firstOrNull() ?: ""
+                        // F35：成功识别后重置重试计数
+                        retryCount = 0
                         _state.value = _state.value.copy(
                             isListening = false,
                             recognizedText = text,

@@ -49,6 +49,14 @@ targets:
       path: AgentControlCenter/Info.plist
       properties:
         SENTRY_DSN: $(SENTRY_DSN)
+        # F27 修复：声明 URL Scheme，让系统把 agentcontrolcenter:// 链接
+        # 路由到本 App。原工程仅在 WidgetConstants.swift 定义了 urlScheme 常量，
+        # 但 Info.plist 未声明 CFBundleURLTypes，导致从 Widget / 外部应用
+        # 点击 agentcontrolcenter://open-session?sessionId=xxx 时系统不会唤起本 App。
+        CFBundleURLTypes:
+          - CFBundleURLName: com.agentcontrolcenter.app.ios
+            CFBundleURLSchemes:
+              - agentcontrolcenter
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.agentcontrolcenter.app.ios

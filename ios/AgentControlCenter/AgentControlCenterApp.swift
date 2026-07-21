@@ -182,6 +182,38 @@ struct AgentControlCenterApp: App {
         }
     }
 
+    /// F27: 处理外部 URL Scheme 入口。
+    ///
+    /// 白名单策略：仅放行 `agentcontrolcenter://open-session?sessionId=xxx`。
+    /// - scheme 必须为 `agentcontrolcenter`（与 Info.plist CFBundleURLSchemes 一致）
+    /// - host 必须为 `open-session`（与 WidgetConstants.hostOpenSession 一致）
+    /// - sessionId query 参数必须存在且非空
+    /// - 其余任何 scheme / host 组合一律忽略（记 warning 日志，便于排查异常入口）
+    ///
+    /// sessionId 经 `ChatRepository.sanitizeSessionId` 校验后再使用（虽然此处的 sessionId
+    /// 仅用于会话查找而非文件路径，仍做白名单校验避免注入风险）。
+    private func handleIncomingURL(_ url: URL) {
+        // 1. scheme 白名单
+        guard url.scheme?.lowercased() == WidgetConstants.urlScheme else {
+            Self.logger.warning("onOpenURL: 拒绝非白名单 scheme \(url.scheme ?? "nil")")
+            return
+        }
+        // 2. host 白名单
+        guard let host = url.host, host == WidgetConstants.hostOpenSession else {
+            Self.logger.warning("onOpenURL: 拒绝非白名单 host \(url.host ?? "nil")")
+            return
+        }
+        // 3. 提取 sessionId query 参数
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let sessionId = components.queryItems?.first(where: { $0.name == WidgetConstants.querySessionId })?.value,
+              !sessionId.isEmpty else {
+            Self.logger.warning("onOpenURL: open-session 缺少 sessionId 参数")
+            return
+        }
+        // 4. 写入 AppState，由 ContentView 观察并消费
+        appState.pendingOpenSessionId = sessionId
+    }
+
     /// 应用级日志器（subsystem 与 bundleId 一致，便于 Console.app 筛选）
     private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "App")
 
@@ -231,6 +263,15 @@ struct AgentControlCenterApp: App {
                 .environment(appState)
                 // 注入 SwiftData ModelContainer，子视图可通过 @Query / @Environment(\.modelContext) 使用
                 .modelContainer(appState.dataController.container)
+                // F27 修复：处理外部 URL Scheme 入口（agentcontrolcenter://）。
+                // 原工程在 WidgetConstants.swift 定义了 urlScheme 常量，但全工程无任何
+                // onOpenURL handler，且 Info.plist 未声明 CFBundleURLTypes，导致 Widget
+                // 与外部应用点击 agentcontrolcenter:// 链接时系统不会唤起 App 或唤起后无响应。
+                // 此处按 host 白名单严格校验，仅放行已声明的 open-session，其余一律忽略，
+                // 防止未来新增 host 时被遗忘校验。
+                .onOpenURL { url in
+                    handleIncomingURL(url)
+                }
         }
         // HIG：键盘快捷键应通过 .commands { CommandMenu } 暴露，
         // 系统菜单栏会显示等价键，VoiceOver 也可访问，

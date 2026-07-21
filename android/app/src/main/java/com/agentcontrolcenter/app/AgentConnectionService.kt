@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
 import com.agentcontrolcenter.app.data.notification.SmartNotificationManager
@@ -19,6 +20,7 @@ import com.agentcontrolcenter.app.core.datastore.SettingsDataStore
 import com.agentcontrolcenter.app.transport.ConnectionRepository
 import com.agentcontrolcenter.app.widget.WidgetDataProvider
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -110,7 +112,11 @@ class AgentConnectionService : Service() {
         // 可能仍在使用连接。
         connectionMonitorJob?.cancel()
         serviceScope.cancel()
-        try { unregisterReceiver(replyReceiver) } catch (_: Exception) {}
+        // F33：unregisterReceiver 在 receiver 未注册或已注销时会抛 IllegalArgumentException；
+        // onDestroy 中静默吞掉即可，但仍记录原因便于排查生命周期问题。
+        try { unregisterReceiver(replyReceiver) } catch (e: Exception) {
+            Log.w(TAG, "onDestroy: unregisterReceiver failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -164,6 +170,10 @@ class AgentConnectionService : Service() {
                 // 监控连接状态：同步到 Widget 并在断开时带退避重连
                 connectionMonitorJob?.cancel()
                 connectionMonitorJob = serviceScope.launch {
+                    // F35：原固定 5s 退避，长时间网络故障下会每 5s 重试一次（43200 次/天），
+                    // 浪费电量与服务端配额。改为指数退避：5s → 10s → 20s → 40s → 60s（封顶），
+                    // 连接成功后重置为初始值。
+                    var backoffMs = RECONNECT_INITIAL_BACKOFF_MS
                     connectionRepository.connectionState.collect { state ->
                         WidgetDataProvider.updateConnectionState(
                             this@AgentConnectionService,
@@ -172,17 +182,29 @@ class AgentConnectionService : Service() {
                         )
                         if (!state.isConnected) {
                             // 退避后尝试重连，避免频繁重连消耗资源
-                            delay(RECONNECT_BACKOFF_MS)
+                            delay(backoffMs)
                             try {
                                 connectionRepository.connect(savedConfig, e2eKey = e2eKey)
-                            } catch (_: Exception) {
-                                // 重连失败，等待下一次状态变化触发重试
+                                // 连接成功后重置退避（state.isConnected 切回 true 后下一轮 collect 会进入此分支外的路径）
+                                backoffMs = RECONNECT_INITIAL_BACKOFF_MS
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // F33：原静默吞错 — 重连失败应有日志，便于排查网络/鉴权问题。
+                                // 注意：此 catch 不应吞 CancellationException，否则会破坏协程取消语义。
+                                Log.w(TAG, "reconnect failed (backoff=${backoffMs}ms): ${e.javaClass.simpleName}: ${e.message}")
+                                // F35：失败后指数增长退避，封顶 RECONNECT_MAX_BACKOFF_MS
+                                backoffMs = (backoffMs * 2).coerceAtMost(RECONNECT_MAX_BACKOFF_MS)
                             }
                         }
                     }
                 }
-            } catch (_: Exception) {
-                // 静默失败；START_STICKY 会在系统重建后再次触发 onStartCommand
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // F33：原 `// 静默失败` — START_STICKY 会在系统重建后再次触发 onStartCommand，
+                // 但首次启动失败的原因仍应记录，便于诊断为什么前台服务连不上 Agent。
+                Log.w(TAG, "startConnectionMaintenance failed: ${e.javaClass.simpleName}: ${e.message}")
             }
         }
     }
@@ -269,6 +291,7 @@ class AgentConnectionService : Service() {
     }
 
     companion object {
+        private const val TAG = "AgentConnectionService"
         private const val CHANNEL_ID = "agent_connection"
         private const val NOTIFICATION_ID = 2001
         private const val REPLY_KEY = "reply_key"
@@ -276,8 +299,17 @@ class AgentConnectionService : Service() {
         private const val ACTION_REPLY = "com.agentcontrolcenter.app.ACTION_REPLY"
         const val EXTRA_REPLY_TEXT = "reply_text"
 
-        /** Critical 4：断线重连退避间隔（毫秒） */
-        private const val RECONNECT_BACKOFF_MS = 5000L
+        /**
+         * Critical 4 / F35：断线重连退避参数（毫秒）
+         *
+         * F35 修复：原固定 5s 退避改为指数退避。
+         * - 初始：5s
+         * - 增长：每次失败 ×2
+         * - 封顶：60s
+         * - 连接成功后重置为初始值
+         */
+        private const val RECONNECT_INITIAL_BACKOFF_MS = 5_000L
+        private const val RECONNECT_MAX_BACKOFF_MS = 60_000L
 
         /** 启动服务 */
         fun start(ctx: Context, agentName: String) {
