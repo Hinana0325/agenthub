@@ -6,24 +6,21 @@ import XCTest
 @MainActor
 final class TaskManagerTests: XCTestCase {
 
-    private var manager: TaskManager!
-
     // CI-fix: Swift 6 下 `XCTestCase.setUp()` 在父类中是 nonisolated 声明，
-    // override 不能收紧 isolation（"has different actor isolation from nonisolated
-    // overridden declaration"）。XCTest 实际在 main thread 执行 setUp/tearDown，
-    // 用 `MainActor.assumeIsolated { }` 显式断言主线程上下文以访问 @MainActor 属性。
-    override func setUp() {
-        super.setUp()
-        MainActor.assumeIsolated {
-            manager = TaskManager()
-        }
+    // override 不能收紧 isolation，MainActor.assumeIsolated 闭包是 @Sendable
+    // 不能捕获非 Sendable 的 self。把 manager 标 `nonisolated(unsafe)` 让
+    // nonisolated 的 setUp/tearDown 能直接访问；改用 `setUp() async throws`
+    // + `MainActor.run` 调用 MainActor 隔离的 `TaskManager()` 初始化器。
+    nonisolated(unsafe) private var manager: TaskManager!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        manager = await MainActor.run { TaskManager() }
     }
 
-    override func tearDown() {
-        MainActor.assumeIsolated {
-            manager = nil
-        }
-        super.tearDown()
+    override func tearDown() async throws {
+        manager = nil
+        try await super.tearDown()
     }
 
     // MARK: - 提交任务
