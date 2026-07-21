@@ -294,9 +294,15 @@ struct VoiceChatView: View {
 
         // 启动计时器
         durationTimer?.invalidate()
+        // CI-fix: `Timer.scheduledTimer` 的回调闭包为 `@Sendable`，无法直接访问
+        // MainActor-isolated 的 @State 属性 `recordingStartedAt` / `currentDuration`。
+        // 通过 `Task { @MainActor in ... }` 跳回 MainActor 后再访问。
+        // (Timer 默认调度在 main RunLoop，回调本就在主线程，但编译器需要显式隔离标注)
         durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            if let start = recordingStartedAt {
-                currentDuration = Date().timeIntervalSince(start)
+            Task { @MainActor in
+                if let start = recordingStartedAt {
+                    currentDuration = Date().timeIntervalSince(start)
+                }
             }
         }
     }
@@ -448,7 +454,9 @@ private struct VoiceMessageRow: View {
                         .frame(width: barWidth, height: height)
                 }
             }
-            .frame(maxWidth: .infinity, height: proxy.size.height, alignment: .center)
+            // CI-fix: `.frame(maxWidth:height:alignment:)` 不存在 —— `maxWidth`
+            // 必须配 `maxHeight`（或不用 max 系列）。改为 `maxHeight:`。
+            .frame(maxWidth: .infinity, maxHeight: proxy.size.height, alignment: .center)
         }
         .frame(height: 32)
     }

@@ -327,9 +327,14 @@ final class WorkflowEngine {
                             break
                         }
                     }
-                } catch is FlowAbortError {
-                    // FlowAbortError 是正常的中断信号，不需要向上传播
-                    // collected 中已累积所有文本片段
+                } catch {
+                    // CI-fix: `group.addTask` 要求闭包为 `() async -> Element`
+                    // (非 throwing)。原 `catch is FlowAbortError` 仅捕获
+                    // FlowAbortError，编译器无法证明闭包不抛出其他错误，故
+                    // 闭包被推断为 throwing。改为 catch-all 后，所有 throw 均
+                    // 被处理，闭包恢复 non-throwing。
+                    // FlowAbortError 是正常的中断信号，不需要向上传播；
+                    // collected 中已累积所有文本片段。
                 }
                 return .completed(collected)
             }
@@ -566,12 +571,16 @@ enum WorkflowTemplates {
                     agentType: .openCode,
                     prompt: "请审查以下代码，指出潜在问题、Bug 和改进建议，给出结构化的分析报告:\n\n{input}"
                 ),
+                // CI-fix: WorkflowNode 成员初始化器参数顺序与 struct 字段声明顺序一致
+                // (id/type/label/agentType/prompt/transformType/...)，`prompt` 必须在
+                // `transformType` 之前。原代码顺序反了，触发 "argument 'prompt' must
+                // precede argument 'transformType'"。
                 WorkflowNode(
                     id: "extract",
                     type: .transform,
                     label: "提取要点",
-                    transformType: .extract,
-                    prompt: "(.+)"
+                    prompt: "(.+)",
+                    transformType: .extract
                 ),
                 WorkflowNode(
                     id: "output",

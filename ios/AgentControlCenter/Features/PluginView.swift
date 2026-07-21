@@ -241,7 +241,10 @@ private struct AddPluginForm: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("添加") {
-                    let action: PluginAction
+                    // CI-fix: `Plugin.action` 字段类型为 `PluginAction?`（见
+                    // Models/Plugin.swift:81），允许为 nil。原代码 `let action: PluginAction`
+                    // 为非可选，无法在 `.none` 分支赋 nil。改为 `PluginAction?` 即可。
+                    let action: PluginAction?
                     switch actionType {
                     case .http:
                         action = .httpCall(.init(url: "https://example.com/api"))

@@ -7,7 +7,10 @@ import AVFoundation
 @Observable
 final class VoiceInputManager {
 
-    enum VoiceState {
+    // CI-fix: 添加 `Equatable` 协议。`state == .listening` 等比较需要 Equatable，
+    // 但 `case error(String)` 含关联值，Swift 不会自动合成 Equatable。
+    // String 是 Equatable，故显式声明后编译器可合成。
+    enum VoiceState: Equatable {
         case idle        // 未开始
         case listening   // 正在监听
         case processing  // 识别中
@@ -33,7 +36,14 @@ final class VoiceInputManager {
     /// 开始语音识别
     func startListening() async {
         // 1. 检查权限
-        let speechAuth = await SFSpeechRecognizer.requestAuthorization()
+        // CI-fix: Xcode 16.4 / Swift 6 下 `SFSpeechRecognizer.requestAuthorization()`
+        // 的隐式 async 桥接不可用（"missing argument for parameter #1 in call"），
+        // 改用显式 `withCheckedContinuation` 包装 completion handler。
+        let speechAuth: SFSpeechRecognizerAuthorizationStatus = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
         let micAuth = await AVCaptureDevice.requestAccess(for: .audio)
         guard speechAuth == .authorized, micAuth else {
             state = .error("麦克风或语音识别权限未授权")

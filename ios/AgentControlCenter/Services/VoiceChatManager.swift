@@ -84,7 +84,14 @@ final class VoiceChatManager {
     }
 
     deinit {
-        stopAll()
+        // CI-fix: `deinit` 隐式 nonisolated，无法直接调用 MainActor-isolated 的
+        // `stopAll()`。VoiceChatManager 是 @MainActor 类，所有引用通常来自
+        // MainActor，deinit 也通常在 MainActor 触发。stopAll 仅调用
+        // .stop() / .invalidate() / deactivateAudioSession（线程安全），
+        // 使用 `MainActor.assumeIsolated` 同步桥接即可。
+        MainActor.assumeIsolated {
+            stopAll()
+        }
     }
 
     // MARK: - AudioSession 配置
