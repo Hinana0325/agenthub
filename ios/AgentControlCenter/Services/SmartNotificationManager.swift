@@ -18,6 +18,12 @@ final class SmartNotificationManager {
     // MARK: - 通知配置
 
     /// 用户可配置的通知过滤规则
+    ///
+    /// 修复 6: 原 `NotificationConfig` 是纯内存结构，`config` 字段只在 Manager 实例化时
+    /// 用默认值初始化一次。SettingsView 的 `notifyHighPriority/Medium/Low` 三个 Toggle
+    /// 写到 UserDefaults 后没有任何代码读取，形成"死 UI"。
+    /// 修正：在 `config` 的 `didSet` 中持久化到 UserDefaults，初始化时从 UserDefaults
+    /// 读取。SettingsView 直接绑定到 `appState.notificationManager.config` 的字段。
     struct NotificationConfig {
         /// 是否启用高优先级通知（默认开启）
         var highPriorityEnabled: Bool = true
@@ -31,12 +37,55 @@ final class SmartNotificationManager {
         var quietHoursStart: Int = 23
         /// 免打扰结束时间（小时，24 小时制，默认 8 点）
         var quietHoursEnd: Int = 8
+
+        // 修复 6: UserDefaults 键常量
+        static let highPriorityKey = "notifyHighPriority"
+        static let mediumPriorityKey = "notifyMediumPriority"
+        static let lowPriorityKey = "notifyLowPriority"
+
+        /// 从 UserDefaults 读取并构建配置（缺失键时使用结构体默认值）
+        static func loadFromUserDefaults() -> NotificationConfig {
+            var config = NotificationConfig()
+            let defaults = UserDefaults.standard
+            // 用 `object(forKey:)` 区分"未设置"与"显式 false"
+            if defaults.object(forKey: highPriorityKey) != nil {
+                config.highPriorityEnabled = defaults.bool(forKey: highPriorityKey)
+            }
+            if defaults.object(forKey: mediumPriorityKey) != nil {
+                config.mediumPriorityEnabled = defaults.bool(forKey: mediumPriorityKey)
+            }
+            if defaults.object(forKey: lowPriorityKey) != nil {
+                config.lowPriorityEnabled = defaults.bool(forKey: lowPriorityKey)
+            }
+            return config
+        }
+
+        /// 将优先级开关写入 UserDefaults（免打扰时段保留为内存配置，UI 未暴露）
+        func savePriorityToUserDefaults() {
+            let defaults = UserDefaults.standard
+            defaults.set(highPriorityEnabled, forKey: Self.highPriorityKey)
+            defaults.set(mediumPriorityEnabled, forKey: Self.mediumPriorityKey)
+            defaults.set(lowPriorityEnabled, forKey: Self.lowPriorityKey)
+        }
     }
 
     // MARK: - 属性
 
     /// 当前通知配置
-    var config: NotificationConfig = NotificationConfig()
+    ///
+    /// 修复 6: 原 `var config = NotificationConfig()` 是纯内存默认值，SettingsView
+    /// 的 `notifyHighPriority/Medium/Low` 三个 Toggle 写到 UserDefaults 后无人读取。
+    /// 修正：初始化时从 UserDefaults 读取，并提供 `updateConfig(_:)` 方法在修改后
+    /// 持久化。不能用 `didSet` — `@Observable` 宏会把存储属性转为计算属性，
+    /// `didSet` 不会触发（参考 Apple Forums thread/731113）。
+    var config: NotificationConfig = NotificationConfig.loadFromUserDefaults()
+
+    /// 更新通知配置并持久化到 UserDefaults。
+    /// SettingsView 通过此方法修改 config，避免直接赋值触发 didSet（不会触发）。
+    func updateConfig(_ update: (inout NotificationConfig) -> Void) {
+        update(&config)
+        config.savePriorityToUserDefaults()
+    }
 
     // MARK: - 正则规则
     //

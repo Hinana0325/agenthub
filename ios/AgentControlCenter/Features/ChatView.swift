@@ -143,6 +143,15 @@ struct ChatView: View {
         .onChange(of: fontSize) { _, newValue in
             newValue.saveToUserDefaults()
         }
+        // 修复 5: 监听 SettingsView 广播的 fontSize 变更通知。
+        // 已打开的 ChatView 不会自动响应 UserDefaults 外部写入（@State 仅初始化一次），
+        // 这里监听通知后重新 loadFromUserDefaults 刷新 @State，再触发 .environment 注入。
+        .onReceive(NotificationCenter.default.publisher(for: FontSize.didChangeNotification)) { _ in
+            let newFont = FontSize.loadFromUserDefaults()
+            if newFont != fontSize {
+                fontSize = newFont
+            }
+        }
         .navigationTitle(sessionTitle)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showHelpSheet) {

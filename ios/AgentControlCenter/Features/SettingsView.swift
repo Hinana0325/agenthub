@@ -1,4 +1,5 @@
 import SwiftUI
+import CryptoKit
 
 /// 设置视图
 /// 包含 Agent 默认配置、字体大小、外观主题、端到端加密、数据管理、智能通知、关于、危险操作等分组
@@ -36,17 +37,25 @@ struct SettingsView: View {
     // 用 @State 持有内存副本，onChange 时写回 Keychain。
     @State private var passphrase: String = ""
     @State private var showPassphrase: Bool = false
+    // 修复 1: .task 从 Keychain 加载 passphrase 后会触发 .onChange(of: passphrase)，
+    // 导致每次进入设置页都把刚读出来的值再写回 Keychain 一次（无意义 I/O）。
+    // 用 isPassphraseLoaded 标记「初始加载完成」，仅在用户真正修改时才写回。
+    @State private var isPassphraseLoaded: Bool = false
+    // 修复 7: TextField/SecureField 每输入一个字符就触发 .onChange → Keychain 写入。
+    // Keychain SecItemUpdate 是系统调用，开销大；输入 20 字符 = 20 次写入。
+    // 用 debounce Task 在用户停止输入 0.6s 后才写回。
+    @State private var passphraseSaveTask: Task<Void, Never>?
 
     // ============ 数据管理 ============
-    @State private var exportedJSON: URL?
     @State private var isImporting: Bool = false
     @State private var importAlertMessage: String?
     @State private var showImportAlert: Bool = false
 
     // ============ 智能通知 ============
-    @AppStorage("notifyHighPriority") private var notifyHighPriority: Bool = true
-    @AppStorage("notifyMediumPriority") private var notifyMediumPriority: Bool = true
-    @AppStorage("notifyLowPriority") private var notifyLowPriority: Bool = false
+    // 修复 6: 移除三个 @AppStorage("notify*") — 改为直接绑定到
+    // appState.notificationManager.config 的对应字段，didSet 自动持久化。
+    // 保留原 UserDefaults 键名（"notifyHighPriority" / "notifyMediumPriority" /
+    // "notifyLowPriority"），由 SmartNotificationManager.NotificationConfig 管理。
 
     // ============ 危险操作 ============
     @State private var showingClearConfirm = false
@@ -97,15 +106,27 @@ struct SettingsView: View {
             // SW-M2: 使用 .task 替代 .onAppear — Keychain 读取虽是同步 API，
             // 但 .task 由 SwiftUI 管理生命周期，统一所有视图数据加载入口
             .task {
-                // 从 Keychain 加载 E2E passphrase 到内存 @State
-                passphrase = KeychainManager.loadPassphrase()
+                // 从 Keychain 加载 E2E passphrase 到内存 @State。
+                // 修复 1: 设置 isPassphraseLoaded = true 后再赋值，让 .onChange
+                // 能区分「初始加载」与「用户修改」，避免无意义写回 Keychain。
+                let loaded = KeychainManager.loadPassphrase()
+                isPassphraseLoaded = true
+                passphrase = loaded
             }
             .onChange(of: passphrase) { _, newValue in
-                // 写回 Keychain。空串视为清除。
-                if newValue.isEmpty {
-                    KeychainManager.clearPassphrase()
-                } else {
-                    KeychainManager.savePassphrase(newValue)
+                // 修复 1: 跳过 .task 初始加载触发的 onChange
+                guard isPassphraseLoaded else { return }
+                // 修复 7: debounce 0.6s 后写回 Keychain，避免每个按键都触发
+                // SecItemUpdate 系统调用
+                passphraseSaveTask?.cancel()
+                passphraseSaveTask = Task {
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    if Task.isCancelled { return }
+                    if newValue.isEmpty {
+                        KeychainManager.clearPassphrase()
+                    } else {
+                        KeychainManager.savePassphrase(newValue)
+                    }
                 }
             }
             // CI-fix: fontSize 改为手动 UserDefaults 桥接（替代 @AppStorage）
@@ -117,8 +138,12 @@ struct SettingsView: View {
                 if showKeyCopiedToast {
                     ToastView(message: "已复制到剪贴板")
                         .animation(.easeInOut(duration: 0.3), value: showKeyCopiedToast)
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        // 修复 10: 原 .onAppear + DispatchQueue.main.asyncAfter 在连续点击
+                        // "显示密钥"时，第一次的计时器仍会触发提前把 toast 置 false。
+                        // 改用 .task — SwiftUI 会在 toast 视图重建时自动取消上一次 task。
+                        .task {
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            if !Task.isCancelled {
                                 withAnimation { showKeyCopiedToast = false }
                             }
                         }
@@ -188,9 +213,30 @@ struct SettingsView: View {
     /// 4. 端到端加密（增强）
     private var encryptionSection: some View {
         Section("端到端加密") {
+            // 修复 3: 关闭加密时同步清空 passphrase + Keychain，避免重启后旧密钥仍可启用加密。
+            // 启用前若没有 passphrase，自动生成一个，避免「已启用但无密钥」的失效状态。
             Toggle("启用加密", isOn: $encryptionEnabled)
+                .onChange(of: encryptionEnabled) { _, isOn in
+                    if isOn {
+                        if passphrase.isEmpty {
+                            passphrase = Self.generateRandomPassphrase()
+                        }
+                    } else {
+                        // 关闭加密：清空内存 + Keychain + 取消待写回任务
+                        passphraseSaveTask?.cancel()
+                        passphrase = ""
+                        KeychainManager.clearPassphrase()
+                    }
+                }
 
             if encryptionEnabled {
+                // 密码短语为空时提示用户先设置/生成密钥
+                if passphrase.isEmpty {
+                    Text("尚未设置密码短语，请点击「重新生成」或「导入」")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 // 密码短语输入
                 HStack {
                     if showPassphrase {
@@ -224,7 +270,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    // 重新生成 → 清空旧值
+                    // 重新生成 → 生成新的随机密钥（修复 2: 原 implementation 只清空）
                     Button {
                         regeneratePassphrase()
                     } label: {
@@ -282,9 +328,28 @@ struct SettingsView: View {
     /// 6. 智能通知
     private var smartNotificationsSection: some View {
         Section("智能通知") {
-            Toggle("高优先级通知", isOn: $notifyHighPriority)
-            Toggle("中优先级通知", isOn: $notifyMediumPriority)
-            Toggle("低优先级通知", isOn: $notifyLowPriority)
+            // 修复 6: 原 Toggle 绑定到本地 @AppStorage("notifyHighPriority") 等，
+            // 但没有任何代码读取这三个键（SmartNotificationManager 用独立内存 config），
+            // 形成"死 UI"。改为绑定到 Manager 的 config 字段，通过 updateConfig 持久化。
+            // 注：不能用 didSet（@Observable 宏把存储属性转为计算属性，didSet 不触发）
+            Toggle("高优先级通知", isOn: Binding(
+                get: { appState.notificationManager.config.highPriorityEnabled },
+                set: { newValue in
+                    appState.notificationManager.updateConfig { $0.highPriorityEnabled = newValue }
+                }
+            ))
+            Toggle("中优先级通知", isOn: Binding(
+                get: { appState.notificationManager.config.mediumPriorityEnabled },
+                set: { newValue in
+                    appState.notificationManager.updateConfig { $0.mediumPriorityEnabled = newValue }
+                }
+            ))
+            Toggle("低优先级通知", isOn: Binding(
+                get: { appState.notificationManager.config.lowPriorityEnabled },
+                set: { newValue in
+                    appState.notificationManager.updateConfig { $0.lowPriorityEnabled = newValue }
+                }
+            ))
         }
     }
 
@@ -294,8 +359,8 @@ struct SettingsView: View {
             HStack {
                 Text("应用版本")
                 Spacer()
-                // 动态读取 Bundle 版本号(P2-12),回退到 "2.2.0"
-                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.2.0")
+                // 修复 8: 回退值 "2.2.0" 与当前 4.6.1 严重不符，改为 "未知"
+                Text(appVersion)
                     .foregroundStyle(.secondary)
             }
             HStack {
@@ -307,10 +372,21 @@ struct SettingsView: View {
             HStack {
                 Text("构建号")
                 Spacer()
-                Text("2")
+                // 修复 8: 原硬编码 "2"，改为动态读取 CFBundleVersion
+                Text(buildNumber)
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// 应用版本（CFBundleShortVersionString），缺失时回退到 "未知"
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "未知"
+    }
+
+    /// 构建号（CFBundleVersion），缺失时回退到 "未知"
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "未知"
     }
 
     /// 8. 危险操作
@@ -348,9 +424,18 @@ struct SettingsView: View {
         showKeyCopiedToast = true
     }
 
-    /// 重新生成密码短语（清空旧值，用户需输入新值）
+    /// 重新生成密码短语（生成 32 字节随机密钥，base64 编码后赋值给 passphrase）。
+    /// 修复 2: 原 implementation 只清空，与按钮名「重新生成」语义不符。
+    /// 使用 CryptoKit 的 SymmetricKey 生成密码学安全随机字节，base64 编码便于复制/粘贴。
     private func regeneratePassphrase() {
-        passphrase = ""
+        passphrase = Self.generateRandomPassphrase()
+    }
+
+    /// 生成 32 字节随机密钥的 base64 字符串。
+    /// 抽取为静态方法供 Toggle 启用加密时复用（passphrase 为空时自动生成）。
+    private static func generateRandomPassphrase() -> String {
+        let key = SymmetricKey(size: .bits256)
+        return key.withUnsafeBytes { Data($0).base64EncodedString() }
     }
 
     /// 从剪贴板导入密码短语。仅接受长度 ≥ 8 的非空字符串，避免误把无关内容设为密钥。
@@ -406,7 +491,7 @@ struct SettingsView: View {
             let tempDir = FileManager.default.temporaryDirectory
             let fileURL = tempDir.appendingPathComponent("agenthub_chat_export_\(Int(Date().timeIntervalSince1970)).json")
             try data.write(to: fileURL)
-            exportedJSON = fileURL
+            // 修复 9: 移除 exportedJSON 死状态（从未被读取）
             // 使用 UIActivityViewController 分享
             shareFile(url: fileURL)
         } catch {
@@ -512,8 +597,16 @@ struct SettingsView: View {
 
     // MARK: - 清除数据
 
-    /// 清除所有持久化数据:会话(含消息)/ 任务 / Agent 配置,并同步清理各 Manager 内存状态
+    /// 清除所有持久化数据:会话(含消息)/ 任务 / Agent 配置,并同步清理各 Manager 内存状态、
+    /// UserDefaults 偏好、Keychain E2E 密钥。
+    ///
+    /// 修复 4: 原 implementation 存在三个问题：
+    /// 1. 注释说"Agent 配置保留"，但代码实际调用了 deleteAgentConfig，注释与行为不符。
+    /// 2. 未清理 UserDefaults（defaultModel/temperature/theme/通知开关等），用户期望"清除所有数据"包括偏好。
+    /// 3. 未清理 Keychain 中的 E2E passphrase。
+    /// 修正：注释与行为对齐（Agent 配置一并清除），并补齐 UserDefaults + Keychain 清理。
     private func clearAllData() {
+        // 1. 持久化数据 — SwiftData
         for session in appState.dataController.fetchSessions() {
             appState.dataController.deleteMessages(sessionId: session.id)
             appState.dataController.deleteSession(session.id)
@@ -525,10 +618,8 @@ struct SettingsView: View {
             appState.dataController.deleteAgentConfig(config.id)
         }
 
-        // 清理内存状态:持久化数据已清空,各 Manager 的内存缓存也需同步,
-        // 否则 UI 仍会展示已删除的会话/任务,重启后才会刷新。
-        // 说明:各 Manager 的集合均为 private(set),无法直接 removeAll,
-        // 改用遍历调用对应的删除方法;Agent 配置保留(注释:注意保留 Agent 配置)。
+        // 2. 内存缓存 — 各 Manager 的集合为 private(set)，无法直接 removeAll，
+        //    遍历调用 delete 方法同步清空（DB 已删，这里只清内存）
         let sessionIds = appState.sessionManager.sessions.map(\.id)
         for id in sessionIds {
             appState.sessionManager.deleteSession(id)
@@ -537,6 +628,42 @@ struct SettingsView: View {
         for id in taskIds {
             appState.taskManager.deleteTask(id)
         }
+
+        // 3. UserDefaults 偏好（修复 4）
+        let preferenceKeys = [
+            "defaultModel", "temperature", "maxTokens",
+            "fontSize", "theme",
+            "encryptionEnabled",
+            "notifyHighPriority", "notifyMediumPriority", "notifyLowPriority",
+            "command_palette_recents"
+        ]
+        for key in preferenceKeys {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        // 同步当前视图的 @AppStorage / @State（避免 UI 立刻读到旧值）
+        // 顺序：先处理 passphrase（取消待写任务 + 清空），再置 encryptionEnabled = false，
+        // 避免 onChange(of: encryptionEnabled) 触发时 passphraseSaveTask 仍 pending
+        passphraseSaveTask?.cancel()
+        passphrase = ""
+        defaultModel = "gpt-4"
+        temperature = 0.7
+        maxTokens = 4096
+        theme = .system
+        encryptionEnabled = false
+        // 修复 6: 通知开关绑定到 notificationManager.config，清 UserDefaults 后同步内存 config
+        appState.notificationManager.updateConfig { config in
+            config.highPriorityEnabled = true
+            config.mediumPriorityEnabled = true
+            config.lowPriorityEnabled = false
+        }
+        fontSize = .medium
+
+        // 4. Keychain E2E passphrase（修复 4）
+        KeychainManager.clearPassphrase()
+
+        // 5. 用户反馈
+        importAlertMessage = "已清除所有数据（会话/任务/Agent 配置/偏好/E2E 密钥）"
+        showImportAlert = true
     }
 }
 
@@ -565,6 +692,11 @@ enum FontSize: String, CaseIterable, Identifiable {
     /// UserDefaults 存储 key
     static let userDefaultsKey = "fontSize"
 
+    // 修复 5: SettingsView 修改 fontSize 写入 UserDefaults 后，已打开的 ChatView
+    // 不会自动刷新（其 fontSize 是 @State 初始化一次的值）。通过 NotificationCenter
+    // 广播 fontSize 变更，ChatView 监听后重新 loadFromUserDefaults 刷新 @State。
+    static let didChangeNotification = Notification.Name("com.agentcontrolcenter.app.fontSize.didChange")
+
     /// 从 UserDefaults 读取字体大小偏好，缺失或非法值时回退到 `.medium`。
     /// 用于替代 `@AppStorage("fontSize")`（Xcode 16.4 下对 RawRepresentable
     /// 枚举的宏展开存在 bug，编译报 "no exact matches in call to initializer"）。
@@ -573,9 +705,10 @@ enum FontSize: String, CaseIterable, Identifiable {
         return FontSize(rawValue: raw) ?? .medium
     }
 
-    /// 将当前值写回 UserDefaults。
+    /// 将当前值写回 UserDefaults，并广播变更通知让已打开的 ChatView 刷新。
     func saveToUserDefaults() {
         UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: rawValue)
     }
 }
 
