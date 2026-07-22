@@ -28,15 +28,50 @@ final class TransportFactoryTests: XCTestCase {
     }
 
     /// HTTP/SSE 类型的 Agent 应路由到 OpenAIHTTPTransport
+    /// （含 OpenWebUI，与 OpenAI/XiaomiMiMo/LocalModel 共用 OpenAI 兼容 HTTP+SSE 传输）
     func testHTTPAgentTypesRoute() {
-        for type in [AgentType.openAI, .xiaomiMiMo, .localModel] {
+        for type in [AgentType.openAI, .xiaomiMiMo, .localModel, .openWebUI] {
             let transport = TransportFactory.create(type)
             XCTAssertNotNil(transport, "AgentType=\(type.rawValue) 应能创建 Transport")
+            XCTAssertTrue(transport is OpenAIHTTPTransport,
+                          "AgentType=\(type.rawValue) 应路由到 OpenAIHTTPTransport")
             transport.shutdown()
         }
     }
 
-    /// 所有 AgentType 都应能创建 Transport（覆盖全部 6 个 case）
+    /// ComfyUI 应路由到 ComfyUITransport（HTTP 工作流提交 + 轮询，与 SSE 聊天范式不同）
+    func testComfyUIRoutesToComfyUITransport() {
+        let transport = TransportFactory.create(.comfyUI)
+        XCTAssertNotNil(transport, "AgentType=comfyUI 应能创建 Transport")
+        XCTAssertTrue(transport is ComfyUITransport,
+                      "AgentType=comfyUI 应路由到 ComfyUITransport")
+        transport.shutdown()
+    }
+
+    /// 验证 WebSocket / HTTP / ComfyUI 三类路由互不相同
+    func testTransportRoutingIsDistinct() {
+        let wsTypes: [AgentType] = [.hermes, .openClaw, .openCode]
+        let httpTypes: [AgentType] = [.openAI, .xiaomiMiMo, .localModel, .openWebUI]
+
+        for type in wsTypes {
+            let transport = TransportFactory.create(type)
+            XCTAssertTrue(transport is WebSocketTransport,
+                          "AgentType=\(type.rawValue) 应路由到 WebSocketTransport")
+            transport.shutdown()
+        }
+        for type in httpTypes {
+            let transport = TransportFactory.create(type)
+            XCTAssertTrue(transport is OpenAIHTTPTransport,
+                          "AgentType=\(type.rawValue) 应路由到 OpenAIHTTPTransport")
+            transport.shutdown()
+        }
+        let comfyTransport = TransportFactory.create(.comfyUI)
+        XCTAssertTrue(comfyTransport is ComfyUITransport,
+                      "AgentType=comfyUI 应路由到 ComfyUITransport")
+        comfyTransport.shutdown()
+    }
+
+    /// 所有 AgentType 都应能创建 Transport（覆盖全部 8 个 case）
     func testAllAgentTypesProduceTransport() {
         for type in AgentType.allCases {
             let transport = TransportFactory.create(type)

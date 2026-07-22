@@ -99,8 +99,13 @@ struct TransportFactory: TransportFactorying, Sendable {
         switch agentType {
         case .hermes, .openClaw, .openCode:
             return WebSocketTransport()
-        case .openAI, .xiaomiMiMo, .localModel:
-            return OpenAIHTTPTransport()  // 本地模型走 OpenAI 兼容 API
+        case .openAI, .xiaomiMiMo, .localModel, .openWebUI:
+            // OpenWebUI 与 OpenAI/XiaomiMiMo/LocalModel 共用 OpenAI 兼容 HTTP+SSE 传输；
+            // 端点 URL 构造由 OpenAIHTTPTransport.buildChatCompletionsUrl 处理 /api/v1 前缀。
+            return OpenAIHTTPTransport()
+        case .comfyUI:
+            // ComfyUI 走 HTTP 工作流提交 + 轮询，与 SSE 聊天范式不同
+            return ComfyUITransport()
         }
     }
 }

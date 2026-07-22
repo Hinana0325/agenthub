@@ -63,8 +63,9 @@ object AgentConfigValidator {
         }
 
         // ── apiKey ──
-        // LocalModel / OpenCode 等本地部署可豁免；远程协议必须有 apiKey。
-        if (!isLocal && config.apiKey.isBlank()) {
+        // LocalModel / ComfyUI 本地部署通常无认证，可豁免；其他远程协议必须有 apiKey。
+        val apiKeyOptional = isLocal || config.type == AgentType.ComfyUI
+        if (!apiKeyOptional && config.apiKey.isBlank()) {
             errors += ConfigValidationError("apiKey", "API Key 不能为空")
         }
 

@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app.transport
 
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.transport.comfyui.ComfyUITransport
 import com.agentcontrolcenter.app.transport.http.OpenAIHttpTransport
 import com.agentcontrolcenter.app.transport.websocket.WebSocketTransport
 import org.junit.Assert.*
@@ -51,6 +52,18 @@ class TransportFactoryTest {
     }
 
     @Test
+    fun `ComfyUI creates ComfyUITransport`() {
+        val transport = factory.create(AgentType.ComfyUI)
+        assertTrue(transport is ComfyUITransport)
+    }
+
+    @Test
+    fun `OpenWebUI creates OpenAIHttpTransport`() {
+        val transport = factory.create(AgentType.OpenWebUI)
+        assertTrue(transport is OpenAIHttpTransport)
+    }
+
+    @Test
     fun `all AgentTypes produce non-null transport`() {
         AgentType.entries.forEach { type ->
             val transport = factory.create(type)
@@ -66,9 +79,9 @@ class TransportFactoryTest {
     }
 
     @Test
-    fun `WebSocket types and HTTP types are distinct`() {
+    fun `WebSocket types, HTTP types, and ComfyUI type are distinct`() {
         val wsTypes = listOf(AgentType.Hermes, AgentType.OpenClaw, AgentType.OpenCode)
-        val httpTypes = listOf(AgentType.OpenAI, AgentType.XiaomiMiMo, AgentType.LocalModel)
+        val httpTypes = listOf(AgentType.OpenAI, AgentType.XiaomiMiMo, AgentType.LocalModel, AgentType.OpenWebUI)
 
         wsTypes.forEach { type ->
             assertTrue("$type should be WebSocketTransport", factory.create(type) is WebSocketTransport)
@@ -76,5 +89,6 @@ class TransportFactoryTest {
         httpTypes.forEach { type ->
             assertTrue("$type should be OpenAIHttpTransport", factory.create(type) is OpenAIHttpTransport)
         }
+        assertTrue("ComfyUI should be ComfyUITransport", factory.create(AgentType.ComfyUI) is ComfyUITransport)
     }
 }

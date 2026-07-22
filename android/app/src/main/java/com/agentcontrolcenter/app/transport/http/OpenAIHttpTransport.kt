@@ -195,7 +195,13 @@ class OpenAIHttpTransport(
      */
     private suspend fun probeEndpoint(config: AgentConfig): Boolean {
         val base = config.serverUrl.trimEnd('/')
-        val probeUrl = if (base.endsWith("/v1")) "$base/models" else "$base/v1/models"
+        // 兼容 /v1、/api/v1、/api 前缀（OpenWebUI 用 /api/v1/models）
+        val probeUrl = when {
+            base.endsWith("/v1") -> "$base/models"
+            base.endsWith("/api/v1") -> "$base/models"
+            base.endsWith("/api") -> "$base/v1/models"
+            else -> "$base/v1/models"
+        }
         // H-S1 修复：原代码直接用 probeUrl 发起 GET，未校验目标 URL。
         // 攻击者控制 Agent 配置可触发 SSRF（如 http://169.254.169.254/...），
         // 且 Authorization 头会携带 apiKey 一起发往元数据服务。
@@ -216,6 +222,25 @@ class OpenAIHttpTransport(
             throw e
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * 构造 chat completions 端点 URL。
+     *
+     * 兼容多种 base URL 形式：
+     * - `http://host:port` → `http://host:port/v1/chat/completions`（标准 OpenAI）
+     * - `http://host:port/v1` → `http://host:port/v1/chat/completions`（已含 /v1）
+     * - `http://host:port/api/v1` → `http://host:port/api/v1/chat/completions`（OpenWebUI）
+     * - `http://host:port/api` → `http://host:port/api/v1/chat/completions`（OpenWebUI 简写）
+     */
+    private fun buildChatCompletionsUrl(serverUrl: String): String {
+        val base = serverUrl.trimEnd('/')
+        return when {
+            base.endsWith("/v1") -> "$base/chat/completions"
+            base.endsWith("/api/v1") -> "$base/chat/completions"
+            base.endsWith("/api") -> "$base/v1/chat/completions"
+            else -> "$base/v1/chat/completions"
         }
     }
 
@@ -247,7 +272,7 @@ class OpenAIHttpTransport(
             // 2. 重置助手回复累加器，准备接收本轮 SSE 增量。
             responseAccumulator.setLength(0)
 
-            val url = config.serverUrl.trimEnd('/') + "/v1/chat/completions"
+            val url = buildChatCompletionsUrl(config.serverUrl)
             // H-S1 修复：sendMessage 路径同样需要校验 URL（防 SSRF + apiKey 泄漏）
             if (UrlValidator.validate(url, allowLocalhost = true) == null) {
                 // C3: 接入统一错误码 TRANSPORT_CONNECT_FAILED

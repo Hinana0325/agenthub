@@ -11,6 +11,8 @@ enum AgentType: String, Codable, CaseIterable {
     case openAI = "OpenAI"
     case xiaomiMiMo = "XiaomiMiMo"
     case localModel = "LocalModel"
+    case comfyUI = "ComfyUI"
+    case openWebUI = "OpenWebUI"
 
     var displayName: String { rawValue }
 }

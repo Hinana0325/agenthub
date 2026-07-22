@@ -155,8 +155,12 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         appendHistory(sessionId: sessionId, role: "user", content: content)
 
         // URL 构造 + SSRF 校验
-        let baseURL = config.serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let urlString = "\(baseURL)/v1/chat/completions"
+        // 兼容 4 种 base URL 形式（参考 Android OpenAIHttpTransport.buildChatCompletionsUrl）：
+        //   http://host:port        → http://host:port/v1/chat/completions（标准 OpenAI）
+        //   http://host:port/v1     → http://host:port/v1/chat/completions（已含 /v1）
+        //   http://host:port/api/v1 → http://host:port/api/v1/chat/completions（OpenWebUI）
+        //   http://host:port/api    → http://host:port/api/v1/chat/completions（OpenWebUI 简写）
+        let urlString = buildChatCompletionsUrl(serverUrl: config.serverUrl)
         guard let url = URLValidator.validate(urlString, allowLocalhost: true) else {
             // C3 修复：URL 无效阻断连接 → TRANSPORT_CONNECT_FAILED (1001)
             // 注：注册表无 TRANSPORT_INVALID_URL，归入 1001（连接失败）
@@ -463,6 +467,28 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         }
     }
 
+    // MARK: - URL Construction
+
+    /// 构造 chat completions 端点 URL（参考 Android OpenAIHttpTransport.buildChatCompletionsUrl）。
+    ///
+    /// 兼容多种 base URL 形式：
+    /// - `http://host:port` → `http://host:port/v1/chat/completions`（标准 OpenAI）
+    /// - `http://host:port/v1` → `http://host:port/v1/chat/completions`（已含 /v1）
+    /// - `http://host:port/api/v1` → `http://host:port/api/v1/chat/completions`（OpenWebUI）
+    /// - `http://host:port/api` → `http://host:port/api/v1/chat/completions`（OpenWebUI 简写）
+    private func buildChatCompletionsUrl(serverUrl: String) -> String {
+        let base = serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if base.hasSuffix("/api/v1") {
+            return "\(base)/chat/completions"
+        } else if base.hasSuffix("/v1") {
+            return "\(base)/chat/completions"
+        } else if base.hasSuffix("/api") {
+            return "\(base)/v1/chat/completions"
+        } else {
+            return "\(base)/v1/chat/completions"
+        }
+    }
+
     // MARK: - Probe Endpoint
 
     /// 探活: GET {base}/v1/models
@@ -476,8 +502,19 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
     // "无法连接服务器" vs "API Key 无效"。当前改动会牵涉 Equatable/Sendable 同步
     // 与所有 transport 的 connectionState 构造点，暂缓实现，仅标注 TODO。
     private func probeEndpoint(serverUrl: String, apiKey: String) async -> Bool {
+        // 兼容 /v1、/api/v1、/api 前缀（OpenWebUI 用 /api/v1/models），
+        // 与 buildChatCompletionsUrl 的 4 种 base URL 形式保持一致。
         let base = serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        let probePath = base.hasSuffix("/v1") ? "\(base)/models" : "\(base)/v1/models"
+        let probePath: String
+        if base.hasSuffix("/api/v1") {
+            probePath = "\(base)/models"
+        } else if base.hasSuffix("/v1") {
+            probePath = "\(base)/models"
+        } else if base.hasSuffix("/api") {
+            probePath = "\(base)/v1/models"
+        } else {
+            probePath = "\(base)/v1/models"
+        }
         // H-S2 修复：原代码用 URL(string:) 直接构造，未调用 URLValidator.validate，
         // 攻击者可配置 serverUrl=http://169.254.169.254/... 让 probe 携带 Bearer apiKey
         // 访问云元数据服务。改为统一过 URLValidator（与 sendMessage 一致）。

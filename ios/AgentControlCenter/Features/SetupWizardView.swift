@@ -201,8 +201,10 @@ struct SetupWizardView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .textFieldStyle(.roundedBorder)
-                if type != .localModel && apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Label("LocalModel 之外的类型需要 API Key", systemImage: "info.circle")
+                // LocalModel / ComfyUI 豁免 apiKey（与 AgentConfigValidator 对齐）
+                if type != .localModel && type != .comfyUI
+                    && apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Label("LocalModel / ComfyUI 之外的类型需要 API Key", systemImage: "info.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -405,6 +407,23 @@ struct SetupWizardView: View {
         }
     }
 
+    /// 根据 AgentType 推导默认的 AgentProtocol（与 Android SetupWizardViewModel.updateAgentType 对齐）。
+    ///
+    /// - Hermes / OpenClaw / OpenCode → WebSocket
+    /// - OpenAI / XiaomiMiMo / OpenWebUI → HttpSSE
+    /// - LocalModel → Local
+    /// - ComfyUI → HttpSSE（HTTP 工作流提交 + 轮询，归类为 HTTP）
+    private static func protocolType(for type: AgentType) -> AgentProtocol {
+        switch type {
+        case .hermes, .openClaw, .openCode:
+            return .webSocket
+        case .openAI, .xiaomiMiMo, .openWebUI, .comfyUI:
+            return .httpSSE
+        case .localModel:
+            return .local
+        }
+    }
+
     // MARK: - 步骤推进 / 完成
 
     /// 是否允许从当前步骤前进到下一步（基于即时校验）
@@ -418,9 +437,11 @@ struct SetupWizardView: View {
             let trimmed = serverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
             return !trimmed.isEmpty && URLValidator.validate(trimmed) != nil
         case 2:
-            // model 非空；apiKey 在非 LocalModel 类型下非空
+            // model 非空；apiKey 在非 LocalModel / 非 ComfyUI 类型下非空
+            // （与 AgentConfigValidator 对齐：ComfyUI 本地部署通常无认证，豁免 apiKey）
             let modelOk = !model.trimmingCharacters(in: .whitespaces).isEmpty
-            let apiKeyOk = type == .localModel || !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
+            let apiKeyOptional = type == .localModel || type == .comfyUI
+            let apiKeyOk = apiKeyOptional || !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
             return modelOk && apiKeyOk
         default:
             return true
@@ -435,7 +456,9 @@ struct SetupWizardView: View {
             case 1:
                 stepErrorMessage = serverUrlValidationError ?? "请填写有效的服务器地址"
             case 2:
-                stepErrorMessage = "请填写模型名称" + (type == .localModel ? "" : "与 API Key")
+                // ComfyUI 与 LocalModel 一样豁免 apiKey，错误提示不附加 "与 API Key"
+                let apiKeyOptional = type == .localModel || type == .comfyUI
+                stepErrorMessage = "请填写模型名称" + (apiKeyOptional ? "" : "与 API Key")
             default:
                 stepErrorMessage = "请补全当前步骤所需信息"
             }
@@ -456,7 +479,13 @@ struct SetupWizardView: View {
             model: model,
             systemPrompt: "",
             temperature: temperature,
-            maxTokens: maxTokens
+            maxTokens: maxTokens,
+            // 根据 AgentType 联动选择 protocolType（与 Android SetupWizardViewModel.updateAgentType 对齐）：
+            // - Hermes / OpenClaw / OpenCode → WebSocket
+            // - OpenAI / XiaomiMiMo / OpenWebUI → HttpSSE（OpenWebUI 与 OpenAI 共用 HTTP+SSE 范式）
+            // - LocalModel → Local
+            // - ComfyUI → HttpSSE（HTTP 工作流提交 + 轮询，归类为 HTTP；与 WebSocket 不同）
+            protocolType: Self.protocolType(for: type)
         )
         config.id = "default"
 

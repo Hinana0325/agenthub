@@ -54,8 +54,11 @@ enum AgentConfigValidator {
             }
         }
 
-        // apiKey：非空（LocalModel 豁免）
-        if config.type != .localModel {
+        // apiKey：非空（LocalModel / ComfyUI 豁免）
+        // 与 Android AgentConfigValidator 对齐：ComfyUI 本地部署通常无认证，可豁免 apiKey。
+        // OpenWebUI 仍需 apiKey（与 OpenAI 一致，远程 HTTP+SSE 协议）。
+        let apiKeyOptional = config.type == .localModel || config.type == .comfyUI
+        if !apiKeyOptional {
             if config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 errors.append(ConfigValidationError(field: Field.apiKey, message: "API Key 不能为空"))
             }

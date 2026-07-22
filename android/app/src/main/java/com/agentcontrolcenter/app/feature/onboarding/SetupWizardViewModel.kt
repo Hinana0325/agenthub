@@ -114,8 +114,9 @@ class SetupWizardViewModel @Inject constructor(
         // OpenAI / LocalModel 走 HttpSSE / Local
         val protocol = when (type) {
             AgentType.Hermes, AgentType.OpenClaw, AgentType.OpenCode -> AgentProtocol.WebSocket
-            AgentType.OpenAI, AgentType.XiaomiMiMo -> AgentProtocol.HttpSSE
+            AgentType.OpenAI, AgentType.XiaomiMiMo, AgentType.OpenWebUI -> AgentProtocol.HttpSSE
             AgentType.LocalModel -> AgentProtocol.Local
+            AgentType.ComfyUI -> AgentProtocol.HttpSSE
         }
         _uiState.update {
             it.copy(draft = it.draft.copy(type = type, protocolType = protocol))

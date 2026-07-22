@@ -35,5 +35,7 @@ enum class AgentType(val displayName: String) {
     OpenClaw("OpenClaw"),
     OpenAI("OpenAI Compatible"),
     XiaomiMiMo("Xiaomi MiMo"),
-    LocalModel("Local Model")
+    LocalModel("Local Model"),
+    ComfyUI("ComfyUI"),
+    OpenWebUI("OpenWebUI")
 }

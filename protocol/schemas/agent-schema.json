@@ -9,7 +9,7 @@
       "title": "AgentType",
       "description": "Agent 类型枚举，决定 TransportFactory 路由到具体传输实现。过渡期保留，未来由 AgentProtocol + AgentCapability 取代。",
       "type": "string",
-      "enum": ["Hermes", "OpenCode", "OpenClaw", "OpenAI", "XiaomiMiMo", "LocalModel"]
+      "enum": ["Hermes", "OpenCode", "OpenClaw", "OpenAI", "XiaomiMiMo", "LocalModel", "ComfyUI", "OpenWebUI"]
     },
     "AgentProtocol": {
       "title": "AgentProtocol",
@@ -58,7 +58,7 @@
         "type": { "$ref": "#/definitions/AgentType" },
         "serverUrl": {
           "type": "string",
-          "description": "服务端地址。WebSocket 会自动 http→ws 替换并追加 /ws；HTTP 会追加 /v1/chat/completions",
+          "description": "服务端地址。WebSocket 会自动 http→ws 替换并追加 /ws；HTTP 会追加 /v1/chat/completions；OpenWebUI 追加 /api/v1/chat/completions；ComfyUI 追加 /prompt（轮询 /history）",
           "default": ""
         },
         "apiKey": {
@@ -68,22 +68,22 @@
         },
         "model": {
           "type": "string",
-          "description": "模型标识，如 'gpt-4o'、'claude-3-opus'、'qwen2.5:7b'",
+          "description": "模型标识。OpenAI 兼容：'gpt-4o'；ComfyUI：checkpoint 文件名如 'v1-5-pruned-emaonly.safetensors'",
           "default": ""
         },
         "systemPrompt": {
           "type": "string",
-          "description": "系统提示词（当前 Android HTTP 传输未注入此字段，协议层保留以供未来使用）",
+          "description": "系统提示词 / 负向提示词。OpenAI 兼容用作 system prompt；ComfyUI 用作负向提示词（negative prompt）",
           "default": ""
         },
         "temperature": {
           "type": "number",
-          "description": "采样温度，0.0-2.0",
+          "description": "采样温度（OpenAI 兼容）/ CFG scale（ComfyUI，默认 7.0）",
           "default": 0.7
         },
         "maxTokens": {
           "type": "integer",
-          "description": "最大生成 token 数",
+          "description": "最大生成 token 数（OpenAI 兼容）/ 采样步数 steps（ComfyUI，默认 20）",
           "default": 4096
         }
       }

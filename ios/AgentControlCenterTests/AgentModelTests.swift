@@ -6,9 +6,9 @@ final class AgentModelTests: XCTestCase {
 
     // MARK: - AgentType 测试
 
-    /// 测试 AgentType.allCases 数量为 6
+    /// 测试 AgentType.allCases 数量为 8
     func testAgentTypeAllCasesCount() {
-        XCTAssertEqual(AgentType.allCases.count, 6, "AgentType 应包含 6 个枚举值")
+        XCTAssertEqual(AgentType.allCases.count, 8, "AgentType 应包含 8 个枚举值")
     }
 
     /// 测试 AgentType 每个枚举都有 displayName
@@ -30,6 +30,8 @@ final class AgentModelTests: XCTestCase {
         XCTAssertEqual(AgentType.openAI.rawValue, "OpenAI")
         XCTAssertEqual(AgentType.xiaomiMiMo.rawValue, "XiaomiMiMo")
         XCTAssertEqual(AgentType.localModel.rawValue, "LocalModel")
+        XCTAssertEqual(AgentType.comfyUI.rawValue, "ComfyUI")
+        XCTAssertEqual(AgentType.openWebUI.rawValue, "OpenWebUI")
     }
 
     // MARK: - AgentConfig 测试
