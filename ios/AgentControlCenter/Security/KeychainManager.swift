@@ -102,7 +102,7 @@ enum KeychainManager {
         } else if status != errSecSuccess {
             // M-4 修复：SecItemAdd 非 errSecDuplicateItem 的失败状态通过 os.Logger 记录 error 级日志，
             // 便于生产环境监控 Keychain 不可用（errSecMissingEntitlement / errSecAuthFailed 等）
-            logger.error("SecItemAdd failed with status \(status.rawValue, privacy: .public) — falling back to in-memory key")
+            logger.error("SecItemAdd failed with status \(status, privacy: .public) — falling back to in-memory key")
         }
         // CI-fix: 无论 SecItemAdd 是否成功，都同步更新 in-memory 缓存
         // （写入失败时下次 loadKey 仍可拿到同一密钥）
