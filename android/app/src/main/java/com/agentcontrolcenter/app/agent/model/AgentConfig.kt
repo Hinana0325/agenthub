@@ -17,7 +17,10 @@ data class AgentConfig(
     val model: String = "",
     val systemPrompt: String = "",
     val temperature: Float = 0.7f,
-    val maxTokens: Int = 4096
+    val maxTokens: Int = 4096,
+    // 跨端 schema 对齐：与 iOS AgentConfig.protocolType 字段一致
+    // （AgentProtocol.rawValue：WebSocket / HttpSSE / MCP / Local）
+    val protocolType: AgentProtocol = AgentProtocol.WebSocket
 )
 
 /**

@@ -76,6 +76,36 @@ final class FeatureFlagManager {
                 return false
             }
         }
+
+        /// 面向用户的中文显示名称（用于设置页「实验性功能」Section 的 Toggle 标题）。
+        var displayName: String {
+            switch self {
+            case .workflowEngine: return "工作流引擎"
+            case .marketplace:    return "Agent 市场"
+            case .deviceSync:     return "设备同步"
+            case .insights:       return "数据洞察"
+            case .compareMode:    return "对比模式"
+            case .mcpServers:     return "MCP 服务器"
+            case .customTheme:    return "自定义主题"
+            case .voiceInput:     return "语音输入"
+            case .e2eEncryption:  return "端到端加密"
+            }
+        }
+
+        /// 面向用户的功能描述（显示在 Toggle 标题下方，辅助用户理解开关含义）。
+        var description: String {
+            switch self {
+            case .workflowEngine: return "Agent 任务编排与多步骤工作流"
+            case .marketplace:    return "浏览和安装第三方 Agent"
+            case .deviceSync:     return "P2P 跨设备数据同步（实验性）"
+            case .insights:       return "使用统计与数据分析"
+            case .compareMode:    return "多 Agent 输出对比"
+            case .mcpServers:     return "Model Context Protocol 集成"
+            case .customTheme:    return "自定义配色方案"
+            case .voiceInput:     return "语音转文字输入"
+            case .e2eEncryption:  return "消息端到端加密传输"
+            }
+        }
     }
 
     // MARK: - 配置常量

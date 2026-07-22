@@ -75,6 +75,7 @@ struct SettingsView: View {
                 dataManagementSection
                 smartNotificationsSection
                 aboutSection
+                experimentalFeaturesSection
                 dangerZoneSection
             }
             .navigationTitle("设置")
@@ -389,7 +390,30 @@ struct SettingsView: View {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "未知"
     }
 
-    /// 8. 危险操作
+    /// 8. 实验性功能（Feature Flag 覆盖入口）
+    ///
+    /// 遍历 `FeatureFlagManager.FeatureFlag.allCases`，每个 flag 渲染一个 Toggle，
+    /// 绑定到 `featureFlagManager.isEnabled(_:)` / `setOverride(_:enabled:)`。
+    /// 显示 `displayName` 作为标题、`description` 作为副标题说明。
+    private var experimentalFeaturesSection: some View {
+        Section("实验性功能") {
+            ForEach(FeatureFlagManager.FeatureFlag.allCases, id: \.self) { flag in
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(flag.displayName, isOn: Binding(
+                        get: { appState.featureFlagManager.isEnabled(flag) },
+                        set: { newValue in
+                            appState.featureFlagManager.setOverride(flag, enabled: newValue)
+                        }
+                    ))
+                    Text(flag.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// 9. 危险操作
     private var dangerZoneSection: some View {
         Section {
             Button(role: .destructive) {
@@ -648,14 +672,9 @@ struct SettingsView: View {
         }
 
         // 3. UserDefaults 偏好（修复 4）
-        let preferenceKeys = [
-            "defaultModel", "temperature", "maxTokens",
-            "fontSize", "theme",
-            "encryptionEnabled",
-            "notifyHighPriority", "notifyMediumPriority", "notifyLowPriority",
-            "command_palette_recents"
-        ]
-        for key in preferenceKeys {
+        // 使用 AppPreferences.allPreferenceKeys() 统一取键名列表，避免散落硬编码数组
+        // 遗漏新增 key（onboarding_completed 不在列表中，不强制用户重做引导）。
+        for key in AppPreferences.allPreferenceKeys() {
             UserDefaults.standard.removeObject(forKey: key)
         }
         // 同步当前视图的 @AppStorage / @State（避免 UI 立刻读到旧值）

@@ -224,6 +224,7 @@ private struct McpServerRow: View {
 // MARK: - Add MCP Server Sheet
 
 private struct AddMcpServerSheet: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     let onAdd: (McpServer) -> Void
 
@@ -231,6 +232,10 @@ private struct AddMcpServerSheet: View {
     @State private var transportUrl = ""
     @State private var apiKey = ""
     @State private var transportType: McpTransportType = .http
+
+    // MARK: 校验错误状态（添加前由 McpServerValidator 校验，失败时弹窗提示并阻止添加）
+    @State private var showingValidationAlert = false
+    @State private var validationErrorMessage = ""
 
     var body: some View {
         NavigationStack {
@@ -269,11 +274,25 @@ private struct AddMcpServerSheet: View {
                             transportType: transportType,
                             apiKey: apiKey.isEmpty ? nil : apiKey
                         )
+                        // 添加前校验：失败则回填 appState.lastValidationError 并弹窗提示，不执行 onAdd
+                        let validationResult = McpServerValidator.validate(server)
+                        guard validationResult.isValid else {
+                            appState.lastValidationError = validationResult
+                            validationErrorMessage = validationResult.errors.first?.message ?? "配置校验失败"
+                            showingValidationAlert = true
+                            return
+                        }
                         onAdd(server)
                         dismiss()
                     }
                     .disabled(transportUrl.isEmpty)
                 }
+            }
+            // 校验失败提示：展示首条错误消息，错误详情已写入 appState.lastValidationError
+            .alert("无法添加", isPresented: $showingValidationAlert) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(validationErrorMessage)
             }
         }
     }

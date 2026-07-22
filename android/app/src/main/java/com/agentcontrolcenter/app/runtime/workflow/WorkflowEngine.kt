@@ -319,7 +319,8 @@ class WorkflowEngine @Inject constructor(
         model = model,
         systemPrompt = systemPrompt,
         temperature = temperature,
-        maxTokens = maxTokens
+        maxTokens = maxTokens,
+        protocolType = com.agentcontrolcenter.app.agent.model.AgentProtocol.fromRawValue(protocolType)
     )
 
     private fun applyTransform(type: TransformType, input: String, extra: String): String {

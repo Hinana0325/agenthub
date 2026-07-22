@@ -29,7 +29,7 @@ import com.agentcontrolcenter.app.core.database.entity.TaskEntity
         PluginEntity::class,
         TaskEntity::class
     ],
-    version = 8,
+    version = 9,
     // 启用 schema 导出以便迁移测试。
     // TODO: 需在 app/build.gradle 的 ksp / kapt 配置中添加
     //   ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -98,6 +98,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 跨端 schema 对齐：agent_configs 表新增 protocolType 列，对应
+         * [com.agentcontrolcenter.app.agent.model.AgentProtocol.rawValue]，
+         * 默认 "WebSocket"（与 iOS AgentConfigEntity 默认值一致）。
+         *
+         * 现有行通过 ALTER TABLE ADD COLUMN 填充 DEFAULT 值，所有存量 Agent
+         * 自动获得 WebSocket 协议类型，与 TransportFactory 旧实现按 AgentType
+         * 路由时的实际协议一致。
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE agent_configs ADD COLUMN protocolType TEXT NOT NULL DEFAULT 'WebSocket'"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -107,9 +124,11 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     // 不使用 fallbackToDestructiveMigration()：缺少迁移时会抛
                     // IllegalStateException，优先于静默丢失用户数据。
-                    // 当前已提供 MIGRATION_4_5 / MIGRATION_5_6 / MIGRATION_6_7 / MIGRATION_7_8；后续新增版本时
+                    // 当前已提供 MIGRATION_4_5 / _5_6 / _6_7 / _7_8 / _8_9；后续新增版本时
                     // 必须显式补齐对应的 Migration。
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(
+                        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+                    )
                     .build().also { INSTANCE = it }
             }
         }

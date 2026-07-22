@@ -13,5 +13,9 @@ data class AgentConfigEntity(
     val model: String = "",
     val systemPrompt: String = "",
     val temperature: Float = 0.7f,
-    val maxTokens: Int = 4096
+    val maxTokens: Int = 4096,
+    // 跨端 schema 对齐：与 iOS AgentConfigEntity.protocolType 字段一致
+    // 存储 AgentProtocol.rawValue（WebSocket / HttpSSE / MCP / Local），默认 WebSocket。
+    // MIGRATION_8_9 添加，DEFAULT 'WebSocket'。
+    val protocolType: String = "WebSocket"
 )

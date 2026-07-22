@@ -473,6 +473,10 @@ private struct AgentFormSheet: View {
     @State private var temperature: Float = 0.7
     @State private var maxTokens: Int = 4096
 
+    // MARK: 校验错误状态（保存前由 AgentConfigValidator 校验，失败时弹窗提示并阻止落库）
+    @State private var showingValidationAlert = false
+    @State private var validationErrorMessage = ""
+
     init(existingAgent: Agent? = nil, existingConfig: AgentConfig? = nil) {
         self.existingAgent = existingAgent
         self.existingConfig = existingConfig
@@ -568,6 +572,12 @@ private struct AgentFormSheet: View {
                 temperature = config.temperature
                 maxTokens = config.maxTokens
             }
+            // 校验失败提示：展示首条错误消息，错误详情已写入 appState.lastValidationError
+            .alert("无法保存", isPresented: $showingValidationAlert) {
+                Button("确定", role: .cancel) {}
+            } message: {
+                Text(validationErrorMessage)
+            }
         }
     }
 
@@ -577,48 +587,48 @@ private struct AgentFormSheet: View {
     ///
     /// 流程：
     /// 1. 构造 `AgentConfig`（编辑模式复用原 id，新建模式分配新 UUID）
-    /// 2. 通过 `DataController.saveAgentConfig` 持久化（apiKey 自动加密）
-    /// 3. 构造 `Agent` 运行时实例
-    /// 4. 通过 `AgentManager.register` 注册（已存在则更新）
+    /// 2. 调用 `AgentConfigValidator.validate` 校验；失败时写入 `appState.lastValidationError`
+    ///    并弹窗提示首条错误，阻止落库
+    /// 3. 通过 `DataController.saveAgentConfig` 持久化（apiKey 自动加密）
+    /// 4. 构造 `Agent` 运行时实例
+    /// 5. 通过 `AgentManager.register` 注册（已存在则更新）
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
 
-        if isEditing, let agent = existingAgent {
-            // 编辑模式：复用原 agent id，更新所有字段
-            let updatedConfig = AgentConfig(
-                id: agent.id,
-                name: trimmedName,
-                type: type,
-                serverUrl: serverUrl,
-                apiKey: apiKey,
-                model: model,
-                systemPrompt: systemPrompt,
-                temperature: temperature,
-                maxTokens: maxTokens
-            )
-            appState.dataController.saveAgentConfig(updatedConfig)
+        // 统一构造待校验配置：编辑模式复用原 agent id，新建模式分配新 UUID
+        let configId = isEditing ? (existingAgent?.id ?? UUID().uuidString) : UUID().uuidString
+        let config = AgentConfig(
+            id: configId,
+            name: trimmedName,
+            type: type,
+            serverUrl: serverUrl,
+            apiKey: apiKey,
+            model: model,
+            systemPrompt: systemPrompt,
+            temperature: temperature,
+            maxTokens: maxTokens
+        )
 
-            // 构造更新后的 Agent 实例并重新注册
+        // 保存前校验：失败则回填 appState.lastValidationError 并弹窗提示，不落库
+        let validationResult = AgentConfigValidator.validate(config)
+        guard validationResult.isValid else {
+            appState.lastValidationError = validationResult
+            validationErrorMessage = validationResult.errors.first?.message ?? "配置校验失败"
+            showingValidationAlert = true
+            return
+        }
+
+        if isEditing, let agent = existingAgent {
+            // 编辑模式：持久化 + 构造更新后的 Agent 实例并重新注册
+            appState.dataController.saveAgentConfig(config)
             var updatedAgent = agent
             updatedAgent.name = trimmedName
             updatedAgent.endpoint = serverUrl
-            updatedAgent.config = updatedConfig
+            updatedAgent.config = config
             appState.agentManager.register(updatedAgent)
         } else {
-            // 新建模式：分配新 UUID
-            var config = AgentConfig(
-                name: trimmedName,
-                type: type,
-                serverUrl: serverUrl,
-                apiKey: apiKey,
-                model: model,
-                systemPrompt: systemPrompt,
-                temperature: temperature,
-                maxTokens: maxTokens
-            )
-            config.id = UUID().uuidString
-
+            // 新建模式：持久化 + 注册新 Agent 实例
             let agent = Agent(
                 id: config.id,
                 name: config.name,

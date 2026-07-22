@@ -260,6 +260,14 @@ fun SettingsScreen(
                                 onClick = { selectedCategory = "about" }
                             )
                         }
+                        item {
+                            CategoryItem(
+                                title = "实验性功能",
+                                icon = Icons.Default.Bolt,
+                                isSelected = selectedCategory == "experimental",
+                                onClick = { selectedCategory = "experimental" }
+                            )
+                        }
                     }
                 }
 
@@ -472,6 +480,11 @@ fun SettingsScreen(
                                     VersionSettingsItem()
                                 }
                             }
+                            "experimental" -> {
+                                // 「实验性功能」分类 — 复用 FeatureFlagSettingsViewModel
+                                // 与 iOS SettingsView.experimentalFeaturesSection 对齐
+                                experimentalFeaturesSection()
+                            }
                         }
                     }
                 }
@@ -604,6 +617,11 @@ fun SettingsScreen(
                         item {
                             VersionSettingsItem()
                         }
+
+                        // 实验性功能 — 单栏布局下直接展开 FeatureFlag 列表
+                        // （experimentalFeaturesSection 内部已含 Header，无需再添加）
+                        item { Spacer(Modifier.height(8.dp)) }
+                        experimentalFeaturesSection()
 
                         item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.insights_title)) }
                         item {

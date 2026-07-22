@@ -11,6 +11,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.core.config.AgentConfigValidator
+import com.agentcontrolcenter.app.core.config.ConfigValidationError
 import com.agentcontrolcenter.app.core.util.runSafely
 import com.agentcontrolcenter.app.data.repository.ChatRepository
 import com.google.gson.Gson
@@ -34,7 +36,9 @@ data class AgentsUiState(
     val showForm: Boolean = false,
     val exportMessage: String? = null,
     // Agent 列表首次加载状态：首次从 Room 拿到数据前为 true，用于驱动骨架屏
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    // 字段校验错误：key=字段名，value=错误描述。表单 UI 据此高亮对应输入框。
+    val validationErrors: List<ConfigValidationError> = emptyList()
 )
 
 @HiltViewModel
@@ -59,24 +63,60 @@ class AgentsViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 editingAgent = AgentConfig(id = UUID.randomUUID().toString()),
-                showForm = true
+                showForm = true,
+                validationErrors = emptyList()
             )
         }
     }
 
     fun showEditForm(agent: AgentConfig) {
-        _uiState.update { it.copy(editingAgent = agent, showForm = true) }
+        _uiState.update {
+            it.copy(editingAgent = agent, showForm = true, validationErrors = emptyList())
+        }
     }
 
     fun dismissForm() {
-        _uiState.update { it.copy(showForm = false, editingAgent = null) }
+        _uiState.update {
+            it.copy(showForm = false, editingAgent = null, validationErrors = emptyList())
+        }
     }
 
+    /**
+     * 保存 Agent 配置。
+     *
+     * 调用 [AgentConfigValidator] 主动校验所有字段：
+     * - 校验失败：把错误填入 [AgentsUiState.validationErrors]，UI 据此高亮对应输入框，
+     *   不关闭表单、不写库。
+     * - 校验通过：清空 validationErrors，落库，关闭表单。
+     */
     fun saveAgent(agent: AgentConfig) {
+        val result = AgentConfigValidator.validate(agent)
+        if (!result.isValid) {
+            _uiState.update { it.copy(validationErrors = result.errors) }
+            return
+        }
         viewModelScope.launch {
             repository.saveConfig(agent)
-            _uiState.update { it.copy(showForm = false, editingAgent = null) }
+            _uiState.update {
+                it.copy(showForm = false, editingAgent = null, validationErrors = emptyList())
+            }
         }
+    }
+
+    /**
+     * 实时校验单字段（供表单 onChange 触发，立即显示错误）。
+     * 不写库，只更新 [AgentsUiState.validationErrors]。
+     */
+    fun validateField(agent: AgentConfig, field: String) {
+        val allResult = AgentConfigValidator.validate(agent)
+        val merged = (allResult.errors.associateBy { it.field } +
+            _uiState.value.validationErrors.associateBy { it.field }
+                .filterKeys { it != field }).values.toList()
+        _uiState.update { it.copy(validationErrors = merged) }
+    }
+
+    fun clearValidationErrors() {
+        _uiState.update { it.copy(validationErrors = emptyList()) }
     }
 
     fun deleteAgent(id: String) {

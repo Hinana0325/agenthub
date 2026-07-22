@@ -1,0 +1,330 @@
+import SwiftUI
+
+// MARK: - SetupWizardView
+// 对应 Android SetupWizard — 首次启动配置向导（4 步）
+//
+// 与 OnboardingView 的区别：
+// - OnboardingView：3 页纯介绍卡片，无配置交互（保留作为 fallback）
+// - SetupWizardView：4 步配置向导，引导用户完成首个 Agent 的连接配置，
+//   每步实时校验，最后一步通过 AgentConfigValidator 校验后保存。
+//
+// 不破坏现有 OnboardingView；本视图为可选升级路径，调用方可按需在
+// ContentView 中替换 OnboardingView 为 SetupWizardView（通过 feature flag 或直接替换）。
+
+/// 首次启动配置向导。
+///
+/// 4 步流程：
+/// 1. 欢迎 + 选择 AgentType
+/// 2. 填写 serverUrl（实时 URLValidator 校验）
+/// 3. 填写 apiKey（SecureField）+ model（TextField）
+/// 4. 测试连接 + 保存（AgentConfigValidator 校验后落库）
+struct SetupWizardView: View {
+
+    /// 完成回调：保存成功后由调用方切换到主界面
+    let onComplete: () -> Void
+
+    @Environment(AppState.self) private var appState
+
+    // MARK: - 步骤与表单状态
+
+    /// 当前步骤（0...3）
+    @State private var step: Int = 0
+
+    @State private var type: AgentType = .openAI
+    @State private var serverUrl: String = ""
+    @State private var apiKey: String = ""
+    @State private var model: String = ""
+    @State private var temperature: Float = 0.7
+    @State private var maxTokens: Int = 4096
+
+    // MARK: - 校验 / 保存状态
+
+    /// 当前步骤的即时错误提示（非校验失败总结，仅用于单步阻断）
+    @State private var stepErrorMessage: String?
+    /// 保存阶段的错误提示（弹窗展示）
+    @State private var saveErrorMessage: String?
+    @State private var showingSaveError: Bool = false
+    @State private var isSaving: Bool = false
+
+    private let totalSteps = 4
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 顶部进度条
+            ProgressView(value: Double(step + 1), total: Double(totalSteps))
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            // 步骤内容（分页）
+            TabView(selection: $step) {
+                stepWelcome.tag(0)
+                stepServerUrl.tag(1)
+                stepCredentials.tag(2)
+                stepTestAndSave.tag(3)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            // 底部导航按钮
+            HStack(spacing: 12) {
+                if step > 0 {
+                    Button("上一步") {
+                        stepErrorMessage = nil
+                        withAnimation { step -= 1 }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Spacer()
+                if step < totalSteps - 1 {
+                    Button("下一步") { advance() }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button("完成") { finish() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isSaving)
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("初始配置向导")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("保存失败", isPresented: $showingSaveError) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "")
+        }
+    }
+
+    // MARK: - Step 1: 欢迎 + 选择 AgentType
+
+    private var stepWelcome: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer()
+            Image(systemName: "cpu")
+                .font(.system(size: 64))
+                .foregroundStyle(AppTheme.primaryColor)
+                .frame(width: 110, height: 110)
+                .background(AppTheme.primaryColor.opacity(0.1), in: Circle())
+
+            Text("配置你的第一个 Agent")
+                .font(.title2.bold())
+
+            Text("选择 Agent 类型，我们将引导你完成连接配置。可随时在设置页修改。")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+
+            // AgentType 选择器（CaseIterable）
+            Picker("Agent 类型", selection: $type) {
+                ForEach(AgentType.allCases, id: \.self) { t in
+                    Text(t.displayName).tag(t)
+                }
+            }
+            .pickerStyle(.wheel)
+
+            Spacer()
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+    }
+
+    // MARK: - Step 2: serverUrl（实时 URLValidator 校验）
+
+    private var stepServerUrl: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer()
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                Label("服务器地址", systemImage: "network")
+                    .font(.headline)
+
+                TextField("https://api.example.com/v1", text: $serverUrl)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .textFieldStyle(.roundedBorder)
+
+                if let err = serverUrlValidationError {
+                    Label(err, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if !serverUrl.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Label("地址格式校验通过", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+
+            if type == .localModel {
+                Text("LocalModel 类型豁免 URL 校验，可留空（将走 LocalModelManager）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+            }
+            Spacer()
+        }
+    }
+
+    /// serverUrl 实时校验错误（LocalModel 豁免）
+    private var serverUrlValidationError: String? {
+        if type == .localModel { return nil }
+        let trimmed = serverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil } // 留空时不立即报错，仅在「下一步」阻断
+        guard URLValidator.validate(trimmed) != nil else {
+            return "地址不合法或存在安全风险"
+        }
+        return nil
+    }
+
+    // MARK: - Step 3: apiKey + model
+
+    private var stepCredentials: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer()
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                Label("API Key", systemImage: "key.fill")
+                    .font(.headline)
+                SecureField("sk-...", text: $apiKey)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .textFieldStyle(.roundedBorder)
+                if type != .localModel && apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Label("LocalModel 之外的类型需要 API Key", systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Label("模型", systemImage: "cube")
+                    .font(.headline)
+                TextField("gpt-4o / claude-3.5-sonnet / ...", text: $model)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .textFieldStyle(.roundedBorder)
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            Spacer()
+        }
+    }
+
+    // MARK: - Step 4: 测试连接 + 保存
+
+    private var stepTestAndSave: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            Spacer()
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+                Label("配置概览", systemImage: "list.bullet.rectangle")
+                    .font(.headline)
+
+                configSummaryRow("类型", type.displayName)
+                configSummaryRow("服务器", serverUrl.isEmpty ? "（未填写）" : serverUrl)
+                configSummaryRow("API Key", apiKey.isEmpty ? "（未填写）" : String(repeating: "•", count: min(apiKey.count, 12)))
+                configSummaryRow("模型", model.isEmpty ? "（未填写）" : model)
+                configSummaryRow("温度", String(format: "%.1f", temperature))
+                configSummaryRow("最大 Tokens", "\(maxTokens)")
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+
+            Text("点击「完成」将校验并保存配置。LocalModel 类型豁免 URL / API Key 校验。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+    }
+
+    /// 配置概览行
+    private func configSummaryRow(_ key: String, _ value: String) -> some View {
+        HStack {
+            Text(key)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+    }
+
+    // MARK: - 步骤推进 / 完成
+
+    /// 是否允许从当前步骤前进到下一步（基于即时校验）
+    private var canAdvance: Bool {
+        switch step {
+        case 0:
+            return true
+        case 1:
+            // serverUrl：LocalModel 豁免；否则非空 + URLValidator 通过
+            if type == .localModel { return true }
+            let trimmed = serverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmed.isEmpty && URLValidator.validate(trimmed) != nil
+        case 2:
+            // model 非空；apiKey 在非 LocalModel 类型下非空
+            let modelOk = !model.trimmingCharacters(in: .whitespaces).isEmpty
+            let apiKeyOk = type == .localModel || !apiKey.trimmingCharacters(in: .whitespaces).isEmpty
+            return modelOk && apiKeyOk
+        default:
+            return true
+        }
+    }
+
+    /// 推进到下一步（失败时设置 stepErrorMessage）
+    private func advance() {
+        stepErrorMessage = nil
+        guard canAdvance else {
+            switch step {
+            case 1:
+                stepErrorMessage = serverUrlValidationError ?? "请填写有效的服务器地址"
+            case 2:
+                stepErrorMessage = "请填写模型名称" + (type == .localModel ? "" : "与 API Key")
+            default:
+                stepErrorMessage = "请补全当前步骤所需信息"
+            }
+            return
+        }
+        if step < totalSteps - 1 {
+            withAnimation { step += 1 }
+        }
+    }
+
+    /// 完成向导：构造 AgentConfig → 校验 → 落库 → 回调
+    private func finish() {
+        var config = AgentConfig(
+            name: "Default Agent",
+            type: type,
+            serverUrl: serverUrl,
+            apiKey: apiKey,
+            model: model,
+            systemPrompt: "",
+            temperature: temperature,
+            maxTokens: maxTokens
+        )
+        config.id = "default"
+
+        // 校验（与 AgentFormSheet.save 一致）
+        let result = AgentConfigValidator.validate(config)
+        guard result.isValid else {
+            appState.lastValidationError = result
+            saveErrorMessage = result.errors.first?.message ?? "配置校验未通过"
+            showingSaveError = true
+            return
+        }
+
+        isSaving = true
+        // 落库 + 注册运行时实例（与 AgentsView.AgentFormSheet.save 一致）
+        appState.dataController.saveAgentConfig(config)
+        var agent = Agent(
+            id: config.id,
+            name: config.name,
+            endpoint: config.serverUrl,
+            config: config
+        )
+        agent.protocolType = config.protocolType
+        appState.agentManager.register(agent)
+        appState.agentManager.setActive(agentId: config.id)
+
+        // 标记引导完成（写 onboarding_completed，ContentView @AppStorage 会感知）
+        appState.preferences.update { $0.onboarding.completed = true }
+
+        isSaving = false
+        onComplete()
+    }
+}

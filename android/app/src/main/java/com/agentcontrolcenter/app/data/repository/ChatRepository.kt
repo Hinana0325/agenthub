@@ -12,6 +12,7 @@ import com.agentcontrolcenter.app.core.database.entity.AgentConfigEntity
 import com.agentcontrolcenter.app.core.database.entity.MessageEntity
 import com.agentcontrolcenter.app.core.database.entity.SessionEntity
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.agent.model.AgentProtocol
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.data.model.ActivityItem
 import com.agentcontrolcenter.app.data.model.Message
@@ -280,7 +281,8 @@ class ChatRepository @javax.inject.Inject constructor(
         model = model,
         systemPrompt = systemPrompt,
         temperature = temperature,
-        maxTokens = maxTokens
+        maxTokens = maxTokens,
+        protocolType = protocolType.rawValue
     )
 
     private fun AgentConfigEntity.toModel() = AgentConfig(
@@ -292,7 +294,8 @@ class ChatRepository @javax.inject.Inject constructor(
         model = model,
         systemPrompt = systemPrompt,
         temperature = temperature,
-        maxTokens = maxTokens
+        maxTokens = maxTokens,
+        protocolType = AgentProtocol.fromRawValue(protocolType)
     )
 
     private fun ActivityLogEntity.toActivityModel() = ActivityItem(

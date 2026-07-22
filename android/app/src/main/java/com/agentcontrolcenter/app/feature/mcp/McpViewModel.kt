@@ -9,6 +9,8 @@ import com.agentcontrolcenter.app.mcp.model.McpServer
 import com.agentcontrolcenter.app.mcp.model.McpServerCapabilities
 import com.agentcontrolcenter.app.mcp.model.McpTransportType
 import com.agentcontrolcenter.app.mcp.registry.McpRegistry
+import com.agentcontrolcenter.app.core.config.ConfigValidationError
+import com.agentcontrolcenter.app.core.config.McpServerValidator
 import com.agentcontrolcenter.app.core.security.KeystoreManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -50,7 +52,9 @@ data class McpUiState(
     val editingServer: McpServer? = null,
     val showForm: Boolean = false,
     val message: String? = null,
-    val testingServerIds: Set<String> = emptySet()
+    val testingServerIds: Set<String> = emptySet(),
+    // 字段校验错误：key=字段名，value=错误描述。表单 UI 据此高亮对应输入框。
+    val validationErrors: List<ConfigValidationError> = emptyList()
 )
 
 @HiltViewModel
@@ -119,28 +123,41 @@ class McpViewModel @Inject constructor(
                     transportUrl = "",
                     transportType = McpTransportType.HTTP
                 ),
-                showForm = true
+                showForm = true,
+                validationErrors = emptyList()
             )
         }
     }
 
     fun showEditForm(server: McpServer) {
-        _uiState.update { it.copy(editingServer = server, showForm = true) }
+        _uiState.update {
+            it.copy(editingServer = server, showForm = true, validationErrors = emptyList())
+        }
     }
 
     fun dismissForm() {
-        _uiState.update { it.copy(showForm = false, editingServer = null) }
+        _uiState.update {
+            it.copy(showForm = false, editingServer = null, validationErrors = emptyList())
+        }
     }
 
     /**
-     * 保存服务器（新增或更新）。
-     * 写入 SharedPreferences 持久化，对齐 iOS saveServers()。
+     * 保存 MCP 服务器配置（新增或更新）。
+     *
+     * 1. 调用 [McpServerValidator] 主动校验所有字段；失败时把错误填入
+     *    [McpUiState.validationErrors]，UI 据此高亮对应输入框，不关闭表单、不写盘。
+     * 2. 校验通过：归一化名称 → 同步更新 UI → 异步在 IO 调度器中加密并写盘。
      *
      * F20 修复：原 `copyAndPersist` 在 `_uiState.update` lambda 内同步执行
      * KeystoreManager.encrypt + prefs.edit（Main 线程）。改为先同步更新 UI 状态，
      * 再异步在 IO 调度器中加密并写盘。
      */
     fun saveServer(server: McpServer) {
+        val result = McpServerValidator.validate(server)
+        if (!result.isValid) {
+            _uiState.update { it.copy(validationErrors = result.errors) }
+            return
+        }
         val normalized = server.copy(
             name = server.name.ifBlank { "MCP Server" }
         )
@@ -152,8 +169,19 @@ class McpViewModel @Inject constructor(
                 current.servers + normalized
             }
         }
-        _uiState.update { it.copy(servers = newServers, showForm = false, editingServer = null) }
+        _uiState.update {
+            it.copy(
+                servers = newServers,
+                showForm = false,
+                editingServer = null,
+                validationErrors = emptyList()
+            )
+        }
         viewModelScope.launch { persistServers(newServers) }
+    }
+
+    fun clearValidationErrors() {
+        _uiState.update { it.copy(validationErrors = emptyList()) }
     }
 
     /**

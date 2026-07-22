@@ -123,6 +123,20 @@ final class AppState {
     /// 支持用户通过设置页覆盖默认值，覆盖持久化到 UserDefaults。
     let featureFlagManager: FeatureFlagManager
 
+    /// 配置辅助：统一偏好仓库（对应 Android ConfigRepository）
+    ///
+    /// 包装 UserDefaults + Keychain（敏感字段 passphrase）。逐步收敛散落在各视图的
+    /// `@AppStorage`，提供 `clearAllPreferences()` / `allPreferenceKeys()` 等统一入口。
+    /// 详见 `Preferences/AppPreferences.swift`。
+    let preferences: DefaultAppPreferences
+
+    /// 最近一次配置校验错误（供 UI 读取并回填表单）。
+    ///
+    /// 由 `AgentConfigValidator` / `McpServerValidator` 在保存入口校验失败时写入；
+    /// UI（如 `AgentFormSheet` / `AddMcpServerSheet` / `SetupWizardView`）读取后展示。
+    /// `nil` 表示无错误或错误已被消费。
+    var lastValidationError: ConfigValidationResult?
+
     /// 创建应用状态并初始化全部依赖
     init() {
         dataController = DataController()
@@ -156,5 +170,7 @@ final class AppState {
         // P3-1 / P3-2: 埋点系统与 Feature Flag 系统
         analyticsManager = AnalyticsManager()
         featureFlagManager = FeatureFlagManager()
+        // 配置辅助：统一偏好仓库（包装 UserDefaults + Keychain）
+        preferences = DefaultAppPreferences()
     }
 }

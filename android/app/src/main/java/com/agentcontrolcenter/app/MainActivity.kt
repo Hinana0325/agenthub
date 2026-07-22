@@ -28,7 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.navigation.AppNavigation
 import com.agentcontrolcenter.app.navigation.ShortcutRouter
-import com.agentcontrolcenter.app.feature.onboarding.OnboardingScreen
+import com.agentcontrolcenter.app.feature.onboarding.SetupWizardScreen
 import com.agentcontrolcenter.app.feature.settings.SettingsViewModel
 import com.agentcontrolcenter.app.ui.theme.AgentControlCenterTheme
 import com.agentcontrolcenter.app.ui.theme.ThemeMode
@@ -125,8 +125,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (!onboardingCompleted) {
-                        OnboardingScreen(
+                        // 升级版首次启动向导：引导用户配置第一个 Agent（选类型→填地址→
+                        // 填 API Key → 测试连接 → 保存）。原 OnboardingScreen 保留作为
+                        // 「跳过向导」时的 fallback 介绍页（如需）。
+                        SetupWizardScreen(
                             onComplete = {
+                                // ViewModel 内部已写 onboarding_completed=true，
+                                // 这里只需触发 Compose 重新读 settingsState 即可
                                 settingsViewModel.markOnboardingCompleted()
                             }
                         )
