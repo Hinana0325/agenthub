@@ -32,6 +32,17 @@ protocol AgentTransport: AnyObject, Sendable {
 
     /// 清除所有客户端侧历史
     func clearAllHistory() async
+
+    /// 运行时热更新 E2E 密钥，无需断开重连。
+    ///
+    /// 与 Android `AgentTransport.updateE2eKey(_:)` 对齐：
+    /// - 仅更新 transport 内部缓存的 e2eKey 字段
+    /// - 后续 sendMessage 加密 / handleMessage 解密立即使用新值
+    /// - 传 nil 表示禁用 E2E 加密（与关闭开关等效）
+    ///
+    /// 默认空实现保证向后兼容：未实现此方法的 transport（如 mock）不会编译失败。
+    /// 真实 transport（WebSocketTransport / OpenAIHTTPTransport）需各自实现。
+    func updateE2eKey(_ key: String?)
 }
 
 // MARK: - Default Implementation
@@ -39,6 +50,9 @@ protocol AgentTransport: AnyObject, Sendable {
 extension AgentTransport {
     func clearHistory(sessionId: String) async {}
     func clearAllHistory() async {}
+    /// 默认空实现：未支持热更新密钥的 transport 忽略调用，
+    /// 保持向后兼容（如 mock transport / 测试桩）。
+    func updateE2eKey(_ key: String?) {}
 }
 
 // MARK: - Transport Factory

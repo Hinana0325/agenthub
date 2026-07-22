@@ -32,6 +32,18 @@ struct AppearanceConfig: Equatable, Sendable {
 struct SecurityConfig: Equatable, Sendable {
     var e2eEncryptionEnabled: Bool = false
     var analyticsEnabled: Bool = true
+    /// E2E 密钥的内存缓存（实际持久化在 Keychain，由 AppPreferences 在加载/刷新时同步）。
+    /// 此字段不写入 UserDefaults —— Keychain 是唯一权威存储，避免明文落地 plist。
+    /// 与 Android SecurityConfig.e2eKey 字段对齐，使 effectiveE2eKey 计算属性无需外部传入 passphrase。
+    var e2eKey: String = ""
+
+    /// 计算有效的 E2E 密钥：开关开启且密钥非空才返回密钥，否则返回 nil。
+    /// 与 Android SecurityConfig.effectiveE2eKey 对齐：
+    /// - 用于过滤「开关关闭」或「密钥未配置」两种无效状态，使订阅方只需处理 nil/非 nil 两种分支。
+    var effectiveE2eKey: String? {
+        guard e2eEncryptionEnabled, !e2eKey.isEmpty else { return nil }
+        return e2eKey
+    }
 }
 
 /// Agent 默认配置
@@ -156,6 +168,15 @@ protocol AppPreferences: AnyObject, Sendable {
     func setE2EPassphrase(_ value: String)
     /// 清除 E2E 密码短语（Keychain）
     func clearE2EPassphrase()
+
+    /// 重新从 UserDefaults + Keychain 加载 SecurityConfig 并更新内存镜像。
+    ///
+    /// 用途：iOS 端加密开关 / passphrase 由 SettingsView 直接通过 `@AppStorage` /
+    /// `KeychainManager.savePassphrase` 写入，绕过 AppPreferences.update(_:) 路径。
+    /// 调用此方法可让 AppPreferences.configuration.security 重新同步真实存储，
+    /// 进而触发 `@Observable` 发布变更，使 AppState 的订阅方在 effectiveE2eKey 变更时
+    /// 即时调用活动 transport 的 updateE2eKey。
+    func refreshSecurityConfig()
 }
 
 extension AppPreferences {
@@ -195,7 +216,7 @@ final class DefaultAppPreferences: AppPreferences {
     init(defaults: UserDefaults = .standard, keychain: KeychainStoring = DefaultKeychainStorage()) {
         self.defaults = defaults
         self.keychain = keychain
-        self.configuration = Self.loadConfiguration(from: defaults)
+        self.configuration = Self.loadConfiguration(from: defaults, keychain: keychain)
     }
 
     // MARK: - 更新
@@ -223,8 +244,44 @@ final class DefaultAppPreferences: AppPreferences {
     // MARK: - E2E Passphrase（Keychain，不进 UserDefaults）
 
     func loadE2EPassphrase() -> String { keychain.loadPassphrase() }
-    func setE2EPassphrase(_ value: String) { keychain.savePassphrase(value) }
-    func clearE2EPassphrase() { keychain.clearPassphrase() }
+
+    func setE2EPassphrase(_ value: String) {
+        keychain.savePassphrase(value)
+        // 同步更新 SecurityConfig.e2eKey 内存缓存，触发 @Observable 发布。
+        // 仅当值确实变更时才赋值，避免无谓的发布与 I/O。
+        update { $0.security.e2eKey = value }
+    }
+
+    func clearE2EPassphrase() {
+        keychain.clearPassphrase()
+        // 同步清空内存缓存
+        update { $0.security.e2eKey = "" }
+    }
+
+    // MARK: - 重新同步 SecurityConfig
+
+    func refreshSecurityConfig() {
+        // 从 UserDefaults 重新读取 e2eEncryptionEnabled / analyticsEnabled，
+        // 从 Keychain 重新读取 e2eKey（passphrase）。
+        var newSecurity = SecurityConfig()
+        if defaults.object(forKey: PreferenceKeys.encryptionEnabled) != nil {
+            newSecurity.e2eEncryptionEnabled = defaults.bool(forKey: PreferenceKeys.encryptionEnabled)
+        }
+        if defaults.object(forKey: PreferenceKeys.analyticsEnabled) != nil {
+            newSecurity.analyticsEnabled = defaults.bool(forKey: PreferenceKeys.analyticsEnabled)
+        }
+        newSecurity.e2eKey = keychain.loadPassphrase()
+
+        // 仅在 SecurityConfig 实际变更时才更新内存镜像并触发 @Observable 发布，
+        // 避免无变化时的冗余 UI 重绘。
+        guard newSecurity != configuration.security else { return }
+        var c = configuration
+        c.security = newSecurity
+        configuration = c
+        // 注意：此处不调用 persist(_:) —— e2eEncryptionEnabled / analyticsEnabled
+        // 已由 SettingsView 通过 @AppStorage / AnalyticsManager 写入 UserDefaults，
+        // e2eKey 由 Keychain 权威存储。此方法仅为「读取同步」，不负责「写入」。
+    }
 
     // MARK: - 持久化
 
@@ -250,7 +307,7 @@ final class DefaultAppPreferences: AppPreferences {
     // MARK: - 加载
 
     /// 从 UserDefaults 重建 `AppConfiguration`。缺失的键使用子配置的默认值。
-    private static func loadConfiguration(from defaults: UserDefaults) -> AppConfiguration {
+    private static func loadConfiguration(from defaults: UserDefaults, keychain: KeychainStoring) -> AppConfiguration {
         var config = AppConfiguration()
 
         // Appearance
@@ -271,6 +328,9 @@ final class DefaultAppPreferences: AppPreferences {
         if defaults.object(forKey: PreferenceKeys.analyticsEnabled) != nil {
             config.security.analyticsEnabled = defaults.bool(forKey: PreferenceKeys.analyticsEnabled)
         }
+        // 从 Keychain 加载 E2E passphrase 到内存缓存（不写入 UserDefaults）。
+        // SecurityConfig.e2eKey 仅作为内存镜像，权威存储始终为 Keychain。
+        config.security.e2eKey = keychain.loadPassphrase()
 
         // AgentDefaults
         if let v = defaults.string(forKey: PreferenceKeys.defaultModel) {

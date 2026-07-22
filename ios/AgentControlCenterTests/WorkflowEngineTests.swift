@@ -17,7 +17,16 @@ final class WorkflowEngineTests: XCTestCase {
         await MainActor.run {
             TransportFactory.provider = MockTransportFactory()
         }
-        engine = await MainActor.run { WorkflowEngine(dataController: DataController()) }
+        // 项1/项2：WorkflowEngine init 新增 featureFlagManager / preferences 参数。
+        // 测试场景下使用默认 FeatureFlagManager（所有已发布功能默认开启，gate 不触发）
+        // 与默认 preferences（defaultModel 为空，model 兜底不影响现有断言）。
+        engine = await MainActor.run {
+            WorkflowEngine(
+                dataController: DataController(),
+                featureFlagManager: FeatureFlagManager(),
+                preferences: DefaultAppPreferences()
+            )
+        }
     }
 
     override func tearDown() async throws {

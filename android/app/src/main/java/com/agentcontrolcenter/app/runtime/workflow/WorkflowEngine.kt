@@ -4,6 +4,7 @@ import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.core.database.dao.AgentConfigDao
 import com.agentcontrolcenter.app.core.database.entity.AgentConfigEntity
+import com.agentcontrolcenter.app.core.featureflag.FeatureFlagManager
 import com.agentcontrolcenter.app.transport.TransportFactory
 import com.agentcontrolcenter.app.transport.protocol.AgentEvent
 import kotlinx.coroutines.CancellationException
@@ -101,7 +102,8 @@ data class WorkflowExecutionState(
 @Singleton
 class WorkflowEngine @Inject constructor(
     private val transportFactory: TransportFactory,
-    private val agentConfigDao: AgentConfigDao
+    private val agentConfigDao: AgentConfigDao,
+    private val featureFlagManager: FeatureFlagManager
 ) {
 
     private val _executionState = MutableStateFlow(WorkflowExecutionState())
@@ -121,6 +123,18 @@ class WorkflowEngine @Inject constructor(
         _executionState.value = WorkflowExecutionState(isRunning = true)
 
         try {
+            // 痛点6 修复：工作流引擎受 WORKFLOW_ENGINE FeatureFlag 控制。
+            // 此前 flag 仅驱动设置页 UI 开关，运行时根本不查询——禁用 flag 后
+            // execute() 仍照常执行。现在运行时也读 FeatureFlagManager，
+            // flag 关闭时拒绝执行并上报错误。
+            if (!featureFlagManager.isEnabled(FeatureFlagManager.FeatureFlag.WORKFLOW_ENGINE)) {
+                _executionState.value = WorkflowExecutionState(
+                    isRunning = false,
+                    error = "工作流引擎已被禁用（请在设置 → 实验性功能中开启）"
+                )
+                throw IllegalStateException("Workflow engine is disabled by feature flag")
+            }
+
             // Build adjacency map
             val adjacency = mutableMapOf<String, MutableList<String>>()
             workflow.edges.forEach { edge ->

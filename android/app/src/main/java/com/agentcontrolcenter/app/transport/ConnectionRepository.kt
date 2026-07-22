@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkRequest
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.config.AgentDefaults
+import com.agentcontrolcenter.app.core.config.ConfigRepository
 import com.agentcontrolcenter.app.transport.protocol.AgentConnectionState
 import com.agentcontrolcenter.app.transport.protocol.AgentEvent
 import com.agentcontrolcenter.app.transport.protocol.AgentTransport
@@ -18,9 +20,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -45,7 +49,8 @@ import javax.inject.Singleton
 @Singleton
 class ConnectionRepository @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val transportFactory: TransportFactory
+    private val transportFactory: TransportFactory,
+    private val configRepository: ConfigRepository
 ) {
 
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -63,6 +68,16 @@ class ConnectionRepository @Inject constructor(
      */
     @Volatile private var lastConfig: AgentConfig? = null
     @Volatile private var lastE2eKey: String? = null
+
+    /**
+     * 当前 AgentDefaults 缓存（由 [observeAgentDefaults] 持续同步）。
+     *
+     * 策略（痛点6）：AgentDefaults 只影响「未显式指定」的字段——
+     * 在 [connect] 时若 config.model 为空则回退 [AgentDefaults.defaultModel]。
+     * **不覆盖已有 Agent 的显式配置**：用户对单个 Agent 的 model/temperature/maxTokens
+     * 定制始终优先，Defaults 仅作为兜底。修改 Defaults 不会回写到 Room 中的 AgentConfigEntity。
+     */
+    @Volatile private var currentDefaults: AgentDefaults = AgentDefaults()
 
     /**
      * 当前 transport 实例的事件流。当 transport 被切换时，[flatMapLatest] 自动
@@ -91,6 +106,47 @@ class ConnectionRepository @Inject constructor(
 
     init {
         registerNetworkCallback()
+        observeSecurityChanges()
+        observeAgentDefaults()
+    }
+
+    /**
+     * 订阅 [ConfigRepository.agentDefaults]，缓存最新默认值供 [connect] 回退使用。
+     *
+     * 策略：AgentDefaults 变更**不回写**到已有 Agent，仅在连接时对「model 为空」的
+     * config 做兜底（见 [connect]）。这让 Defaults 真正影响运行时（而非仅 UI 预填），
+     * 同时不破坏用户对单个 Agent 的定制。
+     */
+    private fun observeAgentDefaults() {
+        repositoryScope.launch {
+            configRepository.agentDefaults.collect { defaults ->
+                currentDefaults = defaults
+            }
+        }
+    }
+
+    /**
+     * 订阅 [ConfigRepository.security]，在 E2E 开关或密钥变更时即时应用到活动连接。
+     *
+     * 痛点6 修复：此前用户在设置页切换 E2E / 重新生成密钥后，必须手动 `/reconnect`
+     * 或重启 App 才生效（[lastE2eKey] 与 [WebSocketTransport.e2eKey] 在首次 [connect]
+     * 时固化）。现在通过订阅 security Flow，变更时：
+     * 1. 更新 [lastE2eKey]，确保后续网络恢复重连使用新密钥；
+     * 2. 对当前活动 transport 调用 [AgentTransport.updateE2eKey] 热更新，无需断开重连。
+     *
+     * 用 [distinctUntilChanged] 过滤 effectiveE2eKey 的重复值，避免无关变更（如 analyticsEnabled）
+     * 触发多余回调。
+     */
+    private fun observeSecurityChanges() {
+        repositoryScope.launch {
+            configRepository.security
+                .map { it.effectiveE2eKey }
+                .distinctUntilChanged()
+                .collect { newKey ->
+                    lastE2eKey = newKey
+                    _transport.value?.updateE2eKey(newKey)
+                }
+        }
     }
 
     /**
@@ -139,18 +195,25 @@ class ConnectionRepository @Inject constructor(
      */
     suspend fun connect(config: AgentConfig, e2eKey: String?) {
         mutex.withLock {
-            // 记录配置用于网络恢复后重连
-            lastConfig = config
+            // AgentDefaults 兜底：仅当 model 为空时回退到默认模型。
+            // 用户显式指定的 model 始终优先（包括 SetupWizard / 新建 Agent 预填的值）。
+            val resolvedConfig = if (config.model.isBlank()) {
+                config.copy(model = currentDefaults.defaultModel)
+            } else {
+                config
+            }
+            // 记录配置用于网络恢复后重连（用回退后的值，保证重连一致）
+            lastConfig = resolvedConfig
             lastE2eKey = e2eKey
             val current = _transport.value
-            val needsNew = current == null || current.connectionState.value.agentType != config.type
+            val needsNew = current == null || current.connectionState.value.agentType != resolvedConfig.type
             val transport = if (needsNew) {
                 current?.shutdown()
-                transportFactory.create(config.type).also { _transport.value = it }
+                transportFactory.create(resolvedConfig.type).also { _transport.value = it }
             } else {
                 current
             }
-            transport.connect(config, e2eKey = e2eKey)
+            transport.connect(resolvedConfig, e2eKey = e2eKey)
         }
     }
 

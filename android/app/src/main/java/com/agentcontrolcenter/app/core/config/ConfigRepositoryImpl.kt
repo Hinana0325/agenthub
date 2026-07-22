@@ -61,15 +61,18 @@ class ConfigRepositoryImpl @Inject constructor(
     }
 
     // ── SecurityConfig ──
-    private val securityFlow: Flow<SecurityConfig> = combine(
+    // securityFlow 同时合并 E2E 开关、埋点开关、E2E 密钥，供运行时（ConnectionRepository）
+    // 精确订阅：用户切换 E2E 或重新生成密钥时即时发射新值，驱动活动连接热更新密钥。
+    override val security: Flow<SecurityConfig> = combine(
         settingsDataStore.e2eEnabled,
-        settingsDataStore.analyticsEnabled
-    ) { e2e, analytics ->
-        SecurityConfig(e2eEncryptionEnabled = e2e, analyticsEnabled = analytics)
+        settingsDataStore.analyticsEnabled,
+        settingsDataStore.e2eKey
+    ) { e2e, analytics, key ->
+        SecurityConfig(e2eEncryptionEnabled = e2e, analyticsEnabled = analytics, e2eKey = key)
     }
 
     // ── AgentDefaults ──
-    private val agentDefaultsFlow: Flow<AgentDefaults> =
+    override val agentDefaults: Flow<AgentDefaults> =
         context.agentDefaultsDataStore.data.map { prefs ->
             AgentDefaults(
                 defaultModel = prefs[DEFAULT_MODEL] ?: DEFAULT_MODEL_STR,
@@ -97,14 +100,14 @@ class ConfigRepositoryImpl @Inject constructor(
      * 组合 6 路 Flow 是必要的开销——比让 ViewModel 自己分别 collect 6 个流更简单。
      */
     override val appConfig: Flow<AppConfiguration> = combine(
-        combine(appearanceFlow, securityFlow) { appearance, security -> appearance to security },
-        combine(agentDefaultsFlow, backupFlow) { agentDefaults, backup -> agentDefaults to backup },
+        combine(appearanceFlow, security) { appearance, sec -> appearance to sec },
+        combine(agentDefaults, backupFlow) { defaults, backup -> defaults to backup },
         combine(onboardingFlow, featureFlagFlow) { onboarding, featureFlags -> onboarding to featureFlags }
-    ) { (appearance, security), (agentDefaults, backup), (onboarding, featureFlags) ->
+    ) { (appearance, sec), (defaults, backup), (onboarding, featureFlags) ->
         AppConfiguration(
             appearance = appearance,
-            security = security,
-            agentDefaults = agentDefaults,
+            security = sec,
+            agentDefaults = defaults,
             backup = backup,
             onboarding = onboarding,
             featureFlags = featureFlags

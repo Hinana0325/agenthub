@@ -137,15 +137,49 @@ final class AppState {
     /// `nil` 表示无错误或错误已被消费。
     var lastValidationError: ConfigValidationResult?
 
+    // MARK: - 活动 Transport 跟踪与 E2E 密钥热更新
+    // 对应 Android ConnectionRepository（@Singleton）：
+    // - 持有当前活动 transport 的弱引用
+    // - 订阅 SecurityConfig 变更（iOS 通过 @Observable + withObservationTracking）
+    // - effectiveE2eKey 变更时调用 transport.updateE2eKey 热更新密钥
+    // - 缓存 lastE2eKey 供网络恢复重连使用
+
+    /// 当前活动 transport 的弱引用（由 ChatView / CompareView / WorkflowEngine 注册）。
+    /// 用 weak 避免 AppState 强持有导致 transport 在视图退出后无法释放。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪（内部状态，不驱动 UI）。
+    @ObservationIgnored private weak var activeTransport: AgentTransport?
+
+    /// 缓存的最近一次有效 E2E 密钥（供网络恢复重连使用）。
+    /// 与 Android ConnectionRepository.lastE2eKey 对齐。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪。
+    @ObservationIgnored private var lastE2eKey: String?
+
+    /// E2E 密钥变更观察任务（持续监听 preferences.configuration.security 变更）。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪。
+    @ObservationIgnored private var e2eKeyObservationTask: Task<Void, Never>?
+
     /// 创建应用状态并初始化全部依赖
     init() {
         dataController = DataController()
         agentManager = AgentManager()
         sessionManager = SessionManager()
         taskManager = TaskManager()
+        // P3-2 / 配置辅助：FeatureFlag 与统一偏好仓库需在 WorkflowEngine / McpBridge 之前
+        // 初始化，以便注入（对齐 Android Hilt 中 FeatureFlagManager / ConfigRepository 单例）。
+        featureFlagManager = FeatureFlagManager()
+        // 配置辅助：统一偏好仓库（包装 UserDefaults + Keychain）
+        preferences = DefaultAppPreferences()
         // C9 修复：注入 dataController，让 WorkflowEngine 能解析 AGENT 节点配置。
-        workflowEngine = WorkflowEngine(dataController: dataController)
-        mcpBridge = McpBridge()
+        // 项1：注入 featureFlagManager 用于 execute() 入口的 FeatureFlag gate。
+        // 项2：注入 preferences 用于 AGENT 节点 config 的 model 兜底
+        //      （对齐 AppState.resolveWithDefaults，避免循环引用故不直接持有 AppState）。
+        workflowEngine = WorkflowEngine(
+            dataController: dataController,
+            featureFlagManager: featureFlagManager,
+            preferences: preferences
+        )
+        // 项1：注入 featureFlagManager 用于 connectServer() 入口的 FeatureFlag gate。
+        mcpBridge = McpBridge(featureFlagManager: featureFlagManager)
         pluginExecutor = PluginExecutor()
         voiceInputManager = VoiceInputManager()
         voiceChatManager = VoiceChatManager()
@@ -169,8 +203,111 @@ final class AppState {
         backupManager = BackupManager(dataController: dataController)
         // P3-1 / P3-2: 埋点系统与 Feature Flag 系统
         analyticsManager = AnalyticsManager()
-        featureFlagManager = FeatureFlagManager()
-        // 配置辅助：统一偏好仓库（包装 UserDefaults + Keychain）
-        preferences = DefaultAppPreferences()
+        // 启动 E2E 密钥变更观察（对齐 Android ConnectionRepository.init 中订阅 security Flow）
+        // 注意：此时 preferences 已完成初始化，可安全读取 configuration.security。
+        startE2eKeyObservation()
+    }
+
+    // MARK: - 活动 Transport 注册（供 ChatView / CompareView / WorkflowEngine 调用）
+
+    /// 注册活动 transport，使 AppState 能在 e2eKey 变更时调用其 updateE2eKey。
+    ///
+    /// 与 Android ConnectionRepository 持有 activeTransport 对齐：
+    /// - 由 ChatView.setupTransport() 等持有 transport 的视图在创建后调用
+    /// - 视图退出时传 nil 注销（或依赖 weak 引用在 transport 释放后自动 nil）
+    /// - 注册时立即同步当前 effectiveE2eKey，避免新 transport 使用旧密钥直到下次配置变更
+    func registerActiveTransport(_ transport: AgentTransport?) {
+        self.activeTransport = transport
+        // 立即同步当前 effectiveE2eKey 到新 transport，并更新 lastE2eKey 缓存。
+        // 注意：transport.connect() 也会设置 e2eKey，但两边的 e2eKey 来源一致
+        // （均为 preferences.configuration.security.effectiveE2eKey），不会冲突。
+        if let transport {
+            let key = preferences.configuration.security.effectiveE2eKey
+            transport.updateE2eKey(key)
+            lastE2eKey = key
+        }
+    }
+
+    // MARK: - AgentDefaults 兜底（项2，对齐 Android ConnectionRepository.connect）
+
+    /// 用当前 AgentDefaults 兜底解析 config：仅当 model 为空（或仅空白）时回退 defaultModel。
+    ///
+    /// 策略（对齐 Android）：**不覆盖已有 Agent 的显式配置**，Defaults 仅作兜底。
+    /// 对应 Android `ConnectionRepository.connect(config)` 中
+    /// `if (config.model.isBlank()) config = config.copy(model = currentDefaults.defaultModel)`。
+    ///
+    /// 调用点：
+    /// - `ChatView.setupTransport`：用户主聊天连接路径
+    /// - `WorkflowEngine.executeAgent`：工作流 AGENT 节点（WorkflowEngine 不持有 AppState，
+    ///   改为注入 `preferences` 并内联同样逻辑，见 `WorkflowEngine.resolveWithDefaults`）
+    func resolveWithDefaults(_ config: AgentConfig) -> AgentConfig {
+        let defaults = preferences.configuration.agentDefaults
+        // Swift 无 isBlank，用 trimmingCharacters(in: .whitespaces).isEmpty 等价
+        if config.model.trimmingCharacters(in: .whitespaces).isEmpty {
+            // AgentConfig 为 struct 且 model 为 var，直接构造副本避免引入 copy(model:)
+            var resolved = config
+            resolved.model = defaults.defaultModel
+            return resolved
+        }
+        return config
+    }
+
+    // MARK: - E2E 密钥变更观察
+
+    /// 启动 E2E 密钥变更观察循环，对齐 Android ConnectionRepository 在 init 中订阅
+    /// `security` Flow 并用 `distinctUntilChanged` 过滤 effectiveE2eKey 的行为。
+    ///
+    /// 实现机制（iOS @Observable 无内置 Combine publisher，改用 withObservationTracking）：
+    /// 1. 立即应用一次当前 effectiveE2eKey（init 时 preferences 已加载）
+    /// 2. 启动 Task 循环：await waitForE2eKeyChange() → applyLatestE2eKey()
+    /// 3. waitForE2eKeyChange() 用 withObservationTracking 注册对
+    ///    `preferences.configuration.security.effectiveE2eKey` 的观察，
+    ///    onChange 触发时 resume continuation，循环继续
+    ///
+    /// 与 Android `distinctUntilChanged` 语义对齐：applyLatestE2eKey 内部比较
+    /// newKey != lastE2eKey，仅变更时才调用 transport.updateE2eKey（去抖）。
+    private func startE2eKeyObservation() {
+        // 立即应用一次当前值（init 时 preferences.configuration 已就绪）
+        applyLatestE2eKey()
+        // 启动观察 Task（@MainActor 隔离，与 AppState 同线程）
+        e2eKeyObservationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await self.waitForE2eKeyChange()
+                self.applyLatestE2eKey()
+            }
+        }
+    }
+
+    /// 桥接 withObservationTracking 的同步 onChange 到 async 等待。
+    ///
+    /// 在 onChange 触发时 resume continuation，使调用方 await 返回。
+    /// 注意：onChange 是 `@autoclosure () -> @Sendable () -> Void`，调用方需提供一个
+    /// `@Sendable () -> Void` 闭包表达式。CheckedContinuation.resume() 是线程安全的，
+    /// 且 CheckedContinuation<Void, Never> 本身是 Sendable，可安全跨 actor 捕获。
+    private func waitForE2eKeyChange() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            withObservationTracking {
+                // 读取 effectiveE2eKey，触发 @Observable 追踪其依赖属性
+                // （e2eEncryptionEnabled / e2eKey）。
+                _ = preferences.configuration.security.effectiveE2eKey
+            } onChange: {
+                // onChange 的 autoclosure 求值得到此闭包（@Sendable () -> Void），
+                // 框架在被观察属性下次变更时调用它一次，resume continuation 使 await 返回。
+                continuation.resume()
+            }
+        }
+    }
+
+    /// 应用最新 effectiveE2eKey 到活动 transport。
+    ///
+    /// 与 Android `distinctUntilChanged` 对齐：仅当 newKey != lastE2eKey 时才调用
+    /// transport.updateE2eKey，避免无变化的冗余调用。
+    /// 同时更新 lastE2eKey 缓存（供网络恢复重连时复用）。
+    private func applyLatestE2eKey() {
+        let newKey = preferences.configuration.security.effectiveE2eKey
+        guard newKey != lastE2eKey else { return }
+        lastE2eKey = newKey
+        activeTransport?.updateE2eKey(newKey)
     }
 }

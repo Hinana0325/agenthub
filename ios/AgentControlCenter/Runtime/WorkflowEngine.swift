@@ -59,10 +59,33 @@ final class WorkflowEngine {
     /// 导致工作流中的 AGENT 节点必然连接失败（TransportFactory 用空 URL 连接）。
     private let dataController: DataController
 
+    /// 项1：FeatureFlag 管理器，用于 execute() 入口 gate（对齐 Android WorkflowEngine
+    /// 注入 FeatureFlagManager，检查 WORKFLOW_ENGINE 开关）。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪（内部依赖，不驱动 UI）。
+    @ObservationIgnored
+    private let featureFlagManager: FeatureFlagManager
+
+    /// 项2：统一偏好仓库，用于 AGENT 节点 config 的 model 兜底
+    /// （对齐 Android ConnectionRepository 订阅 agentDefaults Flow 缓存 currentDefaults）。
+    /// WorkflowEngine 不持有 AppState（避免循环引用），故直接注入 preferences
+    /// 并在 `resolveWithDefaults(_:)` 内联与 `AppState.resolveWithDefaults` 相同的逻辑。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪。
+    @ObservationIgnored
+    private let preferences: DefaultAppPreferences
+
     /// 创建 WorkflowEngine。
-    /// - Parameter dataController: 用于查询 AGENT 节点配置的持久化控制器。
-    init(dataController: DataController) {
+    /// - Parameters:
+    ///   - dataController: 用于查询 AGENT 节点配置的持久化控制器。
+    ///   - featureFlagManager: FeatureFlag 管理器（项1 gate）。
+    ///   - preferences: 统一偏好仓库（项2 model 兜底）。
+    init(
+        dataController: DataController,
+        featureFlagManager: FeatureFlagManager,
+        preferences: DefaultAppPreferences
+    ) {
         self.dataController = dataController
+        self.featureFlagManager = featureFlagManager
+        self.preferences = preferences
     }
 
     // MARK: - Public
@@ -75,6 +98,15 @@ final class WorkflowEngine {
     func execute(workflow: Workflow, input: String) async -> String {
         // 重置执行状态
         executionState = WorkflowExecutionState(isRunning: true)
+
+        // 项1：FeatureFlag gate（对齐 Android WorkflowEngine.execute() 开头检查
+        // !isEnabled(WORKFLOW_ENGINE)）。开关关闭时直接返回错误，不进入节点执行。
+        if !featureFlagManager.isEnabled(.workflowEngine) {
+            executionState.isRunning = false
+            executionState.error = "工作流引擎已被禁用（请在设置 → 实验性功能中开启）"
+            return "Error: 工作流引擎已被禁用"
+        }
+
         log("开始执行工作流: \(workflow.name)")
 
         // 查找 INPUT 节点
@@ -308,7 +340,10 @@ final class WorkflowEngine {
     private func executeAgent(agentType: AgentType, prompt: String) async -> String {
         // C9 修复：从持久化存储查找匹配 agentType 的 AgentConfig，
         // 找不到时才退回到 defaultConfig 占位（保留原行为，便于空库启动场景）。
-        let config = resolveConfig(for: agentType)
+        // 项2：用 AgentDefaults 兜底 model（对齐 Android ConnectionRepository.connect
+        // 中 model.isBlank() 回退 defaultModel）。defaultConfig 的 model 为空串，
+        // 此处兜底让用户在「设置 → 默认模型」配置的值能被工作流 AGENT 节点复用。
+        let config = resolveWithDefaults(resolveConfig(for: agentType))
         let transport = TransportFactory.create(agentType)
 
         // 1. 建立连接
@@ -494,6 +529,24 @@ final class WorkflowEngine {
             return matched
         }
         return Self.defaultConfig(for: agentType)
+    }
+
+    /// 项2：用当前 AgentDefaults 兜底解析 config（对齐 `AppState.resolveWithDefaults`）。
+    ///
+    /// 策略（对齐 Android）：**不覆盖已有 Agent 的显式配置**，Defaults 仅作兜底。
+    /// WorkflowEngine 不持有 AppState（避免 AppState ↔ WorkflowEngine 循环引用），
+    /// 故通过注入的 `preferences` 内联与 `AppState.resolveWithDefaults` 完全相同的逻辑。
+    ///
+    /// - Parameter config: 原始配置（可能来自持久化存储或 `defaultConfig` 占位）
+    /// - Returns: model 非空时原样返回；model 为空（或仅空白）时回退 defaultModel
+    private func resolveWithDefaults(_ config: AgentConfig) -> AgentConfig {
+        let defaults = preferences.configuration.agentDefaults
+        if config.model.trimmingCharacters(in: .whitespaces).isEmpty {
+            var resolved = config
+            resolved.model = defaults.defaultModel
+            return resolved
+        }
+        return config
     }
 
     /// 为指定 Agent 类型生成默认配置（占位）

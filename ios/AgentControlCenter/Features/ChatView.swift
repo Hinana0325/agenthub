@@ -736,6 +736,9 @@ struct ChatView: View {
         transport?.disconnect()
         transport?.shutdown()
         voiceManager.stopListening()
+        // 注销活动 transport 引用，避免 AppState 持有已 shutdown 的 transport
+        // 继续调用 updateE2eKey（虽为 weak 引用会自动 nil，但显式注销更明确）。
+        appState.registerActiveTransport(nil)
     }
 
     // MARK: - 传输层设置
@@ -745,7 +748,13 @@ struct ChatView: View {
         guard transport == nil else { return }
 
         // 仅当活跃 Agent 提供了配置时才建立传输
-        guard let config = appState.agentManager.activeAgent?.config else { return }
+        guard let rawConfig = appState.agentManager.activeAgent?.config else { return }
+
+        // 项2：用 AgentDefaults 兜底 model（对齐 Android ConnectionRepository.connect
+        // 中 model.isBlank() 回退 defaultModel）。策略：不覆盖已有 Agent 的显式配置，
+        // 仅当 model 为空时回退 defaultModel。此处在创建 transport / connect 之前解析，
+        // 确保 connect 拿到的是兜底后的 config。
+        let config = appState.resolveWithDefaults(rawConfig)
 
         let t = TransportFactory.create(config.type)
         transport = t
@@ -754,6 +763,14 @@ struct ChatView: View {
         let e2eKey: String? = encryptionEnabled && !encryptionPassphrase.isEmpty
             ? encryptionPassphrase
             : nil
+
+        // 注册到 AppState，使 AppState 在 e2eKey 变更时能调用 t.updateE2eKey 热更新密钥。
+        // 与 Android ConnectionRepository 持有 activeTransport 对齐。
+        // 注意：此处注册在 connect 之前完成，但 updateE2eKey 不会与 connect 冲突 ——
+        // connect() 会用传入的 e2eKey 覆盖内部字段，而 AppState 注册时同步的 e2eKey
+        // 来源（preferences.configuration.security.effectiveE2eKey）与此处计算的 e2eKey
+        // 逻辑一致（encryptionEnabled + passphrase），不会产生分歧。
+        appState.registerActiveTransport(t)
 
         let sid = sessionId
         eventTask = Task {

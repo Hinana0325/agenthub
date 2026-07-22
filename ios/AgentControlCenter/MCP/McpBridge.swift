@@ -57,15 +57,27 @@ final class McpBridge {
     @ObservationIgnored
     private let client: McpClient
 
+    /// 项1：FeatureFlag 管理器，用于 connectServer() 入口 gate（对齐 Android McpBridge
+    /// 注入 FeatureFlagManager，检查 MCP_SERVERS 开关）。
+    /// `@ObservationIgnored`：不参与 @Observable 发布追踪（内部依赖，不驱动 UI）。
+    @ObservationIgnored
+    private let featureFlagManager: FeatureFlagManager
+
     // MARK: - 初始化
 
     /// 创建 McpBridge 实例。
     /// - Parameters:
     ///   - registry: 工具注册表（默认创建新实例；测试时可注入 mock）
     ///   - client: MCP 客户端（默认创建新实例；测试时可注入 mock）
-    init(registry: McpRegistry = McpRegistry(), client: McpClient = McpClient()) {
+    ///   - featureFlagManager: FeatureFlag 管理器（项1 gate，由 AppState 显式注入）
+    init(
+        registry: McpRegistry = McpRegistry(),
+        client: McpClient = McpClient(),
+        featureFlagManager: FeatureFlagManager
+    ) {
         self.registry = registry
         self.client = client
+        self.featureFlagManager = featureFlagManager
     }
 
     // MARK: - 连接管理
@@ -82,6 +94,18 @@ final class McpBridge {
     /// - Parameter server: 要连接的 MCP Server
     /// - Returns: true 表示连接成功并已注册工具；false 表示握手失败
     func connectServer(_ server: McpServer) async -> Bool {
+        // 项1：FeatureFlag gate（对齐 Android McpBridge.connectServer() 开头检查
+        // !isEnabled(MCP_SERVERS)）。开关关闭时不进入 connecting 状态，直接返回 failed。
+        // 注意：gate 必须在状态更新为 connecting 之前，避免 UI 看到瞬态 connecting。
+        if !featureFlagManager.isEnabled(.mcpServers) {
+            updateConnectionState(
+                serverId: server.id,
+                state: .failed,
+                error: "MCP 服务器功能已被禁用"
+            )
+            return false
+        }
+
         updateConnectionState(serverId: server.id, state: .connecting)
 
         // 1. initialize 握手

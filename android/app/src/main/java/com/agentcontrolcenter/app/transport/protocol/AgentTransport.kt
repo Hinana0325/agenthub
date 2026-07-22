@@ -28,6 +28,25 @@ interface AgentTransport {
     fun disconnect()
 
     /**
+     * 运行时热更新 E2E 密钥，无需断开重连。
+     *
+     * 用于响应 [com.agentcontrolcenter.app.core.config.ConfigRepository.security]
+     * 的变更：用户在设置页切换 E2E 开关或重新生成密钥后，
+     * [com.agentcontrolcenter.app.transport.ConnectionRepository] 调用此方法
+     * 把新密钥（或 null 表示关闭加密）应用到当前活动连接，后续 [sendMessage]
+     * 的加密 / [events] 收消息的解密立即使用新密钥。
+     *
+     * - `key == null`：关闭加密，后续消息以明文收发。
+     * - `key != null`：开启加密，后续外发消息加密、收到的消息尝试解密。
+     *   在途的旧密钥加密消息可能解密失败（由 [com.agentcontrolcenter.app.core.security.CryptoManager]
+     *   优雅降级为明文）。
+     *
+     * 默认实现为空操作：不适用 E2E 的传输（如 [OpenAIHttpTransport]）无需关心。
+     * 连接尚未建立时调用也安全（默认 no-op / 实现侧仅更新内部字段）。
+     */
+    fun updateE2eKey(key: String?) { }
+
+    /**
      * 彻底释放底层资源：取消协程作用域、关闭 HttpClient、关闭事件 Channel。
      *
      * 与 [disconnect] 的区别：

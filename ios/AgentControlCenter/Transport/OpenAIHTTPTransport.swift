@@ -21,7 +21,25 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
     private let encoder = JSONEncoder()
 
     private var config: AgentConfig?
-    private var e2eKey: String?
+
+    /// E2E 密钥的内部存储（锁保护，跨 actor 安全访问）。
+    /// 与 WebSocketTransport 一致：Swift 6 strict concurrency 下 e2eKey 可能被
+    /// AppState 订阅线程调用 updateE2eKey 更新，同时被 sendMessage 读取。
+    /// 改为通过计算属性 + NSLock 保护读写，对齐 Android @Volatile 语义。
+    private let e2eKeyLock = NSLock()
+    private var _e2eKey: String?
+    private var e2eKey: String? {
+        get {
+            e2eKeyLock.lock()
+            defer { e2eKeyLock.unlock() }
+            return _e2eKey
+        }
+        set {
+            e2eKeyLock.lock()
+            _e2eKey = newValue
+            e2eKeyLock.unlock()
+        }
+    }
 
     /// 事件流续期
     private var eventContinuation: AsyncStream<AgentEvent>.Continuation?
@@ -110,6 +128,18 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
             // C3 修复：探活失败 → TRANSPORT_CONNECT_FAILED (1001)
             emit(.error(code: .transportConnectFailed, message: "Failed to reach server"))
         }
+    }
+
+    // MARK: - 热更新 E2E 密钥
+
+    /// 运行时热更新 E2E 密钥，无需断开重连。
+    ///
+    /// 与 Android / WebSocketTransport.updateE2eKey 对齐：
+    /// - 仅更新内部 e2eKey 字段（通过 e2eKeyLock 保护写入）
+    /// - HTTP 传输虽无持久连接，但 e2eKey 仍会影响下次 sendMessage 的加密路径
+    /// - 传 nil 表示禁用 E2E 加密
+    func updateE2eKey(_ key: String?) {
+        e2eKey = key
     }
 
     // MARK: - Send Message

@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.mcp.bridge
 
+import com.agentcontrolcenter.app.core.featureflag.FeatureFlagManager
 import com.agentcontrolcenter.app.mcp.client.McpClient
 import com.agentcontrolcenter.app.mcp.model.McpServer
 import com.agentcontrolcenter.app.mcp.model.McpToolResult
@@ -31,7 +32,8 @@ import javax.inject.Singleton
 @Singleton
 class McpBridge @Inject constructor(
     private val registry: McpRegistry,
-    private val client: McpClient
+    private val client: McpClient,
+    private val featureFlagManager: FeatureFlagManager
 ) {
 
     /** 连接状态 */
@@ -52,6 +54,13 @@ class McpBridge @Inject constructor(
      * @return true 表示连接成功并已注册工具
      */
     suspend fun connectServer(server: McpServer): Boolean = withContext(Dispatchers.IO) {
+        // 痛点6 修复：MCP 集成受 MCP_SERVERS FeatureFlag 控制。
+        // 此前 flag 关闭后仍可建立新连接。现在禁用时拒绝连接并上报失败状态。
+        if (!featureFlagManager.isEnabled(FeatureFlagManager.FeatureFlag.MCP_SERVERS)) {
+            updateConnectionState(server.id, ConnectionState.Failed, "MCP 服务器功能已被禁用")
+            return@withContext false
+        }
+
         updateConnectionState(server.id, ConnectionState.Connecting)
 
         try {

@@ -83,7 +83,13 @@ class WebSocketTransport(
 
     private var connectJob: kotlinx.coroutines.Job? = null
 
-    /** 当非空且非空字符串时，对消息内容做 E2E 加解密（仅对等模式生效）。 */
+    /**
+     * 当非空且非空字符串时，对消息内容做 E2E 加解密（仅对等模式生效）。
+     *
+     * @Volatile：[connect] / [updateE2eKey] 写入，[sendMessage] / [handleMessage]
+     * 在 receive 协程中读取，需保证跨线程内存可见性。
+     */
+    @Volatile
     private var e2eKey: String? = null
 
     /**
@@ -122,6 +128,18 @@ class WebSocketTransport(
             old?.let { try { it.close() } catch (_: Exception) {} }
             connectLoop(config.serverUrl, config.apiKey)
         }
+    }
+
+    /**
+     * 运行时热更新 E2E 密钥，无需断开重连。
+     *
+     * 由 [com.agentcontrolcenter.app.transport.ConnectionRepository] 在
+     * [com.agentcontrolcenter.app.core.config.ConfigRepository.security] 变更时调用。
+     * 仅更新内部 [e2eKey] 字段，后续 [sendMessage] 加密 / [handleMessage] 解密
+     * 立即使用新值；连接本身不受影响。
+     */
+    override fun updateE2eKey(key: String?) {
+        e2eKey = key?.takeIf { it.isNotBlank() }
     }
 
     private suspend fun connectLoop(serverUrl: String, apiKey: String) {

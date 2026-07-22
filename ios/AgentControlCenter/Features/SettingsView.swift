@@ -181,6 +181,11 @@ struct SettingsView: View {
                     } else {
                         KeychainManager.savePassphrase(newValue)
                     }
+                    // Keychain 写入完成后，触发 AppPreferences 重新同步 SecurityConfig.e2eKey，
+                    // 使 AppState 的 e2eKey 观察回调触发，热更新活动 transport 的密钥。
+                    // 注意：此调用在 Task 内（@MainActor 隔离由 SwiftUI View 继承），
+                    // 安全访问 appState.preferences。
+                    appState.preferences.refreshSecurityConfig()
                 }
             }
             // CI-fix: fontSize 改为手动 UserDefaults 桥接（替代 @AppStorage）
@@ -281,6 +286,10 @@ struct SettingsView: View {
                         passphrase = ""
                         KeychainManager.clearPassphrase()
                     }
+                    // 触发 AppPreferences 重新同步 SecurityConfig（encryptionEnabled 已写入
+                    // UserDefaults，需让 configuration.security 重新读取并发布 @Observable 变更，
+                    // 进而使 AppState 的 e2eKey 观察回调触发，热更新活动 transport 的密钥）。
+                    appState.preferences.refreshSecurityConfig()
                 }
 
             if encryptionEnabled {

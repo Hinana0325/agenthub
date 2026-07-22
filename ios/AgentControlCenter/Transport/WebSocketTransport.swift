@@ -19,7 +19,26 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     private let session: URLSession
 
     private var config: AgentConfig?
-    private var e2eKey: String?
+
+    /// E2E 密钥的内部存储（锁保护，跨 actor 安全访问）。
+    /// Swift 6 strict concurrency complete 下，e2eKey 在运行时可能被 AppState 订阅线程
+    /// 调用 updateE2eKey 更新，同时被 sendMessage（加密）/ handleText（解密）读取，
+    /// 存在数据竞争。改为通过计算属性 + NSLock 保护读写，对齐 Android @Volatile 语义：
+    /// 写入立即可见，读取走锁避免撕裂。
+    private let e2eKeyLock = NSLock()
+    private var _e2eKey: String?
+    private var e2eKey: String? {
+        get {
+            e2eKeyLock.lock()
+            defer { e2eKeyLock.unlock() }
+            return _e2eKey
+        }
+        set {
+            e2eKeyLock.lock()
+            _e2eKey = newValue
+            e2eKeyLock.unlock()
+        }
+    }
 
     /// 事件流续期
     private var eventContinuation: AsyncStream<AgentEvent>.Continuation?
@@ -102,6 +121,19 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         shouldReconnect = true
         retryCount = 0
         await connectLoop()
+    }
+
+    // MARK: - 热更新 E2E 密钥
+
+    /// 运行时热更新 E2E 密钥，无需断开重连。
+    ///
+    /// 与 Android WebSocketTransport.updateE2eKey 对齐：
+    /// - 仅更新内部 e2eKey 字段（通过 e2eKeyLock 保护写入）
+    /// - 不触发 reconnect / 重新鉴权帧
+    /// - 后续 sendMessage 加密 / handleText 解密立即使用新值
+    /// - 传 nil 表示禁用 E2E 加密（与关闭开关等效），后续消息明文收发
+    func updateE2eKey(_ key: String?) {
+        e2eKey = key
     }
 
     private func connectLoop() async {

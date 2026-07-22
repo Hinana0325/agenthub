@@ -32,14 +32,32 @@ data class AppearanceConfig(
  * 安全与加密偏好。
  *
  * 与 iOS `AppPreferences.SecurityConfig` 对齐。
- * apiKey / passphrase 不在此对象中（敏感字段由 KeystoreManager / KeychainManager 直管）。
+ * apiKey 不在此对象中（敏感字段由 KeystoreManager / KeychainManager 直管）；
+ * 但 E2E 密钥放这里，因为运行时（ConnectionRepository / WebSocketTransport）需要
+ * 在用户切换 E2E 开关或重新生成密钥时即时拿到新密钥应用到活动连接。
  */
 data class SecurityConfig(
     /** 是否启用端到端传输加密（P2P / 中继模式） */
     val e2eEncryptionEnabled: Boolean = false,
     /** 是否启用本地埋点（隐私开关） */
-    val analyticsEnabled: Boolean = true
-)
+    val analyticsEnabled: Boolean = true,
+    /**
+     * 当前 E2E 密钥（已通过 KeystoreManager 解密的明文，空串表示未设置）。
+     *
+     * 运行时消费方应使用 [effectiveE2eKey] 取「开关开启且密钥非空」的有效值，
+     * 而非直接读此字段。
+     */
+    val e2eKey: String = ""
+) {
+    /**
+     * 计算应应用到活动连接的有效 E2E 密钥。
+     *
+     * - E2E 关闭 → null（不加密）
+     * - E2E 开启但密钥为空 → null（无法加密，退回明文避免崩溃）
+     * - E2E 开启且密钥非空 → 密钥
+     */
+    val effectiveE2eKey: String? get() = e2eKey.takeIf { e2eEncryptionEnabled && it.isNotBlank() }
+}
 
 /**
  * Agent 默认配置。
@@ -119,6 +137,21 @@ data class AppConfiguration(
 interface ConfigRepository {
     /** 全量配置快照流。任一子配置变更都会重新发射 */
     val appConfig: Flow<AppConfiguration>
+
+    /**
+     * 安全配置子流（仅 [SecurityConfig]）。
+     *
+     * 供运行时单例（如 [com.agentcontrolcenter.app.transport.ConnectionRepository]）
+     * 精确订阅 E2E 开关 / 密钥变更，避免订阅整个 [appConfig] 在主题等无关变更时也收到回调。
+     */
+    val security: Flow<SecurityConfig>
+
+    /**
+     * Agent 默认配置子流（仅 [AgentDefaults]）。
+     *
+     * 供运行时在连接时回退默认 model/temperature/maxTokens，以及未来「应用到现有 Agent」策略。
+     */
+    val agentDefaults: Flow<AgentDefaults>
 
     // ── Appearance ──
     suspend fun setThemeMode(mode: String)
