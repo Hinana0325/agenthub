@@ -26,9 +26,6 @@ struct ContentView: View {
     /// compact 模式下选中的底部 Tab
     @State private var selectedCompactTab: CompactTab = .sessions
 
-    /// 是否显示命令面板（⌘K 触发）
-    @State private var showingCommandPalette: Bool = false  // 已废弃：appState.showCommandPalette 接管
-
     /// 命令面板管理器（共享实例，便于注册运行时命令）
     private var commandPaletteManager: CommandPaletteManager {
         CommandPaletteManager.shared

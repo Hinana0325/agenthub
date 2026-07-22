@@ -26,6 +26,11 @@ struct MarketplaceView: View {
     @State private var detailAgent: MarketplaceAgent?
     /// 安装中的 Agent ID（用于按钮状态）
     @State private var installingId: String?
+    /// 按 agent.id 索引的安装任务
+    // 修复: 原 install 是 fire-and-forget Task，未存储引用。用户快速点击两个 Agent
+    // 安装按钮时 installingId 被覆盖，第一个 Task 完成后把 installingId 置 nil，
+    // 第二个的 spinner 提前消失。改为按 id 索引存储 Task，支持并发安装且互不干扰。
+    @State private var installTasks: [String: Task<Void, Never>] = [:]
     /// 安装结果提示
     @State private var resultMessage: String?
     @State private var showingResultAlert: Bool = false
@@ -108,9 +113,8 @@ struct MarketplaceView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
-                .onChange(of: searchQuery) { _, _ in
-                    // 输入即过滤（内存搜索，无延迟）
-                }
+                // 修复: 移除空的 .onChange(of: searchQuery) — filteredAgents 是计算属性
+                // 直接读 searchQuery，输入变化时 SwiftUI 自动重算，不需要 onChange。
             if !searchQuery.isEmpty {
                 Button {
                     searchQuery = ""
@@ -241,8 +245,10 @@ struct MarketplaceView: View {
     /// 安装市场 Agent 到本地
     /// - Parameter agent: 市场 Agent
     private func install(_ agent: MarketplaceAgent) {
+        // 修复: 防止重复点击同一 Agent 发起多次安装
+        guard installTasks[agent.id] == nil else { return }
         installingId = agent.id
-        Task {
+        installTasks[agent.id] = Task {
             do {
                 let config = try await appState.marketplaceClient.install(agent: agent)
                 // 持久化
@@ -261,6 +267,7 @@ struct MarketplaceView: View {
                 resultMessage = "安装失败：\(error.localizedDescription)"
             }
             installingId = nil
+            installTasks[agent.id] = nil
             showingResultAlert = true
         }
     }

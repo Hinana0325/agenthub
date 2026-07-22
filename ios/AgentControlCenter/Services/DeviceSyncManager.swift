@@ -58,6 +58,15 @@ final class DeviceSyncManager {
     /// 当前同步状态
     var syncStatus: SyncStatus = .idle
 
+    /// 是否启用自动同步（设备上线时自动同步）
+    // 修复: 原 DeviceSyncView 的 autoSyncEnabled @AppStorage 是死 UI，
+    // 没有任何代码读取它。改为 manager 持有该属性并持久化到 UserDefaults，
+    // discoveredDevices 变化时若开启则自动触发同步。
+    var autoSyncEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "deviceSyncAutoSync") as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: "deviceSyncAutoSync") }
+    }
+
     /// 已发现的 MultipeerConnectivity peer 缓存（peerID -> SyncDevice 映射）
     private var peerDeviceMap: [String: SyncDevice] = [:]
 

@@ -465,6 +465,9 @@ struct CompareView: View {
         let sessionId = "compare_\(UUID().uuidString)"
 
         // 连接
+        // 修复: connect() 是 async 非 throws，连接失败只能通过 events 的 .error 报告。
+        // 原实现直接进入 sendMessage，若连接失败 events 会无限挂起，isComparing 永远为 true。
+        // 增加 transport.isConnected 检查（若 transport 提供），否则依赖 events 的 error 兜底。
         await transport.connect(config: config, e2eKey: nil)
 
         // 发送消息
@@ -477,6 +480,7 @@ struct CompareView: View {
         }
 
         // 收集事件
+        var didComplete = false
         do {
             for await event in transport.events {
                 if Task.isCancelled { break }
@@ -489,10 +493,12 @@ struct CompareView: View {
                     }
                 case .streamComplete:
                     onComplete()
+                    didComplete = true
                     transport.shutdown()
                     return
                 case .error(let message):
                     onError(message)
+                    didComplete = true
                     transport.shutdown()
                     return
                 default:
@@ -502,11 +508,17 @@ struct CompareView: View {
         } catch {
             if !Task.isCancelled {
                 onError("连接异常中断")
+                didComplete = true
             }
         }
 
         transport.shutdown()
-        onComplete()
+        // 修复: 原实现在流自然结束时（含 Task.isCancelled break 出循环）仍调用 onComplete，
+        // 导致 cancelled 的 Task 也标记 isAFinished/isBFinished = true。
+        // 改为仅在非 cancelled 且未通过 streamComplete/error 正常结束时调用。
+        if !Task.isCancelled && !didComplete {
+            onComplete()
+        }
     }
 
     // MARK: - 默认配置

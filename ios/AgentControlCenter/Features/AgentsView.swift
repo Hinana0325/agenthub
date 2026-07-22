@@ -276,17 +276,31 @@ struct AgentsView: View {
 
             do {
                 let data = try Data(contentsOf: url)
-                let configs = try JSONDecoder().decode([AgentConfig].self, from: data)
 
-                guard !configs.isEmpty else {
+                // 修复: 原实现整体 decode [AgentConfig]，单条字段损坏会导致整批失败。
+                // 改为逐条解码：先用 JSONSerialization 拆成元素数组，再对每个元素
+                // 独立 decode，单条失败只跳过该条，不影响其余配置导入。
+                guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                    resultMessage = "文件格式不是有效的 JSON 数组。"
+                    showingResultAlert = true
+                    return
+                }
+
+                guard !jsonArray.isEmpty else {
                     resultMessage = "文件中没有有效的 Agent 配置。"
                     showingResultAlert = true
                     return
                 }
 
-                // 逐个保存配置并注册 Agent（saveAgentConfig 内部为 upsert 语义）
+                let decoder = JSONDecoder()
                 var importedCount = 0
-                for config in configs {
+                var failedCount = 0
+                for element in jsonArray {
+                    guard let elementData = try? JSONSerialization.data(withJSONObject: element),
+                          let config = try? decoder.decode(AgentConfig.self, from: elementData) else {
+                        failedCount += 1
+                        continue
+                    }
                     let agent = Agent(
                         id: config.id,
                         name: config.name,
@@ -298,7 +312,13 @@ struct AgentsView: View {
                     importedCount += 1
                 }
 
-                resultMessage = "成功导入 \(importedCount) 个 Agent 配置。"
+                if importedCount == 0 {
+                    resultMessage = "导入失败：\(failedCount) 条配置均无法解析。"
+                } else if failedCount > 0 {
+                    resultMessage = "成功导入 \(importedCount) 个 Agent 配置，\(failedCount) 条解析失败已跳过。"
+                } else {
+                    resultMessage = "成功导入 \(importedCount) 个 Agent 配置。"
+                }
             } catch {
                 resultMessage = "导入失败：\(error.localizedDescription)"
             }
@@ -535,7 +555,9 @@ private struct AgentFormSheet: View {
                 }
             }
             // 编辑模式：在视图出现时预填充已有配置值
-            .onAppear {
+            // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理生命周期，
+            // 视图销毁时自动取消，避免页面快速切换时的孤儿任务
+            .task {
                 guard let config = existingConfig else { return }
                 name = config.name
                 type = config.type

@@ -61,17 +61,14 @@ struct DeviceSyncView: View {
 
     // MARK: - UI 状态
 
-    /// 自动同步开关（持久化到 UserDefaults）
-    @AppStorage("deviceSyncAutoSync") private var autoSyncEnabled: Bool = false
+    // 修复: 移除 @AppStorage("deviceSyncAutoSync") — 改为绑定到
+    // appState.deviceSyncManager.autoSyncEnabled（持久化到 UserDefaults）。
 
     /// 同步历史记录（持久化到 UserDefaults）
     @State private var syncHistory: [SyncHistoryEntry] = []
 
     /// 最后同步时间（持久化到 UserDefaults）
     @State private var lastSyncTime: Date?
-
-    /// 是否显示设备发现中的进度提示
-    @State private var isDiscovering: Bool = false
 
     /// 当前显示的二维码占位
     @State private var showQRCode: Bool = false
@@ -184,7 +181,13 @@ struct DeviceSyncView: View {
             Divider()
 
             // 自动同步开关
-            Toggle(isOn: $autoSyncEnabled) {
+            // 修复: 原 @AppStorage("deviceSyncAutoSync") 是死 UI，没有任何代码读取。
+            // 改为绑定到 appState.deviceSyncManager.autoSyncEnabled（持久化到 UserDefaults），
+            // manager 在 discoveredDevices 变化时检查此属性决定是否自动同步。
+            Toggle(isOn: Binding(
+                get: { appState.deviceSyncManager.autoSyncEnabled },
+                set: { appState.deviceSyncManager.autoSyncEnabled = $0 }
+            )) {
                 Label("自动同步", systemImage: "clock.arrow.circlepath")
                     .font(.subheadline)
             }
@@ -558,14 +561,12 @@ struct DeviceSyncView: View {
     // MARK: - 操作
 
     /// 开始扫描附近设备
+    // 修复: 原 startScanning 设置本地 isDiscovering 并用 asyncAfter(3.0) 重置，
+    // 但 isDiscovering 从未在任何视图 body 中读取（死状态）。扫描状态已由
+    // DeviceSyncManager.syncStatus (.scanning → .idle) 统一管理，
+    // 此处只需委托给 manager，无需额外的本地状态与定时器。
     private func startScanning() {
         appState.deviceSyncManager.startScanning()
-        isDiscovering = true
-
-        // 扫描结束后重置发现状态
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            isDiscovering = false
-        }
     }
 
     /// 手动同步全部已连接设备

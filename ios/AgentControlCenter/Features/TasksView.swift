@@ -84,13 +84,24 @@ struct TasksView: View {
                 }
             }
             // 空状态占位
+            // 修复: 原实现无论"完全无任务"还是"过滤无结果"都显示"暂无任务"，
+            // 对用户有误导（切换到 .completed 过滤但所有任务都是 running 时显示"暂无任务"）。
+            // 改为区分两种情况。
             .overlay {
                 if filteredTasks.isEmpty {
-                    ContentUnavailableView(
-                        "暂无任务",
-                        systemImage: "checklist",
-                        description: Text("这里将展示 Agent 执行的任务记录")
-                    )
+                    if tasks.isEmpty {
+                        ContentUnavailableView(
+                            "暂无任务",
+                            systemImage: "checklist",
+                            description: Text("这里将展示 Agent 执行的任务记录")
+                        )
+                    } else {
+                        ContentUnavailableView(
+                            "当前过滤条件下无任务",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("尝试切换筛选条件查看其他状态的任务")
+                        )
+                    }
                 }
             }
             // 创建任务 Sheet

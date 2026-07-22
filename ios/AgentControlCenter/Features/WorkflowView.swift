@@ -229,7 +229,10 @@ struct WorkflowView: View {
             let result = await appState.workflowEngine.execute(workflow: workflow, input: text)
             // SW-M7: Task 闭包已通过 appState 访问继承 MainActor 隔离，无需 MainActor.run
             // executionState 已通过 @Observable 自动更新
-            if !result.hasPrefix("Error:") {
+            // 修复: 原实现用 `result.hasPrefix("Error:")` 字符串嗅探判断成功/失败，
+            // 一旦 WorkflowEngine 改变错误返回格式（本地化、改前缀）会误判。
+            // 改为检查 executionState.error（@Observable 已暴露的错误状态）。
+            if appState.workflowEngine.executionState.error == nil {
                 inputText = ""
             }
             return result

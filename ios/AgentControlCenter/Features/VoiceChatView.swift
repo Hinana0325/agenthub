@@ -25,8 +25,11 @@ struct VoiceChatView: View {
     /// 录音开始时间（用于计算时长）
     @State private var recordingStartedAt: Date?
 
-    /// 录音时长定时器
-    @State private var durationTimer: Timer?
+    /// 录音时长计时任务
+    // 修复: 原 `Timer.scheduledTimer` 每 100ms spawn 一个 `Task { @MainActor in }`，
+    // 录音每秒创建/销毁 10 次 Task。改为单个 Task 循环 + Task.sleep，由 durationTask
+    // 持有，stopRecording/cancelRecording/sendRecording/onDisappear 取消即可。
+    @State private var durationTask: Task<Void, Never>?
 
     /// 当前显示的录音时长（秒）
     @State private var currentDuration: TimeInterval = 0
@@ -78,7 +81,7 @@ struct VoiceChatView: View {
                 Text(errorMessage ?? "")
             }
             .onDisappear {
-                durationTimer?.invalidate()
+                durationTask?.cancel()
                 appState.voiceChatManager.stopAll()
             }
         }
@@ -280,8 +283,11 @@ struct VoiceChatView: View {
     }
 
     /// 脉冲透明度
+    // 修复: 原实现 `isRecording ? 0.0 : 0.5` 把透明度取反了。
+    // 脉冲光环只在 isRecording == true 时渲染（line 163 的 if 判断），
+    // 但此时 opacity 返回 0.0 导致脉冲完全不可见。应为录音时显示、非录音时隐藏。
     private var pulseOpacity: Double {
-        appState.voiceChatManager.isRecording ? 0.0 : 0.5
+        appState.voiceChatManager.isRecording ? 0.5 : 0.0
     }
 
     // MARK: - 操作
@@ -292,14 +298,14 @@ struct VoiceChatView: View {
         currentDuration = 0
         recordingStartedAt = Date()
 
-        // 启动计时器
-        durationTimer?.invalidate()
-        // CI-fix: `Timer.scheduledTimer` 的回调闭包为 `@Sendable`，无法直接访问
-        // MainActor-isolated 的 @State 属性 `recordingStartedAt` / `currentDuration`。
-        // 通过 `Task { @MainActor in ... }` 跳回 MainActor 后再访问。
-        // (Timer 默认调度在 main RunLoop，回调本就在主线程，但编译器需要显式隔离标注)
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            Task { @MainActor in
+        // 启动计时任务
+        // 修复: 原 Timer.scheduledTimer 每 100ms spawn Task { @MainActor in }，
+        // 改为单个 Task 循环 + Task.sleep，避免每秒 10 次 Task 创建/销毁。
+        durationTask?.cancel()
+        durationTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                if Task.isCancelled { break }
                 if let start = recordingStartedAt {
                     currentDuration = Date().timeIntervalSince(start)
                 }
@@ -309,23 +315,23 @@ struct VoiceChatView: View {
 
     /// 停止录音（保留文件，等待发送）
     private func stopRecording() {
-        durationTimer?.invalidate()
-        durationTimer = nil
+        durationTask?.cancel()
+        durationTask = nil
         _ = appState.voiceChatManager.stopRecording()
     }
 
     /// 取消录音
     private func cancelRecording() {
-        durationTimer?.invalidate()
-        durationTimer = nil
+        durationTask?.cancel()
+        durationTask = nil
         appState.voiceChatManager.cancelRecording()
         currentDuration = 0
     }
 
     /// 发送录音（保存为语音消息）
     private func sendRecording() {
-        durationTimer?.invalidate()
-        durationTimer = nil
+        durationTask?.cancel()
+        durationTask = nil
         guard let url = appState.voiceChatManager.stopRecording(),
               FileManager.default.fileExists(atPath: url.path) else {
             errorMessage = String(localized: "error.recording.invalid")
@@ -347,8 +353,18 @@ struct VoiceChatView: View {
     /// 清空所有消息
     private func clearAllMessages() {
         // 删除物理文件
+        // 修复: 原 `try?` 静默吞掉文件删除错误（被占用/权限/不存在），
+        // UI 上已清空但磁盘上残留文件。改为收集失败数量并提示用户。
+        var failedCount = 0
         for message in messages {
-            try? FileManager.default.removeItem(at: message.url)
+            do {
+                try FileManager.default.removeItem(at: message.url)
+            } catch {
+                failedCount += 1
+            }
+        }
+        if failedCount > 0 {
+            errorMessage = "\(failedCount) 个录音文件删除失败，可能已被占用或权限不足"
         }
         messages.removeAll()
         appState.voiceChatManager.stopPlayback()
