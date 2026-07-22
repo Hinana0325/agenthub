@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.0] - 2026-07-22
+
+### 配置辅助体系全面升级（双端对齐）
+
+继 4.6.3 配置辅助体系初版（统一仓库 + 校验器 + 首启向导）后，本次完成三项配置流程优化与「配置变更通知运行时」打通。
+
+#### 配置流程优化（校验 / 向导 / 可发现性）
+
+- **校验统一**：Android/iOS Agent 表单统一走 `AgentConfigValidator`，错误按字段回填 `isError`/`supportingText`，删除 UI 层重复校验逻辑（apiKey≥10、http 前缀等）。
+- **类型联动**：`AgentType.LocalModel` 隐藏 serverUrl/apiKey 输入框；MCP `STDIO` 传输标签改为「命令路径」。
+- **向导增强**：SetupWizard `testConnection` 加取消按钮、重试前先 `disconnect`、`ensureActive` 响应取消；iOS SetupWizard 接入 ContentView 并新增真实网络 ping（URLSession HEAD + SSRF 防护）。
+- **AgentDefaults 预填**：新建 Agent 时从 defaults 预填 model/temperature/maxTokens。
+- **清理彻底化**：`clearAllPreferences` 补全 `mcp_prefs`/`widget_prefs` SharedPreferences；iOS `allPreferenceKeys` 补全 `mcp_servers`/`deviceSyncAutoSync`，`clearAllData` 走统一入口。
+- **可发现性**：设置页加搜索（双栏过滤左侧分类、单栏隐藏不匹配 Section，与 iOS `searchable` 对齐）；敏感 FeatureFlag（E2E_ENCRYPTION/DEVICE_SYNC）从开→关加二次确认弹窗。
+- **编译修复**：ConfigRepository 6 路 Flow `combine` 改嵌套 pairs（无 6 参重载）；`experimentalFeaturesSection` 改非 `@Composable` LazyListScope 扩展；移除 `Agent.kt` 中重复的 `AgentProtocol` 声明。
+
+#### 配置变更通知运行时（痛点6）
+
+此前运行时层几乎不订阅 config Flow（唯一例外 `AnalyticsManager`），配置变更需手动 `/reconnect` 或重启才生效。本次打通「配置 → 运行时」订阅通道。
+
+- **E2E 加密热更新**：`SecurityConfig` 增加 `e2eKey` + `effectiveE2eKey`；`AgentTransport` 接口新增 `updateE2eKey(key)` 默认空实现，`WebSocketTransport` 实现热更新（`@Volatile`/NSLock 保护）；`ConnectionRepository`（Android）/ `AppState`（iOS）订阅 security 变更，切换 E2E 或重生成密钥即时应用到活动连接，无需断开重连。
+- **FeatureFlag 运行时 gating**：`WorkflowEngine` 注入 `FeatureFlagManager` gate `WORKFLOW_ENGINE`（禁用拒绝执行）；`McpBridge` gate `MCP_SERVERS`（禁用拒绝连接）。此前 flag 仅驱动设置页 UI 开关，运行时不查询；现在 flag 真正生效。
+- **AgentDefaults 运行时策略**：连接时 `config.model` 为空回退 `defaultModel`；策略明确为「不覆盖已有 Agent 的显式配置，Defaults 仅作兜底」。
+
 ## [4.6.3] - 2026-07-22
 
 ### Security — 严格代码审查发现的 65 项问题全量修复
