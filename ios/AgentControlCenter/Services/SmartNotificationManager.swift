@@ -105,7 +105,10 @@ final class SmartNotificationManager {
     /// 永不匹配的回退 Regex（M-20 修复：正则编译失败时使用）。
     /// 字面量字符串，匹配该字面量即视为命中（实际通知内容不会出现此占位串）。
     /// `.ignoresCase()` 用于对齐其他规则的 Regex<Substring> 类型。
-    private static let emptyPattern: Regex<Substring> = Regex(#"__REGEX_COMPILE_FAILED_PLACEHOLDER__"#).ignoresCase()
+    // CI-fix: `Regex<Substring>` 非 Sendable，且 `Regex(...)` 初始化器可抛错，
+    // 不能作为 `static let` 全局变量初始化。改用 `nonisolated(unsafe)` + `try?`。
+    nonisolated(unsafe) private static let emptyPattern: Regex<Substring> =
+        (try? Regex(#"__REGEX_COMPILE_FAILED_PLACEHOLDER__"#).ignoresCase()) ?? (try? Regex(#""#))!
 
     /// 高优先级规则 1：错误 / 异常 / 失败 / 崩溃
     nonisolated(unsafe) private static let highPriorityErrorPattern: Regex<Substring> =
