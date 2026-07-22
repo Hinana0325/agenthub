@@ -245,3 +245,13 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
 }
+
+// D3: 显式指定 detekt 任务的 jvmTarget，避免 detekt-cli 自动检测运行时 JDK 版本。
+// CI 使用 JDK 21，本地可能使用 JDK 25（detekt 1.23.8 仅支持到 22）。
+// 显式设为 17（与 compileOptions / kotlin.compilerOptions 一致）。
+tasks.withType(io.gitlab.arturbosch.detekt.Detekt).configureEach {
+    jvmTarget = "17"
+}
+tasks.withType(io.gitlab.arturbosch.detekt.DetektCreateBaselineTask).configureEach {
+    jvmTarget = "17"
+}
