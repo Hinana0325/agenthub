@@ -67,7 +67,11 @@ enum class AppErrorCode(
     // Plugin (7xxx)
     PLUGIN_NOT_FOUND(7001, "PLUGIN_NOT_FOUND", "插件未找到：指定的 Plugin 不存在", "Plugin"),
     PLUGIN_DISABLED(7002, "PLUGIN_DISABLED", "插件已禁用：Plugin.isEnabled 为 false，无法执行", "Plugin"),
-    PLUGIN_EXECUTION_FAILED(7003, "PLUGIN_EXECUTION_FAILED", "插件执行失败：PluginAction 执行出错（HTTP 调用失败、Intent 发送失败等）", "Plugin"),
+    PLUGIN_EXECUTION_FAILED(
+        7003, "PLUGIN_EXECUTION_FAILED",
+        "插件执行失败：PluginAction 执行出错（HTTP 调用失败、Intent 发送失败等）",
+        "Plugin"
+    ),
 
     // MCP (8xxx)
     MCP_SERVER_UNREACHABLE(8001, "MCP_SERVER_UNREACHABLE", "MCP 服务端不可达：无法连接到 MCP Server 的 transportUrl", "MCP"),
@@ -82,7 +86,11 @@ enum class AppErrorCode(
 
     // Crypto (10xxx)
     CRYPTO_DECRYPT_FAILED(10001, "CRYPTO_DECRYPT_FAILED", "解密失败：AES-256-GCM 解密失败（密文损坏或 IV 不匹配）", "Crypto"),
-    CRYPTO_KEYSTORE_UNAVAILABLE(10002, "CRYPTO_KEYSTORE_UNAVAILABLE", "密钥库不可用：Android Keystore / iOS Keychain 不可用或未授权", "Crypto"),
+    CRYPTO_KEYSTORE_UNAVAILABLE(
+        10002, "CRYPTO_KEYSTORE_UNAVAILABLE",
+        "密钥库不可用：Android Keystore / iOS Keychain 不可用或未授权",
+        "Crypto"
+    ),
     CRYPTO_E2E_KEY_MISMATCH(10003, "CRYPTO_E2E_KEY_MISMATCH", "端到端密钥不匹配：E2E 加密的密钥协商结果不一致", "Crypto");
 
     companion object {
