@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
@@ -30,12 +31,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.core.featureflag.FeatureFlagManager.FeatureFlag
 
 // MARK: - SettingsFeatureFlags
@@ -47,12 +49,15 @@ import com.agentcontrolcenter.app.core.featureflag.FeatureFlagManager.FeatureFla
  *
  * 用 LazyListScope 而非 Composable 函数，便于直接嵌入 SettingsScreen 的 LazyColumn，
  * 避免在嵌套 Column 中嵌入 LazyColumn（detekt / Compose 性能反模式）。
+ *
+ * 非可组合扩展：@Composable 调用（hiltViewModel / collectAsStateWithLifecycle）由
+ * 调用方在 @Composable 上下文中完成后，把 flags + viewModel 传入。这样扩展本身只做
+ * LazyListScope.item 拼装，可在双栏 / 单栏 LazyColumn 内复用而无需 @Composable 标注。
  */
 internal fun LazyListScope.experimentalFeaturesSection(
-    viewModel: FeatureFlagSettingsViewModel = hiltViewModel()
+    flags: List<FeatureFlagSettingsViewModel.FlagUiState>,
+    viewModel: FeatureFlagSettingsViewModel
 ) {
-    val flags by viewModel.flags.collectAsStateWithLifecycle()
-
     item { SettingsHeader("实验性功能") }
 
     item {
@@ -106,6 +111,10 @@ private fun FeatureFlagRow(
 ) {
     val icon = iconForFlag(state.flag)
     val subtitle = subtitleForFlag(state.flag, state.isOverridden)
+    // 敏感 flag（端到端加密 / 设备同步）从开→关需二次确认，避免误操作影响已加密数据 / 已同步状态
+    val isSensitive = state.flag == FeatureFlag.E2E_ENCRYPTION ||
+        state.flag == FeatureFlag.DEVICE_SYNC
+    var showConfirmClose by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -151,7 +160,32 @@ private fun FeatureFlagRow(
             }
             Switch(
                 checked = state.currentValue,
-                onCheckedChange = onToggle
+                onCheckedChange = { newValue ->
+                    // 敏感 flag 从开→关需二次确认（影响已加密数据 / 已同步状态）
+                    if (isSensitive && state.currentValue && !newValue) {
+                        showConfirmClose = true
+                    } else {
+                        onToggle(newValue)
+                    }
+                }
+            )
+        }
+
+        // 敏感 flag 关闭确认弹窗
+        if (showConfirmClose) {
+            AlertDialog(
+                onDismissRequest = { showConfirmClose = false },
+                title = { Text("确认关闭") },
+                text = { Text("关闭此功能可能影响已加密数据 / 已同步状态，确认继续？") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onToggle(false)
+                        showConfirmClose = false
+                    }) { Text("确认关闭") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showConfirmClose = false }) { Text("取消") }
+                }
             )
         }
     }

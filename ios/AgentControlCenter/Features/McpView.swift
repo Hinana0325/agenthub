@@ -233,24 +233,57 @@ private struct AddMcpServerSheet: View {
     @State private var apiKey = ""
     @State private var transportType: McpTransportType = .http
 
-    // MARK: 校验错误状态（添加前由 McpServerValidator 校验，失败时弹窗提示并阻止添加）
+    // MARK: 校验错误状态
+    // showingValidationAlert / validationErrorMessage 仅作为兜底展示首条错误弹窗
     @State private var showingValidationAlert = false
     @State private var validationErrorMessage = ""
+    // 字段级错误回填：本地持有当前校验结果，按字段名渲染行内红色提示，
+    // 避免污染 appState.lastValidationError 全局状态。sheet 重新打开时清空。
+    @State private var validationErrors: ConfigValidationResult?
+
+    /// 传输地址 TextField 的标签：STDIO 时显示「命令路径」，SSE/HTTP 时显示「传输地址 (URL)」
+    private var transportFieldLabel: String {
+        transportType == .stdio ? "命令路径" : "传输地址 (URL)"
+    }
+
+    /// STDIO 命令路径 placeholder（提示用户填可执行命令）
+    private var transportFieldPlaceholder: String {
+        transportType == .stdio
+            ? "npx -y @modelcontextprotocol/server-xxx"
+            : "https://example.com/mcp"
+    }
+
+    /// 渲染单条行内错误提示（红色三角图标 + 错误消息，caption 字号）
+    @ViewBuilder
+    private func inlineErrorView(for field: String) -> some View {
+        if let message = validationErrors?.errorFor(field) {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("服务器信息") {
                     TextField("名称", text: $name)
-                    TextField("传输地址 (URL)", text: $transportUrl)
-                        .keyboardType(.URL)
+                    inlineErrorView(for: McpServerValidator.Field.name)
+
+                    // 传输地址 / 命令路径：STDIO 时切换标签与键盘类型
+                    TextField(transportFieldLabel, text: $transportUrl, prompt: Text(transportFieldPlaceholder))
+                        .keyboardType(transportType == .stdio ? .default : .URL)
                         // CI-fix: `TextInputAutocapitalization` 仅有 `.never / .words /
                         // .sentences / .characters` 四个 case，无 `.disabled`。原代码
                         // `.disabled` 是 `View.disabled(_:)` 修饰符的命名空间，不属于
                         // `TextInputAutocapitalization`，导致隐式成员表达式解析失败、
                         // Section 的 ViewBuilder 无法推断泛型 V。
                         .textInputAutocapitalization(.never)
+                    inlineErrorView(for: McpServerValidator.Field.transportUrl)
+
                     SecureField("API Key (可选)", text: $apiKey)
+                    inlineErrorView(for: McpServerValidator.Field.apiKey)
 
                     Picker("传输类型", selection: $transportType) {
                         ForEach(McpTransportType.allCases, id: \.self) { type in
@@ -274,10 +307,13 @@ private struct AddMcpServerSheet: View {
                             transportType: transportType,
                             apiKey: apiKey.isEmpty ? nil : apiKey
                         )
-                        // 添加前校验：失败则回填 appState.lastValidationError 并弹窗提示，不执行 onAdd
+                        // 添加前校验：失败则回填本地 validationErrors（驱动字段级行内提示）+
+                        // appState.lastValidationError（全局缓存，保留作死状态字段不删）
+                        // 并弹窗兜底展示首条错误，不执行 onAdd
                         let validationResult = McpServerValidator.validate(server)
                         guard validationResult.isValid else {
                             appState.lastValidationError = validationResult
+                            validationErrors = validationResult
                             validationErrorMessage = validationResult.errors.first?.message ?? "配置校验失败"
                             showingValidationAlert = true
                             return
@@ -288,7 +324,11 @@ private struct AddMcpServerSheet: View {
                     .disabled(transportUrl.isEmpty)
                 }
             }
-            // 校验失败提示：展示首条错误消息，错误详情已写入 appState.lastValidationError
+            // sheet 每次打开时清空字段级错误回填状态，避免上一次的残留错误显示
+            .onAppear {
+                validationErrors = nil
+            }
+            // 校验失败兜底提示：展示首条错误消息，字段级错误已在各字段下方行内显示
             .alert("无法添加", isPresented: $showingValidationAlert) {
                 Button("确定", role: .cancel) {}
             } message: {

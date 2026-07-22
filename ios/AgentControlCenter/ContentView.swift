@@ -119,8 +119,12 @@ struct ContentView: View {
     var body: some View {
         Group {
             if !onboardingCompleted {
-                // 首次启动：显示引导页面
-                OnboardingView {
+                // 首次启动：显示配置向导（替代纯介绍式 OnboardingView）
+                // SetupWizardView.finish() 内部已通过 appState.preferences.update
+                // 标记 onboarding.completed = true（写入 UserDefaults "onboarding_completed"），
+                // ContentView 的 @AppStorage("onboarding_completed") 会自动感知并切换视图，
+                // 因此 onComplete 仅做动画过渡（双保险也设置一次本地 @AppStorage）。
+                SetupWizardView {
                     withAnimation { onboardingCompleted = true }
                 }
             } else if sizeClass == .regular {

@@ -105,6 +105,8 @@ enum PreferenceKeys {
     /// 注意：
     /// - `onboardingCompleted` 不在此列表中 —— 清除数据后不应强制用户重做引导。
     /// - `featureFlagOverrides` 列入以便「清除所有数据」一并重置 Feature Flag 覆盖。
+    /// - `mcp_servers`：McpView 持久化 MCP 服务器列表的 JSON Data 键（McpView.storageKey）。
+    /// - `deviceSyncAutoSync`：DeviceSyncManager 持久化的自动同步开关键。
     /// - 末尾三个 `notify*` 与 `command_palette_recents` 为遗留键（部分已不再被读取），
     ///   保留清理以避免脏数据残留。
     static let all: [String] = [
@@ -118,6 +120,8 @@ enum PreferenceKeys {
         maxTokens,
         autoBackupSchedule,
         featureFlagOverrides,
+        "mcp_servers",
+        "deviceSyncAutoSync",
         "notifyHighPriority",
         "notifyMediumPriority",
         "notifyLowPriority",

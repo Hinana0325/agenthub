@@ -97,13 +97,10 @@ class ConfigRepositoryImpl @Inject constructor(
      * 组合 6 路 Flow 是必要的开销——比让 ViewModel 自己分别 collect 6 个流更简单。
      */
     override val appConfig: Flow<AppConfiguration> = combine(
-        appearanceFlow,
-        securityFlow,
-        agentDefaultsFlow,
-        backupFlow,
-        onboardingFlow,
-        featureFlagFlow
-    ) { appearance, security, agentDefaults, backup, onboarding, featureFlags ->
+        combine(appearanceFlow, securityFlow) { appearance, security -> appearance to security },
+        combine(agentDefaultsFlow, backupFlow) { agentDefaults, backup -> agentDefaults to backup },
+        combine(onboardingFlow, featureFlagFlow) { onboarding, featureFlags -> onboarding to featureFlags }
+    ) { (appearance, security), (agentDefaults, backup), (onboarding, featureFlags) ->
         AppConfiguration(
             appearance = appearance,
             security = security,
@@ -170,12 +167,12 @@ class ConfigRepositoryImpl @Inject constructor(
     // ── Clear All Preferences ──
 
     /**
-     * 清空所有应用级偏好（外观 / 安全 / Agent 默认值 / Onboarding / Feature Flag）。
+     * 清空所有应用级偏好（外观 / 安全 / Agent 默认值 / Onboarding / Feature Flag /
+     * MCP 服务器配置 / Widget 数据）。
      *
-     * 注意：**不动 AgentConfig / MCP 配置 / 聊天记录**，这些由各自的 Repository 管理，
-     * 清空应由 [AgentsViewModel] / [McpViewModel] / [ChatRepository] 单独触发。
-     *
-     * 与 iOS `AppPreferences.clearAllPreferences()` 行为对齐。
+     * 与 iOS `AppPreferences.clearAllPreferences()` 行为对齐（iOS allPreferenceKeys
+     * 已补 mcp_servers / deviceSyncAutoSync）。注意：**不动 AgentConfig（Room）/
+     * 聊天记录**，这些由 [ChatRepository] 单独触发。
      */
     override suspend fun clearAllPreferences() {
         // 1. Settings DataStore — 通过 SettingsDataStore 的 setter 重置为默认值
@@ -191,7 +188,14 @@ class ConfigRepositoryImpl @Inject constructor(
         // 2. Agent Defaults DataStore — 清空所有 key
         context.agentDefaultsDataStore.edit { it.clear() }
 
-        // 3. E2E Key — 通过 KeystoreManager 直接清，避免引入对 SettingsDataStore
+        // 3. MCP 服务器配置 SharedPreferences（与 McpViewModel.MCP_PREFS_NAME 对齐）
+        context.getSharedPreferences("mcp_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+
+        // 4. Widget 数据 SharedPreferences（与 WidgetDataProvider.PREFS_NAME 对齐）
+        context.getSharedPreferences("agent_control_center_widget_prefs", Context.MODE_PRIVATE)
+            .edit().clear().apply()
+
+        // 5. E2E Key — 通过 KeystoreManager 直接清，避免引入对 SettingsDataStore
         // 内部 key 的耦合（SettingsDataStore 暴露的 setE2eKey("") 也能清空，但语义
         // 是「设置空 passphrase」而非「清除」）
         settingsDataStore.setE2eKey("")

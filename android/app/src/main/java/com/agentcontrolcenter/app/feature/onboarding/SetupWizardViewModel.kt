@@ -11,7 +11,10 @@ import com.agentcontrolcenter.app.core.config.ConfigRepository
 import com.agentcontrolcenter.app.data.repository.ChatRepository
 import com.agentcontrolcenter.app.transport.ConnectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +68,9 @@ class SetupWizardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(SetupWizardUiState())
     val uiState: StateFlow<SetupWizardUiState> = _uiState.asStateFlow()
+
+    /** 当前测试连接协程，持有以便用户取消（testConnection 期间可主动中止） */
+    private var testJob: Job? = null
 
     /** 步骤枚举序列，便于 UI 计算「上一步」/「下一步」 */
     private val stepSequence = SetupWizardStep.entries.toList()
@@ -180,7 +186,12 @@ class SetupWizardViewModel @Inject constructor(
             _uiState.update { it.copy(validationErrors = fullResult.errors) }
             return
         }
-        viewModelScope.launch {
+        // 取消上一次未完成的测试，避免并发连接状态叠加
+        testJob?.cancel()
+        // 重试前先断开既有连接：ConnectionRepository 对同类型 transport 会复用实例，
+        // 不先 disconnect 会导致状态混乱（旧连接残留 + 新连接握手叠加）
+        connectionRepository.disconnect()
+        testJob = viewModelScope.launch {
             _uiState.update { it.copy(isConnecting = true, connectionResult = null) }
             try {
                 connectionRepository.connect(_uiState.value.draft, e2eKey = null)
@@ -188,6 +199,7 @@ class SetupWizardViewModel @Inject constructor(
                 val deadline = System.currentTimeMillis() + 8_000L
                 var connected = false
                 while (System.currentTimeMillis() < deadline) {
+                    ensureActive() // 响应用户取消，抛 CancellationException
                     val transportState = connectionRepository.connectionState.value
                     if (transportState.isConnected) {
                         connected = true
@@ -205,6 +217,10 @@ class SetupWizardViewModel @Inject constructor(
                         }
                     )
                 }
+            } catch (e: CancellationException) {
+                // 用户主动取消：不显示失败结果，仅复位 loading 状态
+                _uiState.update { it.copy(isConnecting = false) }
+                throw e // 重新抛出以正确传播协程取消
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -214,8 +230,20 @@ class SetupWizardViewModel @Inject constructor(
                         )
                     )
                 }
+            } finally {
+                testJob = null
             }
         }
+    }
+
+    /**
+     * 取消进行中的测试连接（用户点击「取消」按钮时调用）。
+     *
+     * 若当前无测试任务则无操作。
+     */
+    fun cancelTestConnection() {
+        testJob?.cancel()
+        _uiState.update { it.copy(isConnecting = false) }
     }
 
     /**

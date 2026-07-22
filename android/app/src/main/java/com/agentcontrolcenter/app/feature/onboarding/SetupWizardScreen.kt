@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.AssistChip
@@ -154,6 +155,7 @@ fun SetupWizardScreen(
                 }
             },
             onTestConnection = { viewModel.testConnection() },
+            onCancelConnection = { viewModel.cancelTestConnection() },
             onSave = { viewModel.saveAndComplete() }
         )
 
@@ -378,6 +380,7 @@ private fun SetupWizardBottomBar(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onTestConnection: () -> Unit,
+    onCancelConnection: () -> Unit,
     onSave: () -> Unit
 ) {
     val isLastStep = state.currentStep == SetupWizardStep.TestAndSave
@@ -404,17 +407,22 @@ private fun SetupWizardBottomBar(
                 Text("下一步")
             }
         } else {
-            // 最后一步：两个并排按钮
-            OutlinedButtonWithIcon(
-                onClick = onTestConnection,
-                text = if (state.isConnecting) "测试中..." else "测试连接",
-                icon = Icons.Default.Bolt,
-                enabled = !state.isConnecting
-            )
+            // 最后一步：测试中显示「取消」可中止，否则显示「测试连接」
             if (state.isConnecting) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp
+                )
+                OutlinedButtonWithIcon(
+                    onClick = onCancelConnection,
+                    text = "取消测试",
+                    icon = Icons.Default.Cancel
+                )
+            } else {
+                OutlinedButtonWithIcon(
+                    onClick = onTestConnection,
+                    text = "测试连接",
+                    icon = Icons.Default.Bolt
                 )
             }
             Button(

@@ -473,13 +473,29 @@ private struct AgentFormSheet: View {
     @State private var temperature: Float = 0.7
     @State private var maxTokens: Int = 4096
 
-    // MARK: 校验错误状态（保存前由 AgentConfigValidator 校验，失败时弹窗提示并阻止落库）
+    // MARK: 校验错误状态
+    // showingValidationAlert / validationErrorMessage 仅作为兜底展示首条错误弹窗
     @State private var showingValidationAlert = false
     @State private var validationErrorMessage = ""
+    // 字段级错误回填：本地持有当前校验结果，按字段名渲染行内红色提示，
+    // 避免污染 appState.lastValidationError 全局状态。sheet 重新打开时清空。
+    @State private var validationErrors: ConfigValidationResult?
 
     init(existingAgent: Agent? = nil, existingConfig: AgentConfig? = nil) {
         self.existingAgent = existingAgent
         self.existingConfig = existingConfig
+    }
+
+    // MARK: 字段级错误回填辅助
+    /// 渲染单条行内错误提示（红色三角图标 + 错误消息，caption 字号）
+    @ViewBuilder
+    private func inlineErrorView(for field: String) -> some View {
+        if let message = validationErrors?.errorFor(field) {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+                .font(.caption)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     var body: some View {
@@ -489,6 +505,7 @@ private struct AgentFormSheet: View {
                 Section("基本信息") {
                     TextField("名称", text: $name)
                         .textContentType(.name)
+                    inlineErrorView(for: AgentConfigValidator.Field.name)
 
                     Picker("类型", selection: $type) {
                         ForEach(AgentType.allCases, id: \.self) { t in
@@ -498,19 +515,31 @@ private struct AgentFormSheet: View {
                 }
 
                 // MARK: 连接配置
+                // 当 type == .localModel 时，serverUrl / apiKey 字段不展示（豁免校验），
+                // 仅保留 model 字段。LocalModel 走 LocalModelManager，无需远程地址。
                 Section("连接") {
-                    TextField("服务器地址", text: $serverUrl)
-                        .keyboardType(.URL)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
+                    if type != .localModel {
+                        TextField("服务器地址", text: $serverUrl)
+                            .keyboardType(.URL)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        inlineErrorView(for: AgentConfigValidator.Field.serverUrl)
 
-                    SecureField("API Key", text: $apiKey)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
+                        SecureField("API Key", text: $apiKey)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        inlineErrorView(for: AgentConfigValidator.Field.apiKey)
+                    } else {
+                        // LocalModel 豁免提示（参考 SetupWizardView 文案风格）
+                        Label("LocalModel 类型豁免服务器地址与 API Key，将走 LocalModelManager", systemImage: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
 
                     TextField("模型", text: $model)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+                    inlineErrorView(for: AgentConfigValidator.Field.model)
                 }
 
                 // MARK: 高级配置
@@ -518,6 +547,7 @@ private struct AgentFormSheet: View {
                     // System Prompt 多行输入（3~8 行）
                     TextField("System Prompt", text: $systemPrompt, axis: .vertical)
                         .lineLimit(3...8)
+                    inlineErrorView(for: AgentConfigValidator.Field.systemPrompt)
 
                     // 温度滑块（0 ~ 2，步进 0.1，默认 0.7）
                     VStack(alignment: .leading, spacing: 8) {
@@ -529,6 +559,7 @@ private struct AgentFormSheet: View {
                                 .monospacedDigit()
                         }
                         Slider(value: $temperature, in: 0...2, step: 0.1)
+                        inlineErrorView(for: AgentConfigValidator.Field.temperature)
                     }
 
                     // 最大 Tokens 步进器（256 ~ 128000，步进 256，默认 4096）
@@ -538,6 +569,7 @@ private struct AgentFormSheet: View {
                         in: 256...128_000,
                         step: 256
                     )
+                    inlineErrorView(for: AgentConfigValidator.Field.maxTokens)
                 }
 
                 // MARK: 安全说明
@@ -558,21 +590,35 @@ private struct AgentFormSheet: View {
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            // 编辑模式：在视图出现时预填充已有配置值
+            // 视图启动：编辑模式预填充已有配置值；新建模式预填 agentDefaults 默认值
             // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理生命周期，
             // 视图销毁时自动取消，避免页面快速切换时的孤儿任务
             .task {
-                guard let config = existingConfig else { return }
-                name = config.name
-                type = config.type
-                serverUrl = config.serverUrl
-                apiKey = config.apiKey
-                model = config.model
-                systemPrompt = config.systemPrompt
-                temperature = config.temperature
-                maxTokens = config.maxTokens
+                if let config = existingConfig {
+                    // 编辑模式：从已有配置预填
+                    name = config.name
+                    type = config.type
+                    serverUrl = config.serverUrl
+                    apiKey = config.apiKey
+                    model = config.model
+                    systemPrompt = config.systemPrompt
+                    temperature = config.temperature
+                    maxTokens = config.maxTokens
+                } else {
+                    // 新建模式：从统一偏好仓库预填 agentDefaults（若用户在设置页设过默认值）
+                    // name / serverUrl / apiKey 仍留空（需用户填）
+                    let defaults = appState.preferences.configuration.agentDefaults
+                    if !defaults.defaultModel.isEmpty {
+                        model = defaults.defaultModel
+                    }
+                    // AgentDefaults.defaultTemperature 为 Double，转 Float 给表单
+                    temperature = Float(defaults.defaultTemperature)
+                    maxTokens = defaults.defaultMaxTokens
+                }
+                // sheet 每次打开时清空字段级错误回填状态，避免上一次的残留错误显示
+                validationErrors = nil
             }
-            // 校验失败提示：展示首条错误消息，错误详情已写入 appState.lastValidationError
+            // 校验失败兜底提示：展示首条错误消息，字段级错误已在各字段下方行内显示
             .alert("无法保存", isPresented: $showingValidationAlert) {
                 Button("确定", role: .cancel) {}
             } message: {
@@ -610,10 +656,13 @@ private struct AgentFormSheet: View {
             maxTokens: maxTokens
         )
 
-        // 保存前校验：失败则回填 appState.lastValidationError 并弹窗提示，不落库
+        // 保存前校验：失败则回填本地 validationErrors（驱动字段级行内提示）+
+        // appState.lastValidationError（全局缓存，保留作死状态字段不删）
+        // 并弹窗兜底展示首条错误，不落库
         let validationResult = AgentConfigValidator.validate(config)
         guard validationResult.isValid else {
             appState.lastValidationError = validationResult
+            validationErrors = validationResult
             validationErrorMessage = validationResult.errors.first?.message ?? "配置校验失败"
             showingValidationAlert = true
             return

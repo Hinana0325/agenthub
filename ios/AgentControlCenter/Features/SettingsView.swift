@@ -60,6 +60,16 @@ struct SettingsView: View {
     // ============ 危险操作 ============
     @State private var showingClearConfirm = false
 
+    // ============ 设置页搜索 ============
+    /// searchable 绑定的搜索文本。空串时展示全部 Section；非空时按 Section 标题
+    /// / 行标题 contains 过滤（不区分大小写）。
+    @State private var searchText = ""
+
+    // ============ 敏感 Feature Flag 关闭确认 ============
+    /// 待确认的敏感 flag 关闭操作（flag, 目标值）。nil 表示无待确认。
+    /// 仅 E2E_ENCRYPTION / DEVICE_SYNC 从 true→false 时触发确认弹窗。
+    @State private var pendingFlagToggle: (FeatureFlagManager.FeatureFlag, Bool)?
+
     // ============ 临时状态 ============
     @State private var showKeyCopiedToast = false
 
@@ -68,17 +78,43 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                agentDefaultConfigSection
-                fontSizeSection
-                appearanceSection
-                encryptionSection
-                dataManagementSection
-                smartNotificationsSection
-                aboutSection
-                experimentalFeaturesSection
-                dangerZoneSection
+                // 搜索过滤：searchText 非空时仅展示标题包含搜索词的 Section；
+                // 空串时展示全部。Form 的 ViewBuilder 支持 if 条件渲染。
+                if searchText.isEmpty || "Agent 默认配置".localizedCaseInsensitiveContains(searchText) {
+                    agentDefaultConfigSection
+                }
+                if searchText.isEmpty || "字体大小".localizedCaseInsensitiveContains(searchText) {
+                    fontSizeSection
+                }
+                if searchText.isEmpty || "外观".localizedCaseInsensitiveContains(searchText) {
+                    appearanceSection
+                }
+                if searchText.isEmpty || "端到端加密".localizedCaseInsensitiveContains(searchText)
+                    || "加密".localizedCaseInsensitiveContains(searchText) {
+                    encryptionSection
+                }
+                if searchText.isEmpty || "数据管理".localizedCaseInsensitiveContains(searchText) {
+                    dataManagementSection
+                }
+                if searchText.isEmpty || "智能通知".localizedCaseInsensitiveContains(searchText)
+                    || "通知".localizedCaseInsensitiveContains(searchText) {
+                    smartNotificationsSection
+                }
+                if searchText.isEmpty || "关于".localizedCaseInsensitiveContains(searchText) {
+                    aboutSection
+                }
+                if searchText.isEmpty || "实验性功能".localizedCaseInsensitiveContains(searchText)
+                    || "Feature Flag".localizedCaseInsensitiveContains(searchText) {
+                    experimentalFeaturesSection
+                }
+                if searchText.isEmpty || "危险操作".localizedCaseInsensitiveContains(searchText)
+                    || "清除".localizedCaseInsensitiveContains(searchText) {
+                    dangerZoneSection
+                }
             }
             .navigationTitle("设置")
+            // 设置页搜索栏：SwiftUI 标准 searchable，过滤由上面 Form 内 if 实现
+            .searchable(text: $searchText, prompt: "搜索设置项")
             // HIG：preferredColorScheme 应只在根视图 ContentView 设置一次。
             // 在子视图重复设置会导致 sheet 切换时闪烁，并与其他场景的配色冲突。
             // 清除数据二次确认
@@ -95,6 +131,23 @@ struct SettingsView: View {
                 Button("确定", role: .cancel) {}
             } message: {
                 Text(importAlertMessage ?? "")
+            }
+            // 敏感 Feature Flag 关闭确认：仅 E2E_ENCRYPTION / DEVICE_SYNC 从 true→false 时触发
+            .alert("确认关闭", isPresented: Binding(
+                get: { pendingFlagToggle != nil },
+                set: { if !$0 { pendingFlagToggle = nil } }
+            ), presenting: pendingFlagToggle) { pending in
+                Button("取消", role: .cancel) {
+                    pendingFlagToggle = nil
+                }
+                Button("确认关闭", role: .destructive) {
+                    let flag = pending.0
+                    let value = pending.1
+                    appState.featureFlagManager.setOverride(flag, enabled: value)
+                    pendingFlagToggle = nil
+                }
+            } message: { _ in
+                Text("关闭此功能可能影响已加密数据 / 已同步状态，确认继续？")
             }
             // 文件导入器
             .fileImporter(
@@ -395,6 +448,9 @@ struct SettingsView: View {
     /// 遍历 `FeatureFlagManager.FeatureFlag.allCases`，每个 flag 渲染一个 Toggle，
     /// 绑定到 `featureFlagManager.isEnabled(_:)` / `setOverride(_:enabled:)`。
     /// 显示 `displayName` 作为标题、`description` 作为副标题说明。
+    ///
+    /// 敏感 flag（E2E_ENCRYPTION / DEVICE_SYNC）从 true→false 时先弹确认 alert，
+    /// 用户确认后才真正 setOverride；其他 flag 直接切换。
     private var experimentalFeaturesSection: some View {
         Section("实验性功能") {
             ForEach(FeatureFlagManager.FeatureFlag.allCases, id: \.self) { flag in
@@ -402,7 +458,13 @@ struct SettingsView: View {
                     Toggle(flag.displayName, isOn: Binding(
                         get: { appState.featureFlagManager.isEnabled(flag) },
                         set: { newValue in
-                            appState.featureFlagManager.setOverride(flag, enabled: newValue)
+                            // 敏感 flag 关闭（true→false）需二次确认，避免误关影响已加密数据 / 已同步状态
+                            let isSensitive = (flag == .e2eEncryption || flag == .deviceSync)
+                            if isSensitive && newValue == false {
+                                pendingFlagToggle = (flag, newValue)
+                            } else {
+                                appState.featureFlagManager.setOverride(flag, enabled: newValue)
+                            }
                         }
                     ))
                     Text(flag.description)
@@ -647,6 +709,10 @@ struct SettingsView: View {
     /// 2. 未清理 UserDefaults（defaultModel/temperature/theme/通知开关等），用户期望"清除所有数据"包括偏好。
     /// 3. 未清理 Keychain 中的 E2E passphrase。
     /// 修正：注释与行为对齐（Agent 配置一并清除），并补齐 UserDefaults + Keychain 清理。
+    ///
+    /// 优化：UserDefaults / Keychain / configuration 内存镜像统一交给
+    /// `appState.preferences.clearAllPreferences()` 处理，避免直接操作 UserDefaults
+    /// 绕过 preferences 实例导致 configuration 内存镜像不重置。
     private func clearAllData() {
         // 1. 持久化数据 — SwiftData
         for session in appState.dataController.fetchSessions() {
@@ -671,15 +737,16 @@ struct SettingsView: View {
             appState.taskManager.deleteTask(id)
         }
 
-        // 3. UserDefaults 偏好（修复 4）
-        // 使用 AppPreferences.allPreferenceKeys() 统一取键名列表，避免散落硬编码数组
-        // 遗漏新增 key（onboarding_completed 不在列表中，不强制用户重做引导）。
-        for key in AppPreferences.allPreferenceKeys() {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
-        // 同步当前视图的 @AppStorage / @State（避免 UI 立刻读到旧值）
-        // 顺序：先处理 passphrase（取消待写任务 + 清空），再置 encryptionEnabled = false，
-        // 避免 onChange(of: encryptionEnabled) 触发时 passphraseSaveTask 仍 pending
+        // 3. 统一交给 preferences.clearAllPreferences() 清理：
+        //    - UserDefaults 全部偏好键（含 mcp_servers / deviceSyncAutoSync / 通知开关等）
+        //    - Keychain E2E passphrase
+        //    - configuration 内存镜像重置为 default（触发 @Observable 发布）
+        //    onboarding_completed 不在 allPreferenceKeys 中，不强制用户重做引导。
+        appState.preferences.clearAllPreferences()
+
+        // 4. 同步当前视图的 @AppStorage / @State（避免 UI 立刻读到旧值）
+        //    顺序：先处理 passphrase（取消待写任务 + 清空），再置 encryptionEnabled = false，
+        //    避免 onChange(of: encryptionEnabled) 触发时 passphraseSaveTask 仍 pending
         passphraseSaveTask?.cancel()
         passphrase = ""
         defaultModel = "gpt-4"
@@ -687,16 +754,13 @@ struct SettingsView: View {
         maxTokens = 4096
         theme = .system
         encryptionEnabled = false
-        // 修复 6: 通知开关绑定到 notificationManager.config，清 UserDefaults 后同步内存 config
+        // 通知开关绑定到 notificationManager.config，清 UserDefaults 后同步内存 config
         appState.notificationManager.updateConfig { config in
             config.highPriorityEnabled = true
             config.mediumPriorityEnabled = true
             config.lowPriorityEnabled = false
         }
         fontSize = .medium
-
-        // 4. Keychain E2E passphrase（修复 4）
-        KeychainManager.clearPassphrase()
 
         // 5. 用户反馈
         importAlertMessage = "已清除所有数据（会话/任务/Agent 配置/偏好/E2E 密钥）"

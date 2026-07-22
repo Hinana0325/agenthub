@@ -46,6 +46,20 @@ struct SetupWizardView: View {
     @State private var showingSaveError: Bool = false
     @State private var isSaving: Bool = false
 
+    // MARK: 网络连通性测试状态
+    /// 测试连接状态机：idle / testing / success / failure(String)
+    @State private var testConnectionState: TestState = .idle
+    /// 持有测试 Task 用于取消（用户点取消或离开页面时）
+    @State private var testTask: Task<Void, Never>?
+
+    /// 网络测试状态枚举
+    enum TestState: Equatable {
+        case idle
+        case testing
+        case success
+        case failure(String)
+    }
+
     private let totalSteps = 4
 
     var body: some View {
@@ -223,12 +237,159 @@ struct SetupWizardView: View {
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
 
+            // 测试连接区块（在「完成」按钮上方）
+            // LocalModel 类型无需网络测试，直接显示提示
+            if type == .localModel {
+                Label("LocalModel 无需网络测试", systemImage: "checkmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, AppTheme.Spacing.lg)
+            } else {
+                testConnectionSection
+            }
+
             Text("点击「完成」将校验并保存配置。LocalModel 类型豁免 URL / API Key 校验。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .multilineTextAlignment(.center)
             Spacer()
+        }
+    }
+
+    /// 测试连接区块：按钮 + 状态显示 + 重试
+    @ViewBuilder
+    private var testConnectionSection: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            switch testConnectionState {
+            case .idle:
+                Button {
+                    startTestConnection()
+                } label: {
+                    Label("测试连接", systemImage: "antenna.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+            case .testing:
+                // 测试中：ProgressView + 取消按钮
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    ProgressView()
+                    Text("测试中...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("取消") {
+                        cancelTestConnection()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+            case .success:
+                Label("✓ 连接成功", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    startTestConnection()
+                } label: {
+                    Label("重新测试", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+            case .failure(let message):
+                Label("✗ \(message)", systemImage: "xmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    startTestConnection()
+                } label: {
+                    Label("重试", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+    }
+
+    // MARK: - 网络测试
+
+    /// 启动网络连通性测试。
+    /// 用临时 AgentConfig 构造的 endpoint 尝试一次轻量 HTTP 请求（HEAD {serverUrl}），
+    /// 8 秒超时。Task 中执行网络请求，结果通过 @MainActor 隔离的 @State 回主线程更新 UI。
+    private func startTestConnection() {
+        // 取消上一次未完成的测试
+        testTask?.cancel()
+        testConnectionState = .testing
+        // 复制表单当前值为本地常量，避免 Task 中读取 @State 时的并发隐患
+        let urlToTest = serverUrl
+        let keyToUse = apiKey
+        testTask = Task {
+            let result = await performPing(serverUrl: urlToTest, apiKey: keyToUse)
+            // Task 取消时不更新 UI（用户已主动取消）
+            if Task.isCancelled { return }
+            testConnectionState = result
+        }
+    }
+
+    /// 取消正在进行的测试连接
+    private func cancelTestConnection() {
+        testTask?.cancel()
+        testTask = nil
+        testConnectionState = .idle
+    }
+
+    /// 执行真实网络探测：对 {serverUrl} 发起 HEAD 请求，8 秒超时。
+    /// - Returns: `.success` 表示可达（2xx/401/403/404 均视为可达，与 OpenAIHTTPTransport.probeEndpoint 一致）；
+    ///   `.failure(String)` 表示不可达，附带错误描述。
+    /// 注：方法为 `nonisolated` 友好（仅使用 URLSession 局部变量与 Sendable 类型），
+    /// 由 @MainActor 的 Task 调用，结果通过返回值回主线程。
+    private func performPing(serverUrl: String, apiKey: String) async -> TestState {
+        let trimmed = serverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 复用 URLValidator 做 SSRF 防护（与 OpenAIHTTPTransport.probeEndpoint 一致）
+        guard let url = URLValidator.validate(trimmed, allowLocalhost: true) else {
+            return .failure("地址不合法或存在安全风险")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        // 携带 Authorization 头（部分服务器对未鉴权请求返回 401，仍视为可达）
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        request.timeoutInterval = 8  // 8 秒超时
+
+        // 独立 URLSession 实例，避免与 transport 内 session 互相干扰
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+
+        do {
+            let (_, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                return .failure("响应非 HTTP")
+            }
+            // 与 OpenAIHTTPTransport.probeEndpoint 一致：2xx/401/403/404 视为可达
+            if (200...299).contains(http.statusCode) ||
+                http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 404 {
+                return .success
+            }
+            return .failure("HTTP \(http.statusCode)")
+        } catch is CancellationError {
+            return .failure("测试已取消")
+        } catch {
+            // URLError 转友好描述
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .timedOut: return .failure("连接超时")
+                case .notConnectedToInternet: return .failure("无网络连接")
+                case .cannotFindHost, .cannotConnectToHost: return .failure("无法连接到主机")
+                default: return .failure(urlError.localizedDescription)
+                }
+            }
+            return .failure(error.localizedDescription)
         }
     }
 
@@ -323,6 +484,9 @@ struct SetupWizardView: View {
 
         // 标记引导完成（写 onboarding_completed，ContentView @AppStorage 会感知）
         appState.preferences.update { $0.onboarding.completed = true }
+        // 取消可能仍在进行的网络测试 Task，避免离开页面后孤儿请求
+        testTask?.cancel()
+        testTask = nil
 
         isSaving = false
         onComplete()

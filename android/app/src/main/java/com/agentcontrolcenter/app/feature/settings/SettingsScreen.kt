@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
@@ -52,6 +53,11 @@ fun SettingsScreen(
     // (previously fetched directly via the now-removed AppModule singleton).
     val agentConfigs by settingsViewModel.agentConfigs.collectAsStateWithLifecycle()
 
+    // 实验性功能 ViewModel：双栏 / 单栏布局的「实验性功能」分类共用同一实例，
+    // 在 @Composable 顶层收集一次 flags 后传给 LazyListScope 扩展。
+    val featureFlagViewModel: FeatureFlagSettingsViewModel = hiltViewModel()
+    val experimentalFlags by featureFlagViewModel.flags.collectAsStateWithLifecycle()
+
     // Refresh performance metrics only while the Settings screen is visible.
     // This replaces the permanent `while (isActive)` loop that previously ran in
     // SettingsViewModel.init for the entire app lifetime.
@@ -66,6 +72,48 @@ fun SettingsScreen(
     var showFontDialog by remember { mutableStateOf(false) }
     var showE2EDialog by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("appearance") }
+    // 设置页搜索：searchText 非空时按分类标题过滤（双栏过滤左侧列表；单栏隐藏不匹配 Section）。
+    // 与 iOS SettingsView.searchable 行为对齐。
+    var searchText by remember { mutableStateOf("") }
+
+    val appearanceTitle = stringResource(R.string.appearance)
+    val connectionTitle = stringResource(R.string.connection)
+    val marketplaceTitle = stringResource(R.string.nav_marketplace)
+    val securityTitle = stringResource(R.string.e2e_security)
+    val dataTitle = stringResource(R.string.data_backup)
+    val insightsTitle = stringResource(R.string.insights_title)
+    val performanceTitle = stringResource(R.string.performance)
+    val syncTitle = stringResource(R.string.device_sync_title)
+    val pluginsTitle = stringResource(R.string.plugin_title)
+    val notificationsTitle = stringResource(R.string.smart_notif_title)
+    val aboutTitle = stringResource(R.string.about)
+    val experimentalTitle = "实验性功能"
+
+    val allCategories = remember(
+        appearanceTitle, connectionTitle, marketplaceTitle, securityTitle,
+        dataTitle, insightsTitle, performanceTitle, syncTitle, pluginsTitle,
+        notificationsTitle, aboutTitle, experimentalTitle
+    ) {
+        listOf(
+            SettingsCategory("appearance", appearanceTitle, Icons.Default.Palette),
+            SettingsCategory("connection", connectionTitle, Icons.Default.Hub),
+            SettingsCategory("marketplace", marketplaceTitle, Icons.Default.Storefront),
+            SettingsCategory("security", securityTitle, Icons.Default.Lock),
+            SettingsCategory("data", dataTitle, Icons.Default.Backup),
+            SettingsCategory("insights", insightsTitle, Icons.Default.BarChart),
+            SettingsCategory("performance", performanceTitle, Icons.Default.Speed),
+            SettingsCategory("sync", syncTitle, Icons.Default.Sync),
+            SettingsCategory("plugins", pluginsTitle, Icons.Default.Extension),
+            SettingsCategory("notifications", notificationsTitle, Icons.Default.NotificationsActive),
+            SettingsCategory("about", aboutTitle, Icons.Default.Info),
+            SettingsCategory("experimental", experimentalTitle, Icons.Default.Bolt)
+        )
+    }
+    val filteredCategories = if (searchText.isBlank()) allCategories
+        else allCategories.filter { it.title.contains(searchText, ignoreCase = true) }
+
+    fun sectionMatches(title: String) =
+        searchText.isBlank() || title.contains(searchText, ignoreCase = true)
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -173,100 +221,31 @@ fun SettingsScreen(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         item {
-                            CategoryItem(
-                                title = stringResource(R.string.appearance),
-                                icon = Icons.Default.Palette,
-                                isSelected = selectedCategory == "appearance",
-                                onClick = { selectedCategory = "appearance" }
+                            SettingsSearchField(
+                                query = searchText,
+                                onQueryChange = { searchText = it },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.connection),
-                                icon = Icons.Default.Hub,
-                                isSelected = selectedCategory == "connection",
-                                onClick = { selectedCategory = "connection" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.nav_marketplace),
-                                icon = Icons.Default.Storefront,
-                                isSelected = selectedCategory == "marketplace",
-                                onClick = { selectedCategory = "marketplace" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.e2e_security),
-                                icon = Icons.Default.Lock,
-                                isSelected = selectedCategory == "security",
-                                onClick = { selectedCategory = "security" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.data_backup),
-                                icon = Icons.Default.Backup,
-                                isSelected = selectedCategory == "data",
-                                onClick = { selectedCategory = "data" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.insights_title),
-                                icon = Icons.Default.BarChart,
-                                isSelected = selectedCategory == "insights",
-                                onClick = { selectedCategory = "insights" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.performance),
-                                icon = Icons.Default.Speed,
-                                isSelected = selectedCategory == "performance",
-                                onClick = { selectedCategory = "performance" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.device_sync_title),
-                                icon = Icons.Default.Sync,
-                                isSelected = selectedCategory == "sync",
-                                onClick = { selectedCategory = "sync" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.plugin_title),
-                                icon = Icons.Default.Extension,
-                                isSelected = selectedCategory == "plugins",
-                                onClick = { selectedCategory = "plugins" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.smart_notif_title),
-                                icon = Icons.Default.NotificationsActive,
-                                isSelected = selectedCategory == "notifications",
-                                onClick = { selectedCategory = "notifications" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = stringResource(R.string.about),
-                                icon = Icons.Default.Info,
-                                isSelected = selectedCategory == "about",
-                                onClick = { selectedCategory = "about" }
-                            )
-                        }
-                        item {
-                            CategoryItem(
-                                title = "实验性功能",
-                                icon = Icons.Default.Bolt,
-                                isSelected = selectedCategory == "experimental",
-                                onClick = { selectedCategory = "experimental" }
-                            )
+                        if (filteredCategories.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "无匹配项",
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            filteredCategories.forEach { cat ->
+                                item {
+                                    CategoryItem(
+                                        title = cat.title,
+                                        icon = cat.icon,
+                                        isSelected = selectedCategory == cat.key,
+                                        onClick = { selectedCategory = cat.key }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -483,7 +462,10 @@ fun SettingsScreen(
                             "experimental" -> {
                                 // 「实验性功能」分类 — 复用 FeatureFlagSettingsViewModel
                                 // 与 iOS SettingsView.experimentalFeaturesSection 对齐
-                                experimentalFeaturesSection()
+                                experimentalFeaturesSection(
+                                    flags = experimentalFlags,
+                                    viewModel = featureFlagViewModel
+                                )
                             }
                         }
                     }
@@ -502,184 +484,272 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        item { SettingsHeader(stringResource(R.string.appearance)) }
+                        // 搜索框：单栏布局下也提供搜索，按 Section 标题过滤
                         item {
-                            SettingsItem(
-                                title = stringResource(R.string.theme),
-                                subtitle = themeLabel(uiState.themeMode, context),
-                                icon = Icons.Default.Palette,
-                                onClick = { showThemeDialog = true }
-                            )
-                        }
-                        item {
-                            SettingsToggleItem(
-                                title = stringResource(R.string.dynamic_color),
-                                subtitle = stringResource(R.string.dynamic_color_desc),
-                                icon = Icons.Default.AutoAwesome,
-                                checked = uiState.dynamicColor,
-                                onCheckedChange = { settingsViewModel.setDynamicColor(it) }
-                            )
-                        }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.font_size),
-                                subtitle = fontSizeLabel(uiState.fontSize, context),
-                                icon = Icons.Default.TextFields,
-                                onClick = { showFontDialog = true }
+                            SettingsSearchField(
+                                query = searchText,
+                                onQueryChange = { searchText = it },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.connection)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.manage_agents),
-                                subtitle = stringResource(R.string.manage_agents_subtitle, agentConfigs.size),
-                                icon = Icons.Default.Hub,
-                                onClick = onNavigateToAgents
-                            )
-                        }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.nav_tasks),
-                                subtitle = stringResource(R.string.no_tasks_subtitle),
-                                icon = Icons.Default.TaskAlt,
-                                onClick = onNavigateToTasks
-                            )
-                        }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.nav_mcp),
-                                subtitle = stringResource(R.string.mcp_no_servers_subtitle),
-                                icon = Icons.Default.Dns,
-                                onClick = onNavigateToMcp
-                            )
-                        }
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.nav_marketplace)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.marketplace_title),
-                                subtitle = stringResource(R.string.marketplace_subtitle),
-                                icon = Icons.Default.Storefront,
-                                onClick = onNavigateToMarketplace
-                            )
+                        if (sectionMatches(appearanceTitle)) {
+                            item { SettingsHeader(appearanceTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.theme),
+                                    subtitle = themeLabel(uiState.themeMode, context),
+                                    icon = Icons.Default.Palette,
+                                    onClick = { showThemeDialog = true }
+                                )
+                            }
+                            item {
+                                SettingsToggleItem(
+                                    title = stringResource(R.string.dynamic_color),
+                                    subtitle = stringResource(R.string.dynamic_color_desc),
+                                    icon = Icons.Default.AutoAwesome,
+                                    checked = uiState.dynamicColor,
+                                    onCheckedChange = { settingsViewModel.setDynamicColor(it) }
+                                )
+                            }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.font_size),
+                                    subtitle = fontSizeLabel(uiState.fontSize, context),
+                                    icon = Icons.Default.TextFields,
+                                    onClick = { showFontDialog = true }
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.e2e_security)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.e2e_title),
-                                subtitle = if (uiState.e2eEnabled) context.getString(R.string.e2e_enabled)
-                                           else context.getString(R.string.e2e_disabled),
-                                icon = Icons.Default.Lock,
-                                onClick = { showE2EDialog = true }
-                            )
+                        if (sectionMatches(connectionTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(connectionTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.manage_agents),
+                                    subtitle = stringResource(R.string.manage_agents_subtitle, agentConfigs.size),
+                                    icon = Icons.Default.Hub,
+                                    onClick = onNavigateToAgents
+                                )
+                            }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.nav_tasks),
+                                    subtitle = stringResource(R.string.no_tasks_subtitle),
+                                    icon = Icons.Default.TaskAlt,
+                                    onClick = onNavigateToTasks
+                                )
+                            }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.nav_mcp),
+                                    subtitle = stringResource(R.string.mcp_no_servers_subtitle),
+                                    icon = Icons.Default.Dns,
+                                    onClick = onNavigateToMcp
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.device_sync_title)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.device_sync_title),
-                                subtitle = stringResource(R.string.device_sync_enabled_desc),
-                                icon = Icons.Default.Sync,
-                                onClick = onNavigateToDeviceSync
-                            )
+                        if (sectionMatches(marketplaceTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(marketplaceTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.marketplace_title),
+                                    subtitle = stringResource(R.string.marketplace_subtitle),
+                                    icon = Icons.Default.Storefront,
+                                    onClick = onNavigateToMarketplace
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.plugin_title)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.plugin_title),
-                                subtitle = stringResource(R.string.plugin_installed),
-                                icon = Icons.Default.Extension,
-                                onClick = onNavigateToPlugins
-                            )
+                        if (sectionMatches(securityTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(securityTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.e2e_title),
+                                    subtitle = if (uiState.e2eEnabled) context.getString(R.string.e2e_enabled)
+                                               else context.getString(R.string.e2e_disabled),
+                                    icon = Icons.Default.Lock,
+                                    onClick = { showE2EDialog = true }
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.smart_notif_title)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.smart_notif_title),
-                                subtitle = stringResource(R.string.smart_notif_desc),
-                                icon = Icons.Default.NotificationsActive,
-                                onClick = { }
-                            )
+                        if (sectionMatches(syncTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(syncTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.device_sync_title),
+                                    subtitle = stringResource(R.string.device_sync_enabled_desc),
+                                    icon = Icons.Default.Sync,
+                                    onClick = onNavigateToDeviceSync
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.about)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.check_update),
-                                subtitle = if (isChecking) stringResource(R.string.checking_update) else "v$currentVersion",
-                                icon = Icons.Default.SystemUpdate,
-                                onClick = { triggerCheck++ }
-                            )
+                        if (sectionMatches(pluginsTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(pluginsTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.plugin_title),
+                                    subtitle = stringResource(R.string.plugin_installed),
+                                    icon = Icons.Default.Extension,
+                                    onClick = onNavigateToPlugins
+                                )
+                            }
                         }
-                        item {
-                            VersionSettingsItem()
+
+                        if (sectionMatches(notificationsTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(notificationsTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.smart_notif_title),
+                                    subtitle = stringResource(R.string.smart_notif_desc),
+                                    icon = Icons.Default.NotificationsActive,
+                                    onClick = { }
+                                )
+                            }
+                        }
+
+                        if (sectionMatches(aboutTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(aboutTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.check_update),
+                                    subtitle = if (isChecking) stringResource(R.string.checking_update) else "v$currentVersion",
+                                    icon = Icons.Default.SystemUpdate,
+                                    onClick = { triggerCheck++ }
+                                )
+                            }
+                            item {
+                                VersionSettingsItem()
+                            }
                         }
 
                         // 实验性功能 — 单栏布局下直接展开 FeatureFlag 列表
                         // （experimentalFeaturesSection 内部已含 Header，无需再添加）
-                        item { Spacer(Modifier.height(8.dp)) }
-                        experimentalFeaturesSection()
-
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.insights_title)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.insights_title),
-                                subtitle = stringResource(R.string.insights_subtitle),
-                                icon = Icons.Default.BarChart,
-                                onClick = onNavigateToInsights
+                        if (sectionMatches(experimentalTitle)) {
+                            item { Spacer(Modifier.height(8.dp)) }
+                            experimentalFeaturesSection(
+                                flags = experimentalFlags,
+                                viewModel = featureFlagViewModel
                             )
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.data_backup)) }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.export_chat_history),
-                                subtitle = stringResource(R.string.export_chat_history_subtitle),
-                                icon = Icons.Default.FileDownload,
-                                onClick = { settingsViewModel.exportChatHistory(context) }
-                            )
-                        }
-                        item {
-                            SettingsItem(
-                                title = stringResource(R.string.import_chat_history),
-                                subtitle = stringResource(R.string.import_chat_history_subtitle),
-                                icon = Icons.Default.FileUpload,
-                                onClick = { importLauncher.launch(arrayOf("application/json")) }
-                            )
+                        if (sectionMatches(insightsTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(insightsTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.insights_title),
+                                    subtitle = stringResource(R.string.insights_subtitle),
+                                    icon = Icons.Default.BarChart,
+                                    onClick = onNavigateToInsights
+                                )
+                            }
                         }
 
-                        item { Spacer(Modifier.height(8.dp)); SettingsHeader(stringResource(R.string.performance)) }
-                        item { PerformanceMetricItem(
-                            title = stringResource(R.string.perf_avg_latency),
-                            value = "${performanceMetrics.avgMessageLatency} ms",
-                            icon = Icons.Default.Timer
-                        ) }
-                        item { PerformanceMetricItem(
-                            title = stringResource(R.string.perf_connection_quality),
-                            value = performanceMetrics.connectionQuality,
-                            icon = Icons.Default.Wifi
-                        ) }
-                        item { PerformanceMetricItem(
-                            title = stringResource(R.string.perf_memory_usage),
-                            value = "${performanceMetrics.memoryUsageMB} MB",
-                            icon = Icons.Default.Memory
-                        ) }
-                        item { PerformanceMetricItem(
-                            title = stringResource(R.string.perf_total_messages),
-                            value = "${performanceMetrics.totalMessages}",
-                            icon = Icons.Default.Message
-                        ) }
-                        item { PerformanceMetricItem(
-                            title = stringResource(R.string.perf_uptime),
-                            value = "${performanceMetrics.uptimeMinutes} min",
-                            icon = Icons.Default.AccessTime
-                        ) }
+                        if (sectionMatches(dataTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(dataTitle) }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.export_chat_history),
+                                    subtitle = stringResource(R.string.export_chat_history_subtitle),
+                                    icon = Icons.Default.FileDownload,
+                                    onClick = { settingsViewModel.exportChatHistory(context) }
+                                )
+                            }
+                            item {
+                                SettingsItem(
+                                    title = stringResource(R.string.import_chat_history),
+                                    subtitle = stringResource(R.string.import_chat_history_subtitle),
+                                    icon = Icons.Default.FileUpload,
+                                    onClick = { importLauncher.launch(arrayOf("application/json")) }
+                                )
+                            }
+                        }
+
+                        if (sectionMatches(performanceTitle)) {
+                            item { Spacer(Modifier.height(8.dp)); SettingsHeader(performanceTitle) }
+                            item { PerformanceMetricItem(
+                                title = stringResource(R.string.perf_avg_latency),
+                                value = "${performanceMetrics.avgMessageLatency} ms",
+                                icon = Icons.Default.Timer
+                            ) }
+                            item { PerformanceMetricItem(
+                                title = stringResource(R.string.perf_connection_quality),
+                                value = performanceMetrics.connectionQuality,
+                                icon = Icons.Default.Wifi
+                            ) }
+                            item { PerformanceMetricItem(
+                                title = stringResource(R.string.perf_memory_usage),
+                                value = "${performanceMetrics.memoryUsageMB} MB",
+                                icon = Icons.Default.Memory
+                            ) }
+                            item { PerformanceMetricItem(
+                                title = stringResource(R.string.perf_total_messages),
+                                value = "${performanceMetrics.totalMessages}",
+                                icon = Icons.Default.Message
+                            ) }
+                            item { PerformanceMetricItem(
+                                title = stringResource(R.string.perf_uptime),
+                                value = "${performanceMetrics.uptimeMinutes} min",
+                                icon = Icons.Default.AccessTime
+                            ) }
+                        }
+
+                        // 搜索无匹配时的提示
+                        if (searchText.isNotBlank() && filteredCategories.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "无匹配项",
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+// ── 设置页搜索相关组件 ──
+
+/**
+ * 设置分类元数据，用于搜索过滤与左侧导航列表渲染。
+ */
+private data class SettingsCategory(
+    val key: String,
+    val title: String,
+    val icon: ImageVector
+)
+
+/**
+ * 设置页搜索框。与 iOS SettingsView.searchable 对齐：
+ * 输入文本即按分类标题过滤（双栏过滤左侧列表，单栏隐藏不匹配 Section）。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier.fillMaxWidth(),
+        placeholder = { Text("搜索设置项") },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        singleLine = true,
+        // 清空按钮：非空时显示，便于一键重置搜索
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "清除")
+                }
+            }
+        } else null
+    )
 }

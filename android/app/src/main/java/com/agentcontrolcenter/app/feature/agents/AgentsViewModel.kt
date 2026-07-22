@@ -12,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.core.config.AgentConfigValidator
+import com.agentcontrolcenter.app.core.config.AgentDefaults
+import com.agentcontrolcenter.app.core.config.ConfigRepository
 import com.agentcontrolcenter.app.core.config.ConfigValidationError
 import com.agentcontrolcenter.app.core.util.runSafely
 import com.agentcontrolcenter.app.data.repository.ChatRepository
@@ -38,13 +40,16 @@ data class AgentsUiState(
     // Agent 列表首次加载状态：首次从 Room 拿到数据前为 true，用于驱动骨架屏
     val isLoading: Boolean = true,
     // 字段校验错误：key=字段名，value=错误描述。表单 UI 据此高亮对应输入框。
-    val validationErrors: List<ConfigValidationError> = emptyList()
+    val validationErrors: List<ConfigValidationError> = emptyList(),
+    // Agent 默认值（从 ConfigRepository 派生），新建 Agent 时预填 model/temperature/maxTokens
+    val agentDefaults: AgentDefaults = AgentDefaults()
 )
 
 @HiltViewModel
 class AgentsViewModel @Inject constructor(
     application: Application,
-    private val repository: ChatRepository
+    private val repository: ChatRepository,
+    private val configRepository: ConfigRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AgentsUiState())
@@ -57,12 +62,24 @@ class AgentsViewModel @Inject constructor(
                 _uiState.update { it.copy(agents = agents, isLoading = false) }
             }
         }
+        // 收集 AgentDefaults，供新建 Agent 时预填 model/temperature/maxTokens
+        viewModelScope.launch {
+            configRepository.appConfig.collect { config ->
+                _uiState.update { it.copy(agentDefaults = config.agentDefaults) }
+            }
+        }
     }
 
     fun showNewForm() {
+        val defaults = _uiState.value.agentDefaults
         _uiState.update {
             it.copy(
-                editingAgent = AgentConfig(id = UUID.randomUUID().toString()),
+                editingAgent = AgentConfig(
+                    id = UUID.randomUUID().toString(),
+                    model = defaults.defaultModel,
+                    temperature = defaults.defaultTemperature,
+                    maxTokens = defaults.defaultMaxTokens
+                ),
                 showForm = true,
                 validationErrors = emptyList()
             )

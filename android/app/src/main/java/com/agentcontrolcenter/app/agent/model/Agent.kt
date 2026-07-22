@@ -28,16 +28,9 @@ data class Agent(
 )
 
 /**
- * Agent 传输协议类型。
- *
- * 决定 TransportFactory 路由到哪个 Transport 实现。
+ * Agent 传输协议类型。定义已迁移至 [AgentProtocol.kt]（含 rawValue / fromRawValue，
+ * 与 iOS AgentProtocol 跨端对齐）。此处不再重复声明，避免 Redeclaration 冲突。
  */
-enum class AgentProtocol(val displayName: String) {
-    WebSocket("WebSocket"),
-    HttpSSE("HTTP + SSE"),
-    MCP("MCP Protocol"),
-    Local("Local Runtime")
-}
 
 /**
  * Agent 当前状态。

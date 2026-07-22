@@ -38,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.core.config.AgentConfigValidator
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
@@ -476,13 +477,19 @@ private fun AgentFormDialog(
     var temperature by remember { mutableStateOf(agent.temperature.toString()) }
     var maxTokens by remember { mutableStateOf(agent.maxTokens.toString()) }
 
-    // ── 实时字段验证：每次输入变化时重新计算，错误状态即时反馈 ──
-    val isNameError = name.isBlank()
-    val isServerUrlError = serverUrl.isBlank() ||
-        (!serverUrl.startsWith("http://") && !serverUrl.startsWith("https://"))
-    val isApiKeyError = apiKey.length < 10
-    // 所有字段验证通过时才允许保存
-    val isFormValid = !isNameError && !isServerUrlError && !isApiKeyError
+    // ── 实时字段验证：统一走 AgentConfigValidator（与 iOS 表单 + ViewModel 兜底校验一致）──
+    // 构造当前表单草稿并校验，错误按字段回填到对应输入框的 isError / supportingText。
+    val draft = remember(name, serverUrl, apiKey, type, model, systemPrompt, temperature, maxTokens) {
+        agent.copy(
+            name = name, serverUrl = serverUrl, apiKey = apiKey, type = type,
+            model = model, systemPrompt = systemPrompt,
+            temperature = temperature.toFloatOrNull() ?: 0.7f,
+            maxTokens = maxTokens.toIntOrNull() ?: 4096
+        )
+    }
+    val validationResult = remember(draft) { AgentConfigValidator.validate(draft) }
+    // LocalModel 走本地进程，serverUrl / apiKey 豁免校验且 UI 隐藏对应输入框
+    val isLocal = type == AgentType.LocalModel
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -497,63 +504,76 @@ private fun AgentFormDialog(
                     label = { Text(stringResource(R.string.label_name)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = isNameError,
-                    supportingText = if (isNameError) {
-                        { Text(stringResource(R.string.error_name_required)) }
-                    } else null
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = serverUrl,
-                    onValueChange = { serverUrl = it },
-                    label = { Text(stringResource(R.string.label_server_url)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    isError = isServerUrlError,
-                    supportingText = if (isServerUrlError) {
-                        {
-                            Text(
-                                if (serverUrl.isBlank()) stringResource(R.string.error_server_url_required)
-                                else stringResource(R.string.error_server_url_invalid_scheme)
-                            )
-                        }
-                    } else null
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text(stringResource(R.string.label_api_key)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    // H5: 视觉掩码，避免 apiKey 明文显示被肩窥/录屏泄漏
-                    visualTransformation = PasswordVisualTransformation(),
-                    isError = isApiKeyError,
-                    supportingText = if (isApiKeyError) {
-                        { Text(stringResource(R.string.error_api_key_too_short)) }
-                    } else null
+                    isError = validationResult.errorFor("name") != null,
+                    supportingText = validationResult.errorFor("name")?.let { msg ->
+                        { Text(msg) }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 TypeSelector(
                     selected = type,
                     onSelect = { type = it }
                 )
+                if (isLocal) {
+                    // LocalModel 走本地进程（Ollama / LM Studio），无需远程端点与 API Key
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "LocalModel 类型使用本地推理，无需填写服务器地址与 API Key",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        label = { Text(stringResource(R.string.label_server_url)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        isError = validationResult.errorFor("serverUrl") != null,
+                        supportingText = validationResult.errorFor("serverUrl")?.let { msg ->
+                            { Text(msg) }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        label = { Text(stringResource(R.string.label_api_key)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        // H5: 视觉掩码，避免 apiKey 明文显示被肩窥/录屏泄漏
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = validationResult.errorFor("apiKey") != null,
+                        supportingText = validationResult.errorFor("apiKey")?.let { msg ->
+                            { Text(msg) }
+                        }
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
                     label = { Text(stringResource(R.string.label_model)) },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = validationResult.errorFor("model") != null,
+                    supportingText = validationResult.errorFor("model")?.let { msg ->
+                        { Text(msg) }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = systemPrompt,
                     onValueChange = { systemPrompt = it },
                     label = { Text(stringResource(R.string.label_system_prompt)) },
-                    modifier = Modifier.fillMaxWidth().height(100.dp)
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    isError = validationResult.errorFor("systemPrompt") != null,
+                    supportingText = validationResult.errorFor("systemPrompt")?.let { msg ->
+                        { Text(msg) }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -562,7 +582,11 @@ private fun AgentFormDialog(
                     label = { Text(stringResource(R.string.label_temperature)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = validationResult.errorFor("temperature") != null,
+                    supportingText = validationResult.errorFor("temperature")?.let { msg ->
+                        { Text(msg) }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -571,7 +595,11 @@ private fun AgentFormDialog(
                     label = { Text(stringResource(R.string.label_max_tokens)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = validationResult.errorFor("maxTokens") != null,
+                    supportingText = validationResult.errorFor("maxTokens")?.let { msg ->
+                        { Text(msg) }
+                    }
                 )
             }
         },
@@ -589,7 +617,7 @@ private fun AgentFormDialog(
                         maxTokens = maxTokens.toIntOrNull() ?: 4096
                     ))
                 },
-                enabled = isFormValid
+                enabled = validationResult.isValid
             ) {
                 Text(stringResource(R.string.btn_save))
             }
