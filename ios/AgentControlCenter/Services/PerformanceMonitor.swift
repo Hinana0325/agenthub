@@ -42,10 +42,13 @@ final class PerformanceMonitor {
 
     /// 定时刷新定时器（每 5 秒更新一次指标）
     //
-    // CI-fix: Swift 6 strict concurrency complete 下 nonisolated(unsafe) 被升级为错误，
-    // 且 @MainActor deinit 需要实验特性 IsolatedDeinit（Xcode 16.4 默认未启用）。
-    // 改为用 nonisolated 标注 timer，deinit 中显式假设 MainActor 上下文。
-    nonisolated private var timer: Timer?
+    // CI-fix: @Observable macro 会将 timer 转为带隔离的存储属性，
+    // Swift 6 strict concurrency complete 下 nonisolated(unsafe) 被升级为错误，
+    // nonisolated 又不能用于 mutable property。
+    // 用 @ObservationIgnored 让 timer 不参与 macro 转换，保持普通 @MainActor 属性。
+    // deinit 中用 MainActor.assumeIsolated 访问（类已 @MainActor，deinit 时仍安全）。
+    @ObservationIgnored
+    private var timer: Timer?
 
     /// 硬件信息缓存
     private var hardwareInfo: AppleSoCDetector.HardwareInfo?
@@ -57,9 +60,11 @@ final class PerformanceMonitor {
     }
 
     /// 析构时清理定时器
-    // CI-fix: timer 已 nonisolated，deinit 可直接访问。
+    // CI-fix: deinit 是 nonisolated，访问 @MainActor 隔离的 timer 需假设 MainActor 上下文。
     deinit {
-        timer?.invalidate()
+        MainActor.assumeIsolated {
+            timer?.invalidate()
+        }
     }
 
     // MARK: - 硬件初始化
