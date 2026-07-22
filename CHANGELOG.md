@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.1] - 2026-07-22
+
+### Hotfix — 修复 v4.7.0 发布失败
+
+v4.7.0 tag 指向的 commit (`a3f1c10`) CI detekt 失败，导致 `Publish Release` job 被跳过、release 未创建。本次为补丁版本，内容与 v4.7.0 相同并附带 detekt 修复。
+
+- **detekt UseCheckOrError 修复**：`WorkflowEngine.execute` 中 `throw IllegalStateException` → `check()`，与既有 No INPUT node / cycle detected 错误处理一致。
+- **detekt jvmTarget 显式指定**：`build.gradle` 为 detekt 任务显式设置 `jvmTarget = "17"`（与 compileOptions / kotlin.compilerOptions 一致），避免 detekt-cli 自动检测运行时 JDK 版本导致 CI/本地不一致。
+- **detekt baseline 重新生成**：接受新增存量违规（FunctionNaming Compose PascalCase / TooManyFunctions ViewModel / TooGenericExceptionCaught 传输错误处理 / LongMethod 边界值等不可避免的违规）。
+
 ## [4.7.0] - 2026-07-22
 
 ### 配置辅助体系全面升级（双端对齐）
