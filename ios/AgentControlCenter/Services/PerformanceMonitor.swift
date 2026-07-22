@@ -42,11 +42,9 @@ final class PerformanceMonitor {
 
     /// 定时刷新定时器（每 5 秒更新一次指标）
     //
-    // CI-fix: `deinit` 在 Swift 中隐式 `nonisolated`，无法访问 `@MainActor`
-    // 隔离的 `timer`。`Timer?.invalidate()` 本身线程安全，且 deinit 时
-    // 已无其他引用，故显式标记 `nonisolated(unsafe)` 让编译器放行。
-    // 读写仍由 MainActor 串行化（startMonitoring / stopMonitoring 均 MainActor）。
-    nonisolated(unsafe) private var timer: Timer?
+    // CI-fix: 类已 @MainActor 隔离，timer 默认 MainActor 隔离，无需 nonisolated(unsafe)。
+    // Swift 6 警告 "nonisolated(unsafe) has no effect on property" 并升级为错误。
+    private var timer: Timer?
 
     /// 硬件信息缓存
     private var hardwareInfo: AppleSoCDetector.HardwareInfo?
