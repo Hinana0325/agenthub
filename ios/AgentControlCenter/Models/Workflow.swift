@@ -58,6 +58,10 @@ struct WorkflowExecutionState: Equatable, Sendable {
     var isRunning: Bool = false
     var currentNodeId: String? = nil
     var completedNodeIds: Set<String> = []
+    /// M-18 修复：失败的节点 ID 集合。executeAgent 失败时返回 "Error: ..." 字符串，
+    /// 下游节点检测到上游输出以 "Error:" 开头时跳过执行并标记失败，避免错误内容
+    /// 被下游节点继续处理（如错误文本被 Agent 当作 prompt 发送，浪费 token 与算力）。
+    var failedNodeIds: Set<String> = []
     var output: String = ""
     var error: String? = nil
     var logs: [String] = []

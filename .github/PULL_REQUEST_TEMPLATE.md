@@ -12,10 +12,13 @@ Brief description of the changes.
 
 ## Testing
 
-- [ ] `node tests.js` passes (47/47)
+- [ ] Android: `./gradlew testDebugUnitTest` 通过
+- [ ] iOS: `xcodebuild test` 通过
 - [ ] Tested on Android device/emulator
 - [ ] Tested on tablet (if UI changes)
 - [ ] Tested connection flow (if agent-related)
+- [ ] Tested on iOS Simulator
+- [ ] Tested on iPad
 
 ## Screenshots (if applicable)
 
@@ -26,3 +29,6 @@ Brief description of the changes.
 - [ ] Comments added for complex logic
 - [ ] Documentation updated (if needed)
 - [ ] No new warnings introduced
+- [ ] 协议层改动已同步双端实现
+- [ ] 不影响 AKS:/AH1: 加密格式（或已同步双端）
+- [ ] 错误码已注册到 error-codes.json

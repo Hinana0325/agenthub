@@ -2,14 +2,19 @@ package com.agentcontrolcenter.app.transport.http
 
 import android.content.Context
 import android.util.Log
+import com.agentcontrolcenter.app.BuildConfig
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.error.AppErrorCode
 import com.agentcontrolcenter.app.core.security.UrlValidator
+import com.agentcontrolcenter.app.data.model.MessageRole
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.get
@@ -75,7 +80,18 @@ class OpenAIHttpTransport(
     override val connectionState: StateFlow<AgentConnectionState> = _connectionState.asStateFlow()
 
     private val client = HttpClient(OkHttp) {
-        install(Logging)
+        // H7: 仅在 DEBUG 构建打印 HEADERS 级别日志，release 完全关闭，
+        // 避免把请求/响应头（可能含 Authorization）泄漏到 logcat。
+        // Ktor 的 Logger 接口无 ANDROID 实现，自定义一个委托到 android.util.Log 的
+        // logger，使日志走 logcat 而非 stdout，便于按 TAG 过滤。
+        install(Logging) {
+            level = if (BuildConfig.DEBUG) LogLevel.HEADERS else LogLevel.NONE
+            logger = object : Logger {
+                override fun log(message: String) {
+                    android.util.Log.d("OpenAIHttpTransport", message)
+                }
+            }
+        }
         // Phase 1.1: 为 HTTP 请求配置超时，防止网络卡顿时 sendMessage 无限挂起
         // 导致 UI isStreaming 永远为 true。
         //   - connectTimeoutMillis: TCP 连接建立超时，10s 足够覆盖慢网络。
@@ -158,7 +174,8 @@ class OpenAIHttpTransport(
                 _connectionState.value = _connectionState.value.copy(isConnected = false)
                 _events.send(AgentEvent.Error(
                     context?.getString(R.string.error_cannot_connect, config.serverUrl)
-                        ?: "Cannot connect to ${config.serverUrl}"
+                        ?: "Cannot connect to ${config.serverUrl}",
+                    code = AppErrorCode.TRANSPORT_CONNECT_FAILED
                 ))
             }
         }
@@ -207,7 +224,8 @@ class OpenAIHttpTransport(
         // 锁内包含历史读取、请求发送、流解析、历史写入的完整流程。
         sendMutex.withLock {
             val config = currentConfig ?: run {
-                _events.send(AgentEvent.Error("Not connected"))
+                // C3: 接入统一错误码 AGENT_CONFIG_MISSING
+                _events.send(AgentEvent.Error("Not connected", code = AppErrorCode.AGENT_CONFIG_MISSING))
                 return
             }
 
@@ -216,9 +234,10 @@ class OpenAIHttpTransport(
             //    并发 [clearHistory] 在两步之间插入导致 messages 数组为空。
             //    历史快照为空时（理论上的并发清空场景）退化为单条用户消息，
             //    与原有单轮行为完全一致（向后兼容）。
+            //    H13: role 值改用 MessageRole.apiValue，与协议字段名对齐。
             val messagesPayload: List<Map<String, String>> = historyMutex.withLock {
                 val history = conversationHistory.getOrPut(sessionId) { mutableListOf() }
-                history.add(ConversationMessage("user", content))
+                history.add(ConversationMessage(MessageRole.User.apiValue, content))
                 trimHistory(history)
                 history.map { msg ->
                     mapOf("role" to msg.role, "content" to msg.content)
@@ -231,7 +250,8 @@ class OpenAIHttpTransport(
             val url = config.serverUrl.trimEnd('/') + "/v1/chat/completions"
             // H-S1 修复：sendMessage 路径同样需要校验 URL（防 SSRF + apiKey 泄漏）
             if (UrlValidator.validate(url, allowLocalhost = true) == null) {
-                _events.send(AgentEvent.Error("Invalid or blocked server URL"))
+                // C3: 接入统一错误码 TRANSPORT_CONNECT_FAILED
+                _events.send(AgentEvent.Error("Invalid or blocked server URL", code = AppErrorCode.TRANSPORT_CONNECT_FAILED))
                 return
             }
             val requestBody = mapOf(
@@ -263,7 +283,11 @@ class OpenAIHttpTransport(
                             val code = response.status.value
                             // 4xx 客户端错误不重试（凭据/请求格式问题，重试无用）
                             if (code in 400..499) {
-                                _events.send(AgentEvent.Error("HTTP $code: $errBody"))
+                                // C3: 401/403 归 TRANSPORT_AUTH_FAILED，其余 4xx 无精确对应码留空
+                                _events.send(AgentEvent.Error(
+                                    "HTTP $code: $errBody",
+                                    code = if (code == 401 || code == 403) AppErrorCode.TRANSPORT_AUTH_FAILED else null
+                                ))
                                 _connectionState.value = _connectionState.value.copy(isConnected = false)
                                 return@execute
                             }
@@ -271,6 +295,7 @@ class OpenAIHttpTransport(
                             if (attempt < maxAttempts) {
                                 lastError = "HTTP $code (retry $attempt/$maxAttempts)"
                             } else {
+                                // C3: 5xx 重试耗尽，无精确对应码（服务端故障），留空
                                 _events.send(AgentEvent.Error("HTTP $code: $errBody"))
                                 _connectionState.value = _connectionState.value.copy(isConnected = false)
                             }
@@ -289,7 +314,8 @@ class OpenAIHttpTransport(
                     if (attempt < maxAttempts) {
                         lastError = "${e.message ?: e.javaClass.simpleName} (retry $attempt/$maxAttempts)"
                     } else {
-                        _events.send(AgentEvent.Error(e.message ?: "Request failed"))
+                        // C3: 接入统一错误码 TRANSPORT_CONNECT_FAILED（网络异常/超时）
+                        _events.send(AgentEvent.Error(e.message ?: "Request failed", code = AppErrorCode.TRANSPORT_CONNECT_FAILED))
                     }
                 }
                 // 指数退避：1s, 2s, 4s...（仅在还有下一次尝试时等待）
@@ -314,7 +340,8 @@ class OpenAIHttpTransport(
                 _events.send(AgentEvent.StreamComplete)
             } else if (lastError != null) {
                 // 所有重试均失败，发送最终错误
-                _events.send(AgentEvent.Error("Request failed after $maxAttempts attempts: $lastError"))
+                // C3: 接入统一错误码 TRANSPORT_CONNECT_FAILED（重试耗尽）
+                _events.send(AgentEvent.Error("Request failed after $maxAttempts attempts: $lastError", code = AppErrorCode.TRANSPORT_CONNECT_FAILED))
             }
         }
     }
@@ -330,7 +357,8 @@ class OpenAIHttpTransport(
         if (text.isEmpty()) return
         historyMutex.withLock {
             val history = conversationHistory.getOrPut(sessionId) { mutableListOf() }
-            history.add(ConversationMessage("assistant", text))
+            // H13: role 值改用 MessageRole.apiValue，避免硬编码字符串
+            history.add(ConversationMessage(MessageRole.Assistant.apiValue, text))
             trimHistory(history)
         }
     }

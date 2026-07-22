@@ -34,7 +34,24 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     private let maxRetries = 3
 
     /// 连接状态
-    private(set) var connectionState = AgentConnectionState()
+    // H15 修复：connectionState 跨 actor 并发读写无同步，存在数据竞争。
+    // 用 NSLock 保护读写访问（与 continuationLock / historyLock 风格一致），
+    // 通过 _connectionStateLock 进行所有访问。private(set) 暴露的 getter 改为
+    // 计算属性走锁内读取，写入通过 setConnectionState(_:) 走锁内写入。
+    private let connectionStateLock = NSLock()
+    private var _connectionState = AgentConnectionState()
+    var connectionState: AgentConnectionState {
+        connectionStateLock.lock()
+        defer { connectionStateLock.unlock() }
+        return _connectionState
+    }
+
+    /// 在锁内更新 connectionState（H15 修复）
+    private func setConnectionState(_ state: AgentConnectionState) {
+        connectionStateLock.lock()
+        _connectionState = state
+        connectionStateLock.unlock()
+    }
 
     lazy var events: AsyncStream<AgentEvent> = {
         AsyncStream { continuation in
@@ -69,6 +86,11 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = true
+        // H16 TODO（TLS 证书钉扎 / SPKI Pinning）：当前使用默认 URLSessionConfiguration
+        // 与默认 trust evaluator，仅校验系统 CA 链，无法防御 MITM 与伪造证书。
+        // 后续应通过自定义 URLSessionDelegate（urlSession(_:didReceive:completionHandler:)）
+        // 校验服务端证书链的 SPKI hash 与预置 pin 列表，对齐 Android NetworkSecurityConfig。
+        // 暂缓实现：详见 protocol/transport/tls-pinning.md（待补）。
         self.session = URLSession(configuration: config)
     }
 
@@ -85,7 +107,8 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     private func connectLoop() async {
         guard let config = config, shouldReconnect else { return }
         guard retryCount <= maxRetries else {
-            emit(.error(message: "Connection failed after \(maxRetries) retries"))
+            // C3 修复：重连耗尽 → TRANSPORT_RECONNECT_FAILED (1005)
+            emit(.error(code: .transportReconnectFailed, message: "Connection failed after \(maxRetries) retries"))
             return
         }
 
@@ -100,7 +123,9 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
 
         // SSRF 校验：禁止 file:// / data:// / 链路本地 / 元数据服务等危险目标
         guard let url = URLValidator.validate(wsUrl, allowLocalhost: true) else {
-            emit(.error(message: "服务地址格式错误或不被允许"))
+            // C3 修复：URL 无效阻断连接 → TRANSPORT_CONNECT_FAILED (1001)
+            // 注：注册表无 TRANSPORT_INVALID_URL，归入 1001（连接失败）
+            emit(.error(code: .transportConnectFailed, message: "服务地址格式错误或不被允许"))
             return
         }
 
@@ -123,12 +148,13 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
 
             isConnecting = false
             retryCount = 0
-            connectionState = AgentConnectionState(
+            // H15 修复：通过 setConnectionState 走锁写入，避免数据竞争
+            setConnectionState(AgentConnectionState(
                 isConnected: true,
                 serverUrl: config.serverUrl,
                 agentType: config.type,
                 latency: 0
-            )
+            ))
             emit(.connected(serverUrl: config.serverUrl, agentType: config.type))
 
             // 启动心跳任务：每 30 秒发送 ping 帧检测连接活性。
@@ -192,7 +218,8 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
 
     func sendMessage(sessionId: String, content: String) async throws {
         guard connectionState.isConnected else {
-            emit(.error(message: "Not connected"))
+            // C3 修复：未连接 → TRANSPORT_DISCONNECTED (1004)
+            emit(.error(code: .transportDisconnected, message: "Not connected"))
             return
         }
 
@@ -200,7 +227,10 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         let actualContent: String
         if let e2eKey = e2eKey, !e2eKey.isEmpty {
             guard let encrypted = CryptoManager.encrypt(content, passphrase: e2eKey) else {
-                emit(.error(message: String(localized: "error.e2e.encrypt")))
+                // C3 修复：E2E 加密失败 → CRYPTO_E2E_KEY_MISMATCH (10003)
+                // 注：注册表无 CRYPTO_ENCRYPT_FAILED，加密失败通常源于密钥派生失败，
+                // 与密钥协商失败同属密钥问题，归入 10003。
+                emit(.error(code: .cryptoE2eKeyMismatch, message: String(localized: "error.e2e.encrypt")))
                 return
             }
             actualContent = encrypted
@@ -251,7 +281,9 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
                 emit(.messageReceived(content: content, isDelta: isDelta))
 
             case "error":
-                emit(.error(message: frame.message ?? "Unknown server error"))
+                // C3 修复：服务端 error 帧 → PROTOCOL_INVALID_MESSAGE (2001)
+                // 服务端推送的错误帧通常是协议级问题（消息格式 / 字段缺失 / 类型未知）
+                emit(.error(code: .protocolInvalidMessage, message: frame.message ?? "Unknown server error"))
 
             case "ping":
                 // 心跳，忽略
@@ -269,12 +301,14 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
     // MARK: - Reconnection
 
     private func handleDisconnect(reason: String) async {
-        connectionState = AgentConnectionState(
+        // H15 修复：通过 setConnectionState 走锁写入；读取 connectionState 也走锁
+        let prev = connectionState
+        setConnectionState(AgentConnectionState(
             isConnected: false,
-            serverUrl: connectionState.serverUrl,
-            agentType: connectionState.agentType,
+            serverUrl: prev.serverUrl,
+            agentType: prev.agentType,
             latency: 0
-        )
+        ))
 
         if shouldReconnect && retryCount < maxRetries {
             retryCount += 1
@@ -293,12 +327,14 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         shouldReconnect = false
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
-        connectionState = AgentConnectionState(
+        // H15 修复：通过 setConnectionState 走锁写入；读取 connectionState 也走锁
+        let prev = connectionState
+        setConnectionState(AgentConnectionState(
             isConnected: false,
-            serverUrl: connectionState.serverUrl,
-            agentType: connectionState.agentType,
+            serverUrl: prev.serverUrl,
+            agentType: prev.agentType,
             latency: 0
-        )
+        ))
         emit(.disconnected(reason: "User disconnected"))
     }
 
@@ -307,6 +343,11 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         continuationLock.lock()
         eventContinuation?.finish()
         continuationLock.unlock()
+        // L-3 修复：显式清空 config / e2eKey，避免 transport 实例被复用或
+        // 长生命周期持有导致 apiKey 在内存中残留（潜在泄漏面）。
+        // config 已为 var（connect() 中赋值），e2eKey 同理。
+        self.config = nil
+        self.e2eKey = nil
     }
 
     // MARK: - Event Emission

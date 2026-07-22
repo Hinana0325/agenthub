@@ -14,6 +14,8 @@ struct McpView: View {
     @Environment(AppState.self) private var appState
     @State private var servers: [McpServer] = []
     @State private var showingAddSheet = false
+    /// L-5 修复：保存加密失败时设置错误文本，UI 通过 alert 展示给用户
+    @State private var lastError: String?
 
     /// UserDefaults 持久化键(因 DataController 未提供 McpServerEntity,使用 JSON 编码方式持久化)
     private static let storageKey = "mcp_servers"
@@ -80,6 +82,18 @@ struct McpView: View {
             .task {
                 loadServers()
             }
+            // L-5 修复：加密失败时通过 alert 提示用户
+            .alert(String(localized: "common.error.title"),
+                   isPresented: Binding(
+                       get: { lastError != nil },
+                       set: { if !$0 { lastError = nil } }
+                   ),
+                   presenting: lastError
+            ) { _ in
+                Button(String(localized: "common.ok"), role: .cancel) { lastError = nil }
+            } message: { msg in
+                Text(msg)
+            }
         }
     }
 
@@ -94,14 +108,27 @@ struct McpView: View {
     private func saveServers() {
         // 拷贝一份用于持久化，避免改动内存中的明文 servers
         var encryptedServers = servers
+        // L-5 修复：跟踪加密失败的 server 名称，用于 UI 反馈
+        var encryptionFailedNames: [String] = []
         for i in encryptedServers.indices {
             if let key = encryptedServers[i].apiKey, !key.isEmpty {
                 // 加密失败（返回 nil）则置 nil，禁止明文落盘
-                encryptedServers[i].apiKey = KeychainManager.encrypt(key)
+                if let encrypted = KeychainManager.encrypt(key) {
+                    encryptedServers[i].apiKey = encrypted
+                } else {
+                    // L-5 修复：记录失败的 server 名称并置 nil，禁止明文落盘
+                    encryptionFailedNames.append(encryptedServers[i].name)
+                    encryptedServers[i].apiKey = nil
+                }
             }
         }
         if let data = try? JSONEncoder().encode(encryptedServers) {
             UserDefaults.standard.set(data, forKey: Self.storageKey)
+        }
+        // L-5 修复：加密失败时通过 lastError 触发 alert 提示用户
+        if !encryptionFailedNames.isEmpty {
+            lastError = "以下服务器的 apiKey 加密失败，已清除明文（可能因 Keychain 不可用）：\n"
+                + encryptionFailedNames.joined(separator: "、")
         }
     }
 

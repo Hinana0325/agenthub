@@ -37,7 +37,7 @@
         "agentType": {
           "description": "Agent 类型（仅 AGENT 节点有效）。引用 agent-schema.json 中的 AgentType 定义。null 表示未指定",
           "oneOf": [
-            { "$ref": "agent-schema.json#/definitions/AgentType" },
+            { "$ref": "https://agentcontrolcenter.dev/protocol/schemas/agent-schema.json#/definitions/AgentType" },
             { "type": "null" }
           ],
           "default": null
@@ -53,13 +53,11 @@
         },
         "positionX": {
           "type": "number",
-          "format": "float",
           "description": "画布 X 坐标（仅 UI 用途）",
           "default": 0
         },
         "positionY": {
           "type": "number",
-          "format": "float",
           "description": "画布 Y 坐标（仅 UI 用途）",
           "default": 0
         },
@@ -134,6 +132,7 @@
       "title": "WorkflowExecutionState",
       "description": "工作流执行状态快照。记录当前运行状态、当前节点、已完成节点、最终输出、错误信息和执行日志。",
       "type": "object",
+      "required": ["isRunning", "currentNodeId", "completedNodeIds"],
       "properties": {
         "isRunning": {
           "type": "boolean",

@@ -275,7 +275,18 @@ class WorkflowEngine @Inject constructor(
                 try {
                     transport.events.collect { event ->
                         when (event) {
-                            is AgentEvent.MessageReceived -> responseBuilder.append(event.content)
+                            // M-16: 区分 delta 与 non-delta。
+                            // - delta（isDelta=true）：增量片段，append 到累加器
+                            // - non-delta（isDelta=false）：完整消息，setLength(0) 后覆盖，
+                            //   避免此前对完整消息也 append 导致与 delta 累加重复（同一内容被记录两次）
+                            is AgentEvent.MessageReceived -> {
+                                if (event.isDelta) {
+                                    responseBuilder.append(event.content)
+                                } else {
+                                    responseBuilder.setLength(0)
+                                    responseBuilder.append(event.content)
+                                }
+                            }
                             is AgentEvent.Error -> throw FlowAbortException
                             is AgentEvent.StreamComplete -> throw FlowAbortException
                             else -> { /* Connected/Disconnected/Reconnecting 忽略 */ }
@@ -325,9 +336,19 @@ class WorkflowEngine @Inject constructor(
             TransformType.PREFIX -> "$extra$input"
             TransformType.SUFFIX -> "$input$extra"
             TransformType.JSON_EXTRACT -> {
+                // L-8: 统一使用 Gson 解析 JSON，避免与项目其余部分（TypeConverter /
+                // OpenAIHttpTransport / WebSocketTransport 均用 Gson）混用 org.json，
+                // 减少依赖体积并保持解析行为一致。
                 try {
-                    val json = org.json.JSONObject(input)
-                    json.optString(extra, input)
+                    val json = com.google.gson.JsonParser.parseString(input).asJsonObject
+                    if (json.has(extra)) {
+                        // asString 会对字符串自动去除外层引号；非字符串字段则返回其文本表示
+                        json.get(extra).let { elem ->
+                            if (elem.isJsonPrimitive) elem.asString else elem.toString()
+                        }
+                    } else {
+                        input
+                    }
                 } catch (_: Exception) { input }
             }
         }

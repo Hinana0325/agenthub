@@ -24,8 +24,30 @@ style:
     active: false  # Compose heavily uses wildcard imports
   ReturnCount:
     active: false  # Early returns are idiomatic in Kotlin
+  # M-19: 启用 MagicNumber 检查，捕获散落在业务逻辑中的硬编码常量
+  # （超时、重试次数、退避倍数等），强制通过命名常量或 @Suppress 显式标注例外。
+  # 对于 UI/Compose 代码中的字号、颜色 ARGB、padding 等确有必要内联的数值，
+  # 在文件顶部使用 `@file:Suppress("MagicNumber")` 局部豁免，避免污染整个 codebase。
   MagicNumber:
-    active: false  # Too noisy for UI code
+    active: true
+    # 允许常见小整数与 -1 不告警（Kotlin 惯用范围下标/偏移）
+    ignoreNumbers: ['-1', '0', '1', '2', '0.0', '0.5', '1.0', '2.0']
+    # 哈希码 / 等比数列常量不算魔法数（如 data class 自动生成的 hashCode）
+    ignoreHashCode: true
+    # property delegate / 常量声明（companion object）不算
+    ignorePropertyDeclaration: true
+    # 局部变量赋值（val x = 5）不算，仅检查表达式与参数中的字面量
+    ignoreLocalVariableDeclaration: true
+    # 常量声明（const val）不算
+    ignoreConstantDeclaration: true
+    # companion object 中的 const val 不算
+    ignoreCompanionObjectPropertyDeclaration: true
+    # 枚举值不算
+    ignoreEnums: true
+    # 范围 (0..10) 不算
+    ignoreRanges: true
+    # 函数默认参数（如 timeout = 5000）不算
+    ignoreDefaultParameter: true
   ForbiddenComment:
     active: false  # TODO/FIXME are useful for tracking
 
@@ -43,5 +65,13 @@ empty-blocks:
 
 exceptions:
   active: true
+  # M-19: 启用 SwallowedException 检查，禁止 `catch (_: Exception) {}` 这种
+  # 无日志无注释的吞错。已有的有意吞错点必须保留注释说明（如 // ignore CancellationException
+  # 不应在此处吞掉），新代码应优先 catch 具体异常类型或在 catch 块中至少打日志。
+  # 对于 transport / 协议解析层确需 catch-all 的位置，使用
+  # `@Suppress("SwallowedException")` 局部豁免并保留说明注释。
   SwallowedException:
-    active: false  # Some intentional catch-all in transport layer
+    active: true
+    # 不强制要求被吞掉的异常必须命名（`catch (_: Exception)` 仍允许），
+    # 只要 catch 块不为空或带说明注释即可
+    ignoreUnnamed: true

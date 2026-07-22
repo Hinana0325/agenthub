@@ -1,4 +1,4 @@
-# Agent Control Center v2.2.0
+# Agent Control Center v4.6.2
 
 **双原生多 Agent 移动端控制中心** —— Android（Kotlin + Jetpack Compose）与 iOS（Swift + SwiftUI）双原生实现，共享永久统一协议层，连接并远程操控多种 AI Agent（Hermes / OpenCode / OpenAI 兼容 / 本地模型）。
 
@@ -35,7 +35,7 @@
 | 持久化 | Room + DataStore | SwiftData + UserDefaults |
 | 加密 | Android Keystore (AES-256-GCM) | CryptoKit (AES-256-GCM) |
 | DI | Hilt | 手动构造注入 |
-| 最低版本 | minSdk 24 | iOS 17.0 |
+| 最低版本 | minSdk 24 | iOS 18.0 |
 
 ## 协议层（双端共享）
 
@@ -164,7 +164,7 @@ cd ios && xcodegen generate
 open AgentControlCenter.xcodeproj
 ```
 
-最低要求 macOS 14.0 + Xcode 15.0 + iOS 17.0 SDK。
+最低要求 macOS 14.0 + Xcode 16.0 + iOS 18.0 SDK。
 
 ---
 

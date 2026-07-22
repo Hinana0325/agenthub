@@ -182,6 +182,7 @@
 /* エラー / ステータスメッセージ（Sprint 1-8 ~ 1-12 追加分） */
 "error.send.failed" = "送信失敗: %@";
 "error.e2e.encrypt" = "E2E 暗号化に失敗しました — メッセージは送信されません";
+"error.attachment.too_large" = "添付ファイルが %@ 上限を超えています。より小さなファイルを選択してください。";
 "error.recording.invalid" = "録音ファイルが無効です。再試行してください。";
 "error.export.failed" = "エクスポート失敗: %@";
 "error.import.failed" = "インポート失敗: %@";

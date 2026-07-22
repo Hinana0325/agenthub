@@ -297,7 +297,21 @@
           ],
           "default": null
         }
-      }
+      },
+      "oneOf": [
+        {
+          "description": "成功响应：error 为 null（result 非 null）",
+          "properties": {
+            "error": { "type": "null" }
+          }
+        },
+        {
+          "description": "错误响应：result 为 null（error 为 JsonRpcError）",
+          "properties": {
+            "result": { "type": "null" }
+          }
+        }
+      ]
     },
     "InitializeParams": {
       "title": "InitializeParams",

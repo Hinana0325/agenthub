@@ -82,6 +82,10 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         config.timeoutIntervalForRequest = 120  // request 120s
         config.timeoutIntervalForResource = 120
         config.waitsForConnectivity = true
+        // H16 TODO（TLS 证书钉扎 / SPKI Pinning）：当前使用默认 URLSessionConfiguration，
+        // 无 URLSessionDelegate，仅依赖系统 CA 链校验，无法防御 MITM。
+        // 后续应通过 URLSessionDelegate 校验服务端证书 SPKI hash 与预置 pin 列表，
+        // 对齐 Android NetworkSecurityConfig。暂缓实现：详见 protocol/transport/tls-pinning.md（待补）。
         self.session = URLSession(configuration: config)
     }
 
@@ -103,7 +107,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         if reachable {
             emit(.connected(serverUrl: config.serverUrl, agentType: config.type))
         } else {
-            emit(.error(message: "Failed to reach server"))
+            // C3 修复：探活失败 → TRANSPORT_CONNECT_FAILED (1001)
+            emit(.error(code: .transportConnectFailed, message: "Failed to reach server"))
         }
     }
 
@@ -111,7 +116,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
 
     func sendMessage(sessionId: String, content: String) async throws {
         guard let config = config else {
-            emit(.error(message: "Not connected"))
+            // C3 修复：未连接 → TRANSPORT_DISCONNECTED (1004)
+            emit(.error(code: .transportDisconnected, message: "Not connected"))
             return
         }
 
@@ -122,7 +128,9 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         let baseURL = config.serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let urlString = "\(baseURL)/v1/chat/completions"
         guard let url = URLValidator.validate(urlString, allowLocalhost: true) else {
-            emit(.error(message: "服务地址格式错误或不被允许"))
+            // C3 修复：URL 无效阻断连接 → TRANSPORT_CONNECT_FAILED (1001)
+            // 注：注册表无 TRANSPORT_INVALID_URL，归入 1001（连接失败）
+            emit(.error(code: .transportConnectFailed, message: "服务地址格式错误或不被允许"))
             return
         }
 
@@ -182,7 +190,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
                     if attempt < maxAttempts {
                         lastErrorMessage = "Invalid response (retry \(attempt)/\(maxAttempts))"
                     } else {
-                        emit(.error(message: "Invalid response"))
+                        // C3 修复：响应非 HTTP（解析失败）→ PROTOCOL_PARSE_ERROR (2003)
+                        emit(.error(code: .protocolParseError, message: "Invalid response"))
                     }
                     continue
                 }
@@ -197,7 +206,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
                             agentType: config.type,
                             latency: 0
                         )
-                        emit(.error(message: "鉴权失败 (HTTP \(statusCode))"))
+                        // C3 修复：401/403 → TRANSPORT_AUTH_FAILED (1002)
+                        emit(.error(code: .transportAuthFailed, message: "鉴权失败 (HTTP \(statusCode))"))
                         return
                     }
                     // 429 限流：读 Retry-After 头退避重试
@@ -208,20 +218,23 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
                             lastErrorMessage = "HTTP 429 (retry \(attempt)/\(maxAttempts))"
                             try await Task.sleep(nanoseconds: UInt64(retryAfter * 1_000_000_000))
                         } else {
-                            emit(.error(message: "请求被限流 (HTTP 429)"))
+                            // C3 修复：429 重试耗尽 → TRANSPORT_CONNECT_FAILED (1001)
+                            emit(.error(code: .transportConnectFailed, message: "请求被限流 (HTTP 429)"))
                         }
                         continue
                     }
                     // 4xx 客户端错误不重试
                     if (400...499).contains(statusCode) {
-                        emit(.error(message: "HTTP \(statusCode)"))
+                        // C3 修复：4xx 客户端错误（请求格式问题）→ PROTOCOL_INVALID_MESSAGE (2001)
+                        emit(.error(code: .protocolInvalidMessage, message: "HTTP \(statusCode)"))
                         return
                     }
                     // 5xx 服务端错误：可重试
                     if attempt < maxAttempts {
                         lastErrorMessage = "HTTP \(statusCode) (retry \(attempt)/\(maxAttempts))"
                     } else {
-                        emit(.error(message: "HTTP \(statusCode)"))
+                        // C3 修复：5xx 重试耗尽 → TRANSPORT_CONNECT_FAILED (1001)
+                        emit(.error(code: .transportConnectFailed, message: "HTTP \(statusCode)"))
                     }
                     continue
                 }
@@ -304,7 +317,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
                 if attempt < maxAttempts {
                     lastErrorMessage = "\(error.localizedDescription) (retry \(attempt)/\(maxAttempts))"
                 } else {
-                    emit(.error(message: error.localizedDescription))
+                    // C3 修复：网络异常重试耗尽 → TRANSPORT_CONNECT_FAILED (1001)
+                    emit(.error(code: .transportConnectFailed, message: error.localizedDescription))
                 }
             }
 
@@ -317,7 +331,8 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
 
         // 所有重试均失败
         if !streamSucceeded && lastErrorMessage != nil {
-            emit(.error(message: "Request failed after \(maxAttempts) attempts: \(lastErrorMessage!)"))
+            // C3 修复：重试耗尽 → TRANSPORT_CONNECT_FAILED (1001)
+            emit(.error(code: .transportConnectFailed, message: "Request failed after \(maxAttempts) attempts: \(lastErrorMessage!)"))
         }
     }
 
@@ -359,6 +374,10 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         continuationLock.lock()
         eventContinuation?.finish()
         continuationLock.unlock()
+        // L-3 修复：显式清空 config / e2eKey，避免 transport 实例长生命周期持有
+        // 导致 apiKey 在内存中残留（潜在泄漏面）
+        self.config = nil
+        self.e2eKey = nil
     }
 
     // MARK: - History Management
@@ -417,6 +436,14 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
 
     /// 探活: GET {base}/v1/models
     /// 可达判定: 2xx/401/403/404 = 可达, 5xx/异常 = 不可达, 超时 5s
+    //
+    // L-6 TODO（区分可达与已鉴权）：当前仅返回 Bool（可达与否），
+    // 未在 connectionState 中区分 isReachable 与 isAuthenticated。
+    // 2xx 表示可达且已鉴权；401/403 表示可达但鉴权失败；404 表示可达但路径不存在。
+    // 后续应将 AgentConnectionState 扩展 isAuthenticated 字段（或返回探活枚举：
+    // reachable+authed / reachable+unauth / unreachable），让 UI 能区分提示
+    // "无法连接服务器" vs "API Key 无效"。当前改动会牵涉 Equatable/Sendable 同步
+    // 与所有 transport 的 connectionState 构造点，暂缓实现，仅标注 TODO。
     private func probeEndpoint(serverUrl: String, apiKey: String) async -> Bool {
         let base = serverUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let probePath = base.hasSuffix("/v1") ? "\(base)/models" : "\(base)/v1/models"

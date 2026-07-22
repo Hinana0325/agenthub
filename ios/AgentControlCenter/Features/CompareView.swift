@@ -461,7 +461,9 @@ struct CompareView: View {
         onError: @escaping (String) -> Void,
         onComplete: @escaping () -> Void
     ) async {
-        let transport = TransportFactory.create(agentType)
+        // M-17 修复：TransportFactory.create 现已 @MainActor 隔离（provider 不再
+        // nonisolated(unsafe)），从非 MainActor 的 Task 上下文调用须走 MainActor.run。
+        let transport = await MainActor.run { TransportFactory.create(agentType) }
         let sessionId = "compare_\(UUID().uuidString)"
 
         // 连接
@@ -496,7 +498,8 @@ struct CompareView: View {
                     didComplete = true
                     transport.shutdown()
                     return
-                case .error(let message):
+                case .error(_, let message):
+                    // C3 修复：AgentEvent.error 新增 code 关联值，此处忽略 code 仅用 message
                     onError(message)
                     didComplete = true
                     transport.shutdown()

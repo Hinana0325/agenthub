@@ -2,6 +2,7 @@ package com.agentcontrolcenter.app.transport.protocol
 
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.core.error.AppErrorCode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -68,7 +69,9 @@ sealed class AgentEvent {
     data class Connected(val serverUrl: String, val agentType: AgentType) : AgentEvent()
     data class Disconnected(val reason: String = "") : AgentEvent()
     data class MessageReceived(val content: String, val isDelta: Boolean = false) : AgentEvent()
-    data class Error(val message: String) : AgentEvent()
+    // C3: Error 增加可选 code 字段接入统一错误码体系（AppErrorCode），
+    // 与 iOS AgentEvent.swift 对齐。code/agentId 均带默认值，保持向后兼容。
+    data class Error(val message: String, val code: AppErrorCode? = null, val agentId: String? = null) : AgentEvent()
     data object Reconnecting : AgentEvent()
 
     /**

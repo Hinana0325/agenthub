@@ -83,6 +83,9 @@ final class DataController {
                     // 真正的极端情况：连空 Schema 容器都建不起来——SwiftData 框架级故障。
                     // 此时 container（非可选）无任何可赋值路径，使用 fatalError 提供错误信息供诊断。
                     // 这比 try! 更安全：try! 会无声崩溃，fatalError 至少在崩溃报告中留下原因。
+                    // L-7 评估：此 fatalError 为极端兜底（仅在双重 fallback 失败后触发），
+                    // 保留以避免 silently corrupt UI 状态；后续若要进一步降级，可考虑
+                    // 将 container 改为 Optional 并在 UI 层展示 "数据库不可用" 错误页。
                     fatalError("ModelContainer unavailable even with empty schema: \(error)")
                 }
             }

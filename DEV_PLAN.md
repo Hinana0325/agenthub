@@ -1,7 +1,7 @@
 # Agent Control Center 开发计划
 
 > 仓库：`Hinana0325/Agent-Control-Center`
-> 当前版本：v2.1.3（Android versionCode 18 / iOS build 1）
+> 当前版本：v4.6.2（Android versionCode 38 / iOS build 36）
 
 ## 当前状态
 
@@ -9,7 +9,7 @@
 
 | 维度 | 数据 |
 |:-----|:-----|
-| 版本 | v2.1.3（Android versionCode 18 / iOS build 1） |
+| 版本 | v4.6.2（Android versionCode 38 / iOS build 36） |
 | 架构 | 双原生：Android（Kotlin + Compose）+ iOS（Swift + SwiftUI） |
 | 协议层 | 已建立：10 JSON Schema + 4 传输协议（`protocol/`） |
 | Android | 成熟：MVVM + Hilt + Room + Ktor，Liquid Glass 主题落地 |
@@ -93,7 +93,7 @@
 ## 依赖关系
 
 ```
-v2.1.3（当前，双端骨架就位）
+v4.6.2（当前，双端骨架就位）
   │
   ▼
 Sprint 12（iOS 对齐 + 协议验证）

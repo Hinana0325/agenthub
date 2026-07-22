@@ -1,6 +1,7 @@
 package com.agentcontrolcenter.app.transport.websocket
 
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.core.error.AppErrorCode
 import com.agentcontrolcenter.app.core.security.UrlValidator
 import com.agentcontrolcenter.app.data.model.MessageRole
 import com.google.gson.Gson
@@ -34,6 +35,7 @@ import com.agentcontrolcenter.app.core.security.CryptoManager
 import com.agentcontrolcenter.app.transport.protocol.AgentConnectionState
 import com.agentcontrolcenter.app.transport.protocol.AgentEvent
 import com.agentcontrolcenter.app.transport.protocol.AgentTransport
+import kotlin.random.Random
 
 /**
  * WebSocket 传输层，对应 Hermes / OpenClaw / OpenCode 等基于
@@ -132,7 +134,8 @@ class WebSocketTransport(
         // 攻击者控制 Agent 配置可触发 SSRF（如 ws://169.254.169.254/...），
         // 且 auth frame 会携带 apiKey 一起发往元数据服务。
         if (UrlValidator.validate(wsUrl, allowLocalhost = true) == null) {
-            _events.send(AgentEvent.Error("Invalid or blocked WebSocket URL"))
+            // C3: 接入统一错误码 TRANSPORT_CONNECT_FAILED
+            _events.send(AgentEvent.Error("Invalid or blocked WebSocket URL", code = AppErrorCode.TRANSPORT_CONNECT_FAILED))
             return
         }
 
@@ -178,6 +181,8 @@ class WebSocketTransport(
                     val heartbeatJob = scope.launch {
                         while (currentCoroutineContext().isActive) {
                             delay(30_000)
+                            // H3: session 已被清空则提前退出，避免向已关闭的会话发心跳
+                            if (session == null) break
                             try {
                                 val pingFrame = JsonObject().apply {
                                     addProperty("type", "ping")
@@ -195,12 +200,18 @@ class WebSocketTransport(
                         }
                     }
 
-                    for (frame in incoming) {
-                        if (frame is Frame.Text) {
-                            handleMessage(frame.readText())
+                    // H3: 用 try/finally 无条件取消 heartbeatJob。
+                    // 原实现仅正常退出时取消，incoming 抛异常时心跳协程泄漏到外层 scope，
+                    // 直到 shutdown 才被回收。
+                    try {
+                        for (frame in incoming) {
+                            if (frame is Frame.Text) {
+                                handleMessage(frame.readText())
+                            }
                         }
+                    } finally {
+                        heartbeatJob.cancel()
                     }
-                    heartbeatJob.cancel()
                 }
 
                 _events.send(AgentEvent.Disconnected())
@@ -209,16 +220,21 @@ class WebSocketTransport(
                 throw e
             } catch (e: Exception) {
                 retryCount++
+                // C3: 接入统一错误码 — 重试耗尽归 TRANSPORT_RECONNECT_FAILED，单次失败归 TRANSPORT_CONNECT_FAILED
                 _events.send(AgentEvent.Error(
                     if (retryCount >= maxRetries) "Connection failed after $maxRetries attempts: ${e.message}"
-                    else "Connection failed (retry $retryCount/$maxRetries): ${e.message}"
+                    else "Connection failed (retry $retryCount/$maxRetries): ${e.message}",
+                    code = if (retryCount >= maxRetries) AppErrorCode.TRANSPORT_RECONNECT_FAILED else AppErrorCode.TRANSPORT_CONNECT_FAILED
                 ))
                 _connectionState.value = _connectionState.value.copy(isConnected = false)
                 if (retryCount < maxRetries) {
                     // Exponential backoff (1s, 2s, 4s, ... capped at 30s).
                     // Sleep in 100ms slices so coroutine cancellation stays
                     // responsive (matches the old repeat()/delay() pattern).
-                    var remaining = retryDelay
+                    // L-5: 叠加随机抖动（0 ~ retryDelay/2），避免大量客户端在同一
+                    // 时刻整齐重连导致服务端惊群。
+                    val jitter = Random.nextLong(0, (retryDelay / 2).coerceAtLeast(1L))
+                    var remaining = retryDelay + jitter
                     while (remaining > 0 && currentCoroutineContext().isActive) {
                         delay(minOf(remaining, 100L))
                         remaining -= 100L
@@ -255,10 +271,15 @@ class WebSocketTransport(
                         if (!msgSessionId.isNullOrBlank()) {
                             cacheMessage(msgSessionId, MessageRole.Assistant, content)
                         }
+                        // H4: 收到完整（delta=false）的 message/response 帧后追加发送
+                        // StreamComplete，与 OpenAIHttpTransport 在 SSE 流结束时发送
+                        // StreamComplete 的方式对齐，确保上层 isStreaming 被正确重置。
+                        _events.send(AgentEvent.StreamComplete)
                     }
                 }
                 "error" -> {
                     val msg = json.get("message")?.asString ?: "Unknown error"
+                    // C3: 服务端上报的错误帧无明确分类，code 留空（null），仅透传 message
                     _events.send(AgentEvent.Error(msg))
                 }
                 "ping" -> { }
@@ -266,7 +287,8 @@ class WebSocketTransport(
                     // F25 修复：未知 type 的帧不再回显原文。
                     // 原实现 fallthrough 到 catch 把原文当消息回显，可被恶意对端利用
                     // 注入任意文本冒充 Agent 回复。改为记录并通知错误。
-                    _events.send(AgentEvent.Error("Unknown frame type: $type"))
+                    // C3: 接入统一错误码 PROTOCOL_UNKNOWN_TYPE
+                    _events.send(AgentEvent.Error("Unknown frame type: $type", code = AppErrorCode.PROTOCOL_UNKNOWN_TYPE))
                 }
             }
         } catch (e: Exception) {
@@ -274,7 +296,8 @@ class WebSocketTransport(
             // 把任何解析失败的对端帧原样作为「用户消息」回送 UI；攻击者/异常对端可注入恶意 JSON
             // 文本冒充 Agent 回复。改为发送 Error 事件，让 UI 明确知道这是解析失败而非正常消息。
             if (e is CancellationException) throw e
-            _events.send(AgentEvent.Error("Malformed frame from server: ${e.message ?: e.javaClass.simpleName}"))
+            // C3: 接入统一错误码 PROTOCOL_PARSE_ERROR
+            _events.send(AgentEvent.Error("Malformed frame from server: ${e.message ?: e.javaClass.simpleName}", code = AppErrorCode.PROTOCOL_PARSE_ERROR))
         }
     }
 
@@ -305,8 +328,9 @@ class WebSocketTransport(
             // swallowing it (the previous `catch (_: Exception) {}` hid
             // real send failures from the UI layer).
             if (e is CancellationException) throw e
+            // C3: 接入统一错误码 TRANSPORT_DISCONNECTED（发送失败通常意味着连接已断）
             _events.send(
-                AgentEvent.Error("Failed to send message: ${e.message ?: e.javaClass.simpleName}")
+                AgentEvent.Error("Failed to send message: ${e.message ?: e.javaClass.simpleName}", code = AppErrorCode.TRANSPORT_DISCONNECTED)
             )
         }
     }

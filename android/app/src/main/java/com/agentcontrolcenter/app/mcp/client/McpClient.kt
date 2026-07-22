@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.mcp.client
 
+import com.agentcontrolcenter.app.core.security.UrlValidator
 import com.agentcontrolcenter.app.mcp.model.JsonRpcError
 import com.agentcontrolcenter.app.mcp.model.JsonRpcRequest
 import com.agentcontrolcenter.app.mcp.model.JsonRpcResponse
@@ -223,6 +224,13 @@ class McpClient @Inject constructor() {
         server: McpServer,
         request: JsonRpcRequest
     ): JsonRpcResponse? {
+        // H1: SSRF 校验 — MCP server transportUrl 来自用户/外部配置，未校验可触发
+        // SSRF（如 http://169.254.169.254/...）且 Authorization 头会携带 apiKey。
+        // allowLocalhost=false：MCP Server 不应访问本地服务（与 PluginExecutor.httpCall 对齐）。
+        // 校验失败返回 null，由上层 McpBridge.connectServer 报错（Initialize failed）。
+        if (UrlValidator.validate(server.transportUrl, allowLocalhost = false) == null) {
+            return null
+        }
         return withTimeoutOrNull(30_000L) {
             val body = gson.toJson(request)
             val response = client.post(server.transportUrl) {

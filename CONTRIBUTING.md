@@ -49,9 +49,9 @@ cd Agent-Control-Center/android
 | 依赖 | 最低版本 |
 |:---|:---|
 | macOS | 14.0 |
-| Xcode | 15.0（含 Swift 5.9、iOS 17 SDK） |
+| Xcode | 16.0（含 Swift 6、iOS 18 SDK） |
 | XcodeGen | 2.0+ |
-| iOS 部署目标 | 17.0（SwiftData 要求） |
+| iOS 部署目标 | 18.0（SwiftData 要求） |
 
 ```bash
 # 安装 XcodeGen

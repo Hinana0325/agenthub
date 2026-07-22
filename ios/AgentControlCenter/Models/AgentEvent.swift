@@ -11,7 +11,11 @@ enum AgentEvent: Sendable {
     case connected(serverUrl: String, agentType: AgentType)
     case disconnected(reason: String = "")
     case messageReceived(content: String, isDelta: Bool = false)
-    case error(message: String)
+    // C3 修复：原 .error(message:) 仅携带字符串描述，AppErrorCode enum 完全未接入
+    // （死代码）。新增 code 关联值，默认 .transportConnectFailed 兼容旧调用方，
+    // 所有 emit(.error(...)) 调用点按错误类别显式传入对应 AppErrorCode
+    // （参考 protocol/schemas/error-codes.json 的 code/name 映射）。
+    case error(code: AppErrorCode = .transportConnectFailed, message: String)
     case reconnecting
     case streamComplete
 }

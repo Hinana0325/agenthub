@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.core.security
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 // Base64 编解码见 object 内的 b64Encode/b64Decode（兼容 JVM 单测）
@@ -81,6 +82,16 @@ object KeystoreManager {
             .setKeySize(256)
             .setUserAuthenticationRequired(false) // 后台服务需访问，不强制用户认证
             .setRandomizedEncryptionRequired(true) // 每次加密自动使用随机 IV
+            // H12: 优先启用 StrongBox（独立安全芯片）保护密钥材料。
+            // setIsStrongBoxBacked 需 API 28+（minSdk 24，故条件判断），
+            // 且并非所有设备都有 StrongBox；调用失败时静默回退到 TEE。
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    try { setIsStrongBoxBacked(true) } catch (_: Exception) {
+                        // StrongBox 不可用，回退到 TEE
+                    }
+                }
+            }
             .build()
         keyGenerator.init(spec)
         return keyGenerator.generateKey()

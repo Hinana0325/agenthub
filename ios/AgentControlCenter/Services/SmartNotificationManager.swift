@@ -94,23 +94,38 @@ final class SmartNotificationManager {
     // 1. Regex 字面量解析报 "consecutive declarations on a line must be separated by ';'"
     //    （特定 Swift 版本对带 flag 的字面量解析异常）
     // 2. `Regex<Substring>` 非 Sendable，`static let` 触发 "is not concurrency-safe"
-    // 改为 `try! Regex("...").ignoresCase()` 初始化器形式，并用 `nonisolated(unsafe)`
+    // 改为 `try? Regex("...").ignoresCase()` 初始化器形式，并用 `nonisolated(unsafe)`
     // 标注（Regex 实例本身线程安全，仅类型未标注 Sendable）。
+    //
+    // M-20 修复：原 `try! Regex(...)` 在正则编译失败时会 fatalError 崩溃 App。
+    // 改为 `try?` + 字面量回退（匹配固定占位字符串，实际通知内容不会命中），
+    // 保证启动期健壮性。这些正则均为字面量常量，正常情况下不会编译失败，
+    // 但防御性处理可避免边缘 case（如未来正则语法变更）导致崩溃。
+
+    /// 永不匹配的回退 Regex（M-20 修复：正则编译失败时使用）。
+    /// 字面量字符串，匹配该字面量即视为命中（实际通知内容不会出现此占位串）。
+    /// `.ignoresCase()` 用于对齐其他规则的 Regex<Substring> 类型。
+    private static let emptyPattern: Regex<Substring> = Regex(#"__REGEX_COMPILE_FAILED_PLACEHOLDER__"#).ignoresCase()
 
     /// 高优先级规则 1：错误 / 异常 / 失败 / 崩溃
-    nonisolated(unsafe) private static let highPriorityErrorPattern = try! Regex(#"\b(?:error|exception|failed|crash)\b"#).ignoresCase()
+    nonisolated(unsafe) private static let highPriorityErrorPattern: Regex<Substring> =
+        (try? Regex(#"\b(?:error|exception|failed|crash)\b"#).ignoresCase()) ?? emptyPattern
 
     /// 高优先级规则 2：警告
-    nonisolated(unsafe) private static let highPriorityWarningPattern = try! Regex(#"\b(?:warning|warn)\b"#).ignoresCase()
+    nonisolated(unsafe) private static let highPriorityWarningPattern: Regex<Substring> =
+        (try? Regex(#"\b(?:warning|warn)\b"#).ignoresCase()) ?? emptyPattern
 
     /// 高优先级规则 3：紧急请求
-    nonisolated(unsafe) private static let highPriorityUrgentPattern = try! Regex(#"\b(?:please|need|require|urgent)\b"#).ignoresCase()
+    nonisolated(unsafe) private static let highPriorityUrgentPattern: Regex<Substring> =
+        (try? Regex(#"\b(?:please|need|require|urgent)\b"#).ignoresCase()) ?? emptyPattern
 
     /// 低优先级规则 1：心跳 / 保活
-    nonisolated(unsafe) private static let lowPriorityHeartbeatPattern = try! Regex(#"\b(?:heartbeat|ping|alive)\b"#).ignoresCase()
+    nonisolated(unsafe) private static let lowPriorityHeartbeatPattern: Regex<Substring> =
+        (try? Regex(#"\b(?:heartbeat|ping|alive)\b"#).ignoresCase()) ?? emptyPattern
 
     /// 低优先级规则 2：完成确认
-    nonisolated(unsafe) private static let lowPriorityDonePattern = try! Regex(#"\b(?:ok|done|finished)\b"#).ignoresCase()
+    nonisolated(unsafe) private static let lowPriorityDonePattern: Regex<Substring> =
+        (try? Regex(#"\b(?:ok|done|finished)\b"#).ignoresCase()) ?? emptyPattern
 
     // MARK: - 优先级判断
 

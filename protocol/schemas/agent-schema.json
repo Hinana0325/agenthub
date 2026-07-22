@@ -78,7 +78,6 @@
         },
         "temperature": {
           "type": "number",
-          "format": "float",
           "description": "采样温度，0.0-2.0",
           "default": 0.7
         },

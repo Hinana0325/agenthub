@@ -54,3 +54,10 @@ __pycache__/
 # Capacitor
 capacitor.android.gradle
 android/local.properties
+
+# iOS
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcscmblueprint
+*.xccheckout

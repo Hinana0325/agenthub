@@ -94,9 +94,15 @@ final class PluginExecutor {
             let httpResponse = response as? HTTPURLResponse
             let statusCode = httpResponse?.statusCode ?? 0
             var responseText = String(data: data, encoding: .utf8) ?? ""
-            // 截断为 3000 字符
-            if responseText.count > 3000 {
-                responseText = String(responseText.prefix(3000))
+            // L-11 修复：截断单位统一为 UTF-8 字节计数。
+            // 原 `responseText.prefix(3000)` 按 UTF-16 code unit 计数，与 Android 端
+            // String.take(n)（UTF-16）一致，但在多字节字符（中文/emoji）边界可能截断
+            // 出现乱码尾字节，且与服务端按字节限流的语义不一致。改为按 UTF-8 字节计数，
+            // 截断后再用 lossy 解码避免半个 code unit 导致 String 构造返回 nil。
+            let utf8Bytes = Array(responseText.utf8)
+            if utf8Bytes.count > 3000 {
+                let truncated = utf8Bytes.prefix(3000)
+                responseText = String(decoding: truncated, as: UTF8.self)
             }
             return PluginResult(content: "HTTP \(statusCode)\n\(responseText)")
         } catch {

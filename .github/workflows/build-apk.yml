@@ -9,24 +9,22 @@ on:
 
 jobs:
   # J3: Detekt 静态代码分析。
-  # 阶段 1（当前）：continue-on-error = true，仅生成报告不阻断流水线，
-  # 避免现有代码的存量违规阻塞 build / release。待清理完毕后改为 false 即可生效。
+  # detekt baseline 已存在（android/config/detekt-baseline.xml），存量违规由 baseline 接受、增量违规才失败。
   detekt:
     name: Detekt
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -47,24 +45,22 @@ jobs:
           path: android/app/build/reports/detekt/
 
   # J3: Android Lint 检查。
-  # 阶段 1（当前）：continue-on-error = true，仅生成报告不阻断流水线，
-  # 避免现有代码的 lint 存量问题阻塞 build / release。待清理完毕后改为 false 即可生效。
+  # lint 的翻译类错误通过 android/app/build.gradle 的 abortOnError false 处理（已在 android 侧）。
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -87,21 +83,21 @@ jobs:
   build:
     name: Assemble & Unit Test
     runs-on: ubuntu-latest
-    # J3: build 依赖 detekt / lint 完成。由于两者均设了 continue-on-error: true，
-    # 即使检查发现违规也不会阻断 build 与 release 流程——报告会作为 artifact 上传供审查。
+    # J3: build 依赖 detekt / lint 完成。存量违规由 detekt baseline 接受，
+    # lint 翻译类错误由 abortOnError false 处理——报告作为 artifact 上传供审查。
     needs: [detekt, lint]
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up JDK 21
         # D2: Gradle 9.0+ 最低要求 JDK 21 运行；AGP 9.3 + Gradle 9.6.1 配套。
         # JDK 17 会让 Gradle 9 直接启动失败（UnsupportedClassVersionError）。
         # 项目编译目标仍是 Java 17（compileOptions sourceCompatibility/targetCompatibility），
         # 这里 JDK 21 仅用于运行 Gradle 本身。
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
@@ -110,7 +106,7 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Cache Gradle packages
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -118,14 +114,6 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-
-      - name: Cache Konan
-        uses: actions/cache@v6
-        with:
-          path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
 
       - name: Make gradlew executable
         working-directory: android
@@ -148,34 +136,64 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
 
-      - name: Build release APK & upload to Release
+      - name: Build release APK
         if: startsWith(github.ref, 'refs/tags/v')
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload release APK artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: apk
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./gradlew assembleRelease --no-daemon
           VERSION="${GITHUB_REF_NAME}"
-          echo "Creating release ${VERSION}..."
-          APK=$(find app/build/outputs/apk/release -name "*.apk" 2>/dev/null | head -1)
+          echo "Publishing release ${VERSION}..."
+          APK=$(find apk -name "*.apk" 2>/dev/null | head -1)
           if [ -z "$APK" ]; then
-            # Try debug APK as fallback
-            APK=$(find app/build/outputs/apk/debug -name "*.apk" 2>/dev/null | head -1)
-          fi
-          if [ -z "$APK" ]; then
-            echo "No APK found!"
-            find app/build/outputs -type f -name "*.apk" 2>/dev/null
+            echo "No APK found in artifact!"
+            find apk -type f 2>/dev/null
             exit 1
           fi
           echo "Found APK: $APK"
-          # If release already exists (e.g. created via API), upload APK to it;
+          APK_NAME=$(basename "${APK}")
+          # If release already exists, upload asset only if not already present;
           # otherwise create a new release with the APK.
           if gh release view "${VERSION}" >/dev/null 2>&1; then
-            echo "Release ${VERSION} already exists, uploading APK..."
-            gh release upload "${VERSION}" "${APK}" --clobber
+            echo "Release ${VERSION} already exists."
+            if gh release view "${VERSION}" --json assets -q ".assets[].name" 2>/dev/null | grep -qx "${APK_NAME}"; then
+              echo "Asset ${APK_NAME} already exists on release ${VERSION}, skipping upload."
+            else
+              echo "Uploading ${APK_NAME} to existing release ${VERSION}..."
+              gh release upload "${VERSION}" "${APK}"
+            fi
           else
             gh release create "${VERSION}" \
               --title "Agent Control Center ${VERSION}" \

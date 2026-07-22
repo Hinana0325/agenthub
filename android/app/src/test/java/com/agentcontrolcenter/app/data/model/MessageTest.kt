@@ -17,7 +17,8 @@ class MessageTest {
             content = "Hello agent",
             timestamp = 1700000000000L,
             status = MessageStatus.Sent,
-            metadata = mapOf("key" to "value"),
+            // H14: metadata 字段已改为 metadataJson: String，metadata 降为计算属性
+            metadataJson = """{"key":"value"}""",
             attachmentType = "image",
             attachmentData = "base64data",
             attachmentName = "photo.png",

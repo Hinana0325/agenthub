@@ -516,7 +516,11 @@ final class BackupManager {
         let timestamp = Int(Date().timeIntervalSince1970)
         let filename = "agentcontrolcenter-backup-\(timestamp).\(fileExtension)"
         let url = backupsDirectoryURL.appendingPathComponent(filename)
-        try data.write(to: url, options: .atomic)
+        // M-3 修复：补 completeFileProtectionUntilFirstUserAuthentication 数据保护级别。
+        // 原仅 .atomic 保证写入原子性，但文件以明文存于容器，设备首次解锁后即可被读取。
+        // 增加该保护后，文件在设备首次用户认证前不可访问，对齐 iOS 数据保护 Best Practice
+        // （与 Keychain kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly 同级别语义）。
+        try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         return url
     }
 }

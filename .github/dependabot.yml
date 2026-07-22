@@ -1,15 +1,7 @@
 version: 2
 updates:
-  - package-ecosystem: "gradle"
-    directory: "/android"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "deps:"
-    open-pull-requests-limit: 10
+  # GitHub Actions 更新由 dependabot 处理；
+  # gradle / swift 依赖由 renovate.json 统一管理，避免重复 PR。
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

@@ -43,8 +43,9 @@ android {
         if (versionPropsFile.exists()) {
             versionProps.load(new FileInputStream(versionPropsFile))
         }
-        def vCode = (versionProps.getProperty('versionCode') ?: '23').toInteger()
-        def vName = versionProps.getProperty('versionName') ?: '2.5.1'
+        // C1: fallback 值与 version.properties 当前版本对齐，避免读取失败时回退到过旧版本号。
+        def vCode = (versionProps.getProperty('versionCode') ?: '39').toInteger()
+        def vName = versionProps.getProperty('versionName') ?: '4.6.3'
         versionCode vCode
         versionName vName
 
@@ -69,7 +70,8 @@ android {
 
     buildFeatures {
         compose true
-        buildConfig false
+        // H7: 启用 BuildConfig 以便 OpenAIHttpTransport 用 BuildConfig.DEBUG 控制 Ktor Logging 级别
+        buildConfig true
     }
 
     signingConfigs {

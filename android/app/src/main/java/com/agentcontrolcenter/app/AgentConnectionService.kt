@@ -174,6 +174,9 @@ class AgentConnectionService : Service() {
                     // 浪费电量与服务端配额。改为指数退避：5s → 10s → 20s → 40s → 60s（封顶），
                     // 连接成功后重置为初始值。
                     var backoffMs = RECONNECT_INITIAL_BACKOFF_MS
+                    // M-12：连续失败计数。达到 MAX_CONSECUTIVE_FAILURES 后停止自动重连，
+                    // 等待用户手动操作（避免长时间网络故障下持续重试耗电/触发服务端限流）。
+                    var consecutiveFailures = 0
                     connectionRepository.connectionState.collect { state ->
                         WidgetDataProvider.updateConnectionState(
                             this@AgentConnectionService,
@@ -181,18 +184,25 @@ class AgentConnectionService : Service() {
                             agentName = savedConfig.name
                         )
                         if (!state.isConnected) {
+                            // M-12：连续失败达到上限后停止自动重连，等待用户手动操作
+                            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                                Log.w(TAG, "reconnect aborted: $consecutiveFailures consecutive failures reached, awaiting manual action")
+                                return@collect
+                            }
                             // 退避后尝试重连，避免频繁重连消耗资源
                             delay(backoffMs)
                             try {
                                 connectionRepository.connect(savedConfig, e2eKey = e2eKey)
-                                // 连接成功后重置退避（state.isConnected 切回 true 后下一轮 collect 会进入此分支外的路径）
+                                // 连接成功后重置退避与失败计数
                                 backoffMs = RECONNECT_INITIAL_BACKOFF_MS
+                                consecutiveFailures = 0
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
                                 // F33：原静默吞错 — 重连失败应有日志，便于排查网络/鉴权问题。
                                 // 注意：此 catch 不应吞 CancellationException，否则会破坏协程取消语义。
-                                Log.w(TAG, "reconnect failed (backoff=${backoffMs}ms): ${e.javaClass.simpleName}: ${e.message}")
+                                consecutiveFailures++
+                                Log.w(TAG, "reconnect failed (attempt=$consecutiveFailures/$MAX_CONSECUTIVE_FAILURES, backoff=${backoffMs}ms): ${e.javaClass.simpleName}: ${e.message}")
                                 // F35：失败后指数增长退避，封顶 RECONNECT_MAX_BACKOFF_MS
                                 backoffMs = (backoffMs * 2).coerceAtMost(RECONNECT_MAX_BACKOFF_MS)
                             }
@@ -300,16 +310,20 @@ class AgentConnectionService : Service() {
         const val EXTRA_REPLY_TEXT = "reply_text"
 
         /**
-         * Critical 4 / F35：断线重连退避参数（毫秒）
+         * Critical 4 / F35 / M-12：断线重连退避参数（毫秒）
          *
          * F35 修复：原固定 5s 退避改为指数退避。
+         * M-12 修复：上限退避改为 5 分钟（参考 WorkManager），并增加连续失败次数
+         * 上限，超过后停止自动重连，等待用户手动操作。
          * - 初始：5s
          * - 增长：每次失败 ×2
-         * - 封顶：60s
-         * - 连接成功后重置为初始值
+         * - 封顶：5 分钟（300_000ms）
+         * - 连接成功后重置退避与失败计数
+         * - 连续失败 MAX_CONSECUTIVE_FAILURES 次后停止自动重连
          */
         private const val RECONNECT_INITIAL_BACKOFF_MS = 5_000L
-        private const val RECONNECT_MAX_BACKOFF_MS = 60_000L
+        private const val RECONNECT_MAX_BACKOFF_MS = 300_000L
+        private const val MAX_CONSECUTIVE_FAILURES = 10
 
         /** 启动服务 */
         fun start(ctx: Context, agentName: String) {

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
@@ -527,6 +528,8 @@ private fun AgentFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    // H5: 视觉掩码，避免 apiKey 明文显示被肩窥/录屏泄漏
+                    visualTransformation = PasswordVisualTransformation(),
                     isError = isApiKeyError,
                     supportingText = if (isApiKeyError) {
                         { Text(stringResource(R.string.error_api_key_too_short)) }

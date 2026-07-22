@@ -62,21 +62,23 @@ struct TransportFactory: TransportFactorying, Sendable {
 
     private init() {}
 
-    /// 静态工厂方法（保持向后兼容的调用方式）。
-    /// 内部转发到 `provider`，使测试可以通过替换 `provider` 注入 mock。
-    static func create(_ agentType: AgentType) -> AgentTransport {
-        provider.create(agentType)
-    }
-
     /// 可注入的工厂提供者。生产环境使用 `TransportFactory.shared`，
     /// 测试中可在 `setUp()` 替换为 mock 工厂，并在 `tearDown()` 恢复。
     //
-    // CI-fix: 原 `@MainActor static var provider` 与 Sendable struct 中的
-    // nonisolated `static func create` 冲突 —— 非 MainActor 上下文无法访问
-    // `provider`。改为 `nonisolated(unsafe)`：变量本身仅在测试 setUp/tearDown
-    // 中（单线程）替换，生产代码从不修改；`TransportFactorying` 已是 Sendable
-    // 协议，调用 `.create(_:)` 返回 Sendable `AgentTransport`，跨 actor 安全。
-    nonisolated(unsafe) static var provider: TransportFactorying = TransportFactory.shared
+    // M-17 修复：原 `nonisolated(unsafe) static var provider` 在并发场景下无同步保护，
+    // 多 actor 同时读写存在数据竞争。改为 `@MainActor` 隔离：生产代码（ChatView、
+    // WorkflowEngine 等）均在 MainActor 上调用 TransportFactory.create，访问安全；
+    // 测试 setUp/tearDown 通过 `await MainActor.run { ... }` 修改 provider。
+    // 同步修改 TransportFactoryTests / WorkflowEngineTests 的 tearDown 用 MainActor.run。
+    @MainActor static var provider: TransportFactorying = TransportFactory.shared
+
+    /// 静态工厂方法（保持向后兼容的调用方式）。
+    /// 内部转发到 `provider`，使测试可以通过替换 `provider` 注入 mock。
+    // M-17 修复：create(_:) 也标 @MainActor，与 provider 隔离对齐
+    @MainActor
+    static func create(_ agentType: AgentType) -> AgentTransport {
+        provider.create(agentType)
+    }
 
     /// 实例方法（协议要求）
     func create(_ agentType: AgentType) -> AgentTransport {

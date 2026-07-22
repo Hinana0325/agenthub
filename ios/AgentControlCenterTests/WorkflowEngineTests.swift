@@ -13,13 +13,19 @@ final class WorkflowEngineTests: XCTestCase {
 
     override func setUp() async throws {
         // 注入 mock TransportFactory，避免模板测试触发真实网络请求
-        TransportFactory.provider = MockTransportFactory()
+        // M-17 修复：provider 改为 @MainActor 隔离，须通过 MainActor.run 访问
+        await MainActor.run {
+            TransportFactory.provider = MockTransportFactory()
+        }
         engine = await MainActor.run { WorkflowEngine(dataController: DataController()) }
     }
 
     override func tearDown() async throws {
         engine = nil
-        TransportFactory.provider = TransportFactory.shared
+        // M-17 修复：provider 改为 @MainActor 隔离，须通过 MainActor.run 访问
+        await MainActor.run {
+            TransportFactory.provider = TransportFactory.shared
+        }
     }
 
     // MARK: - 重置

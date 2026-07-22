@@ -6,11 +6,13 @@ on:
     tags: ['ios-v*']
     paths:
       - 'ios/**'
+      - 'protocol/**'
       - '.github/workflows/build-ios.yml'
   pull_request:
     branches: [main]
     paths:
       - 'ios/**'
+      - 'protocol/**'
       - '.github/workflows/build-ios.yml'
 
 jobs:

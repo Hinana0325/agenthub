@@ -56,9 +56,13 @@ class ConnectionRepository @Inject constructor(
     /**
      * 最近一次 [connect] 的配置，用于网络恢复后自动重连。
      * 在 [connect] 中赋值，在 [shutdown] 中清空。
+     *
+     * H6: 加 @Volatile。这两个字段在 [connect]（mutex 内）写入，
+     * 但在 ConnectivityManager 的 onAvailable 回调（工作线程）中无锁读取，
+     * 普通 var 无跨线程内存可见性保证。
      */
-    private var lastConfig: AgentConfig? = null
-    private var lastE2eKey: String? = null
+    @Volatile private var lastConfig: AgentConfig? = null
+    @Volatile private var lastE2eKey: String? = null
 
     /**
      * 当前 transport 实例的事件流。当 transport 被切换时，[flatMapLatest] 自动

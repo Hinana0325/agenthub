@@ -7,10 +7,12 @@ import XCTest
 final class TransportFactoryTests: XCTestCase {
 
     /// 测试结束后恢复默认 provider，避免污染其他测试
-    // CI-fix: Swift 6 下 tearDown 不能收紧 isolation；标 nonisolated override + 直接访问
-    // static var（已经是 nonisolated(unsafe)）即可。super.tearDown() 默认 no-op 跳过。
-    nonisolated override func tearDown() {
-        TransportFactory.provider = TransportFactory.shared
+    // M-17 修复：provider 改为 @MainActor 隔离，tearDown 需改为 async throws 并通过
+    // MainActor.run 访问；super.tearDown() 默认 no-op 跳过避免发送 self 跨 actor。
+    override func tearDown() async throws {
+        await MainActor.run {
+            TransportFactory.provider = TransportFactory.shared
+        }
     }
 
     // MARK: - 默认路由

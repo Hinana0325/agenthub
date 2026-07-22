@@ -182,6 +182,7 @@
 /* Error / status messages (Sprint 1-8 ~ 1-12) */
 "error.send.failed" = "Send failed: %@";
 "error.e2e.encrypt" = "E2E encryption failed — message not sent";
+"error.attachment.too_large" = "Attachment exceeds %@ limit. Please choose a smaller file.";
 "error.recording.invalid" = "Invalid recording file. Please try again.";
 "error.export.failed" = "Export failed: %@";
 "error.import.failed" = "Import failed: %@";

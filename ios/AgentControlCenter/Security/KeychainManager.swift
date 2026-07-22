@@ -2,6 +2,7 @@ import Foundation
 import Security
 import CryptoKit
 import CommonCrypto
+import os
 
 // MARK: - KeychainManager
 // 对应 Android KeystoreManager — AKS: 前缀格式跨平台兼容
@@ -20,6 +21,10 @@ enum KeychainManager {
     private static let prefix = "AKS:"
     private static let ivLength = 12
 
+    // M-4 修复：通过 os.Logger 在 Keychain 写入失败时输出 error 级日志，
+    // 便于生产环境监控 Keychain 不可用 / entitlement 缺失等问题
+    private static let logger = Logger(subsystem: "com.agentcontrolcenter.app.ios", category: "KeychainManager")
+
     // CI-fix: 当 Keychain 不可用（CI 模拟器无 entitlement / errSecMissingEntitlement）
     // 时，saveKey 静默失败，loadKey 返回 nil，getOrCreateKey 会生成新密钥 —
     // 同进程内 encrypt/decrypt 用不同密钥，AES-GCM 认证失败导致 decrypt 永远返回 nil。
@@ -28,10 +33,20 @@ enum KeychainManager {
     // 入成功，不会进入此分支。`nonisolated(unsafe)` 因为静态枚举本身就是进程级单例。
     nonisolated(unsafe) private static var inMemoryFallbackKey: Data?
 
+    // M-5 修复：与 Android @Synchronized 对齐，用 NSLock 保护 getOrCreateKey 全过程，
+    // 避免并发调用导致同一进程内生成两把不同的密钥（旧实现 loadKey 与 saveKey 之间存在
+    // TOCTOU 窗口：线程 A loadKey→nil → 生成 key1 → saveKey；线程 B 在此期间也
+    // loadKey→nil → 生成 key2 → saveKey 覆盖 key1，使用 key1 加密的密文永远无法解密）。
+    private static let keySyncLock = NSLock()
+
     // MARK: - Key Management
 
     /// 获取或创建主密钥（AES-256），存储在 Keychain 中
     private static func getOrCreateKey() -> SymmetricKey {
+        // M-5 修复：用 NSLock 包裹全过程，与 Android @Synchronized 对齐
+        keySyncLock.lock()
+        defer { keySyncLock.unlock() }
+
         if let keyData = loadKey() {
             return SymmetricKey(data: keyData)
         }
@@ -43,6 +58,11 @@ enum KeychainManager {
         // encrypt/decrypt 使用相同密钥（避免 CI 模拟器无 entitlement 导致测试失败）
         if inMemoryFallbackKey == nil {
             inMemoryFallbackKey = keyData
+        } else if inMemoryFallbackKey != keyData {
+            // M-4 修复：loadKey 返回 nil 但 inMemoryFallbackKey 已存在且与新密钥不同，
+            // 说明此前已有其他密钥在使用 — 此时新生成的密钥将无法解密旧密文。
+            // 输出生产环境告警，便于诊断"加密后无法解密"类问题。
+            logger.error("Keychain loadKey returned nil but inMemoryFallbackKey already exists with a different value — newly generated key may not decrypt previously encrypted payloads")
         }
         return key
     }
@@ -68,7 +88,9 @@ enum KeychainManager {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: keyTag,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            // C2: 与 auth.md / SECURITY.md 对齐——AfterFirstUnlock 允许前台服务在设备
+            // 首次解锁后的任意时刻（含锁屏）读取 apiKey，与 Android setUserAuthenticationRequired(false) 语义一致。
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
         // 先尝试添加；若 key 已存在（errSecDuplicateItem），则更新
         let status = SecItemAdd(attributes as CFDictionary, nil)
@@ -77,6 +99,10 @@ enum KeychainManager {
                 [kSecClass as String: kSecClassGenericPassword, kSecAttrAccount as String: keyTag] as CFDictionary,
                 [kSecValueData as String: data] as CFDictionary
             )
+        } else if status != errSecSuccess {
+            // M-4 修复：SecItemAdd 非 errSecDuplicateItem 的失败状态通过 os.Logger 记录 error 级日志，
+            // 便于生产环境监控 Keychain 不可用（errSecMissingEntitlement / errSecAuthFailed 等）
+            logger.error("SecItemAdd failed with status \(status.rawValue, privacy: .public) — falling back to in-memory key")
         }
         // CI-fix: 无论 SecItemAdd 是否成功，都同步更新 in-memory 缓存
         // （写入失败时下次 loadKey 仍可拿到同一密钥）
@@ -173,7 +199,8 @@ enum KeychainManager {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: passphraseTag,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            // C2: 同 saveKey，passphrase 也用 AfterFirstUnlock 以支持后台 E2E 加密。
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
         let status = SecItemAdd(attributes as CFDictionary, nil)
         if status == errSecDuplicateItem {

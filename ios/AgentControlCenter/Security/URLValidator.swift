@@ -87,7 +87,12 @@ enum URLValidator {
         }
 
         // 域名校验：禁止以 .local / .internal 等内网域名探测（防止 mDNS SSRF）
-        // 但允许常规公网域名
+        // H2 修复：原注释声明"禁止 .local/.internal"但代码体仅 return url，
+        // 导致 mDNS / 内网穿透域名可绕过校验访问。补齐拒绝逻辑，
+        // allowLocalhost=false 时显式拦截，与 localhost 行为对齐。
+        if host.hasSuffix(".local") || host.hasSuffix(".internal") {
+            return allowLocalhost ? url : nil
+        }
         return url
     }
 

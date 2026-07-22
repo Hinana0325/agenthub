@@ -3,6 +3,7 @@ package com.agentcontrolcenter.app
 import android.app.Application
 import com.agentcontrolcenter.app.core.analytics.AnalyticsManager
 import com.agentcontrolcenter.app.core.common.PerformanceMonitor
+import com.agentcontrolcenter.app.transport.ConnectionRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,18 @@ class AgentControlCenterApplication : Application() {
      */
     @Inject
     lateinit var analyticsManager: AnalyticsManager
+
+    /**
+     * M-13: ConnectionRepository (@Singleton) 持有 ConnectivityManager 网络
+     * 回调与协程作用域。Application 进程真正终止时需主动调用 onDispose()
+     * 注销回调、释放资源，避免系统在回收进程时报已注册 callback 的泄漏警告。
+     *
+     * 注意：[Application.onTerminate] 在真实设备上不会被调用（系统直接杀进程），
+     * 仅在模拟器/Robolectric 测试中触发；这里仍然补齐，便于测试覆盖与未来
+     * 通过 androidx ProcessLifecycleOwner 显式调用的扩展。
+     */
+    @Inject
+    lateinit var connectionRepository: ConnectionRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -79,6 +92,23 @@ class AgentControlCenterApplication : Application() {
             }
             // Delegate to previous handler (Sentry's, then default)
             previousHandler?.uncaughtException(thread, throwable)
+        }
+    }
+
+    /**
+     * M-13: 进程终止时主动释放 [ConnectionRepository] 持有的系统资源
+     * （ConnectivityManager 回调、协程作用域、transport 实例）。
+     *
+     * 真机正常退出不会触发本方法（系统直接 kill 进程），仅在模拟器/Robolectric
+     * 测试中回调；此处补齐以保证测试场景下不残留网络回调与连接。
+     */
+    override fun onTerminate() {
+        super.onTerminate()
+        try {
+            connectionRepository.onDispose()
+        } catch (e: Exception) {
+            // Best-effort：onTerminate 中不应抛异常影响系统退出流程
+            android.util.Log.w("AgentControlCenterApplication", "onTerminate onDispose failed: ${e.javaClass.simpleName}: ${e.message}")
         }
     }
 }

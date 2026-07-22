@@ -598,6 +598,21 @@ struct ChatView: View {
             return
         }
 
+        // H9 修复：协议要求附件大小上限 10MB（10485760 字节，压缩前判定）。
+        // 参考 Android ChatViewModel.kt:1095 实现。超出上限直接拒绝并提示用户，
+        // 不进入后续压缩流程（避免大文件占内存与解码耗时）。
+        if data.count > 10 * 1024 * 1024 {
+            errorMessage = String(
+                format: NSLocalizedString("error.attachment.too_large", comment: "附件过大提示"),
+                "10MB"
+            )
+            attachmentName = nil
+            attachmentBase64 = nil
+            attachmentType = nil
+            photoItem = nil
+            return
+        }
+
         // 压缩到 720p（取长边 720）
         let maxSize: CGFloat = 720
         let scale = min(maxSize / uiImage.size.width, maxSize / uiImage.size.height, 1.0)
@@ -768,7 +783,8 @@ struct ChatView: View {
         case .streamComplete:
             // 流结束：把累积文本固化为一条助手消息
             finalizeAssistantMessage(sessionId: sessionId)
-        case .error(let message):
+        case .error(_, let message):
+            // C3 修复：AgentEvent.error 新增 code 关联值，此处忽略 code 仅用 message
             HapticFeedback.error()
             // 错误不固化为助手消息，更新最后一条用户消息状态为 failed
             if let lastUserMsg = messages.last(where: { $0.role == .user }),

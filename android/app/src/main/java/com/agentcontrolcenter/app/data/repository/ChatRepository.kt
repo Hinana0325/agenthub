@@ -1,5 +1,6 @@
 package com.agentcontrolcenter.app.data.repository
 
+import android.util.Log
 import androidx.room.withTransaction
 import com.agentcontrolcenter.app.core.database.AppDatabase
 import com.agentcontrolcenter.app.core.database.dao.ActivityDao
@@ -18,7 +19,6 @@ import com.agentcontrolcenter.app.data.model.MessageRole
 import com.agentcontrolcenter.app.data.model.MessageStatus
 import com.agentcontrolcenter.app.data.model.Session
 import com.agentcontrolcenter.app.core.security.KeystoreManager
-import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,8 +37,6 @@ class ChatRepository @javax.inject.Inject constructor(
     private val agentConfigDao: AgentConfigDao,
     private val activityDao: ActivityDao
 ) {
-    private val gson = Gson()
-
     // 首次启动播种一个本地 Ollama 默认端点（id 以 "seed_" 开头，开屏不自动连，
     // 仅作为「Agents」里的一键连接起点；若本机未运行 Ollama 则连接会如实报错）。
     private val seedScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -46,6 +44,8 @@ class ChatRepository @javax.inject.Inject constructor(
         seedScope.launch {
             try {
                 if (agentConfigDao.getAllConfigsOnce().isEmpty()) {
+                    // M-15: 记录正在播种默认 Ollama 配置，便于排查首次启动行为
+                    Log.d(TAG, "正在播种默认 Ollama 配置 (seed_ollama)")
                     saveConfig(
                         AgentConfig(
                             id = "seed_ollama",
@@ -180,7 +180,8 @@ class ChatRepository @javax.inject.Inject constructor(
             content = message.content,
             timestamp = message.timestamp,
             status = message.status.name,
-            metadataJson = gson.toJson(message.metadata),
+            // H14: metadata 现为 metadataJson 字符串字段，直接透传避免 parse→serialize 往返
+            metadataJson = message.metadataJson,
             attachmentType = message.attachmentType,
             attachmentData = message.attachmentData,
             attachmentName = message.attachmentName,
@@ -261,10 +262,8 @@ class ChatRepository @javax.inject.Inject constructor(
         content = content,
         timestamp = timestamp,
         status = try { MessageStatus.valueOf(status) } catch (_: Exception) { MessageStatus.Sent },
-        metadata = try {
-            // Phase 1.2: 使用缓存的 TypeToken，避免每次调用都新建匿名子类实例（反射开销大）。
-            (gson.fromJson(metadataJson, METADATA_MAP_TYPE) as? Map<String, String>) ?: emptyMap()
-        } catch (_: Exception) { emptyMap() },
+        // H14: metadataJson 直接透传，解析由 Message.metadata 计算属性按需完成
+        metadataJson = metadataJson,
         attachmentType = attachmentType,
         attachmentData = attachmentData,
         attachmentName = attachmentName,
@@ -305,11 +304,6 @@ class ChatRepository @javax.inject.Inject constructor(
     )
 
     companion object {
-        /**
-         * Phase 1.2: 缓存 metadata Map 的 TypeToken，避免每次 toModel() 调用都
-         * 新建匿名 TypeToken 子类实例（涉及类加载 + 反射，开销极大）。
-         * TypeToken.type 是线程安全的，可在 companion object 中共享。
-         */
-        private val METADATA_MAP_TYPE = object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+        private const val TAG = "ChatRepository"
     }
 }

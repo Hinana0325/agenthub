@@ -113,6 +113,19 @@ final class WorkflowEngine {
                 inputForNode = getInputForNode(node, workflow: workflow, nodeOutputs: nodeOutputs)
             }
 
+            // M-18 修复：上游节点失败时（输出以 "Error:" 开头）跳过当前节点执行并标记失败，
+            // 避免错误文本被下游节点继续处理（如错误文本被 Agent 当作 prompt 发送，
+            // 既浪费 token 又会产生无意义输出）。INPUT 节点不在此列（无上游）。
+            if node.type != .input && inputForNode.hasPrefix("Error:") {
+                log("[\(node.type.rawValue)] \(nodeLabel): 上游输出为错误，跳过执行")
+                nodeOutputs[node.id] = inputForNode
+                executionState.failedNodeIds.insert(node.id)
+                if node.type == .output {
+                    executionState.error = inputForNode
+                }
+                continue
+            }
+
             // 执行节点
             let output: String
             switch node.type {
@@ -128,6 +141,11 @@ final class WorkflowEngine {
                     : node.prompt.replacingOccurrences(of: "{input}", with: inputForNode)
                 log("调用 Agent(\(agentType.displayName))，提示词长度: \(prompt.count)")
                 output = await executeAgent(agentType: agentType, prompt: prompt)
+                // M-18 修复：executeAgent 失败时返回 "Error: ..." 字符串，
+                // 标记当前节点失败，让下游节点检测到错误并跳过执行
+                if output.hasPrefix("Error:") {
+                    executionState.failedNodeIds.insert(node.id)
+                }
 
             case .transform:
                 // 转换节点：对上游输出应用转换函数
@@ -138,6 +156,10 @@ final class WorkflowEngine {
                 // 输出节点：透传上游输出
                 output = inputForNode
                 executionState.output = output
+                // M-18 修复：OUTPUT 节点显式检查上游错误并设置 executionState.error
+                if output.hasPrefix("Error:") {
+                    executionState.error = output
+                }
             }
 
             // 保存节点输出
