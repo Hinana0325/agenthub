@@ -107,11 +107,11 @@ struct SettingsView: View {
             // 但 .task 由 SwiftUI 管理生命周期，统一所有视图数据加载入口
             .task {
                 // 从 Keychain 加载 E2E passphrase 到内存 @State。
-                // 修复 1: 设置 isPassphraseLoaded = true 后再赋值，让 .onChange
-                // 能区分「初始加载」与「用户修改」，避免无意义写回 Keychain。
-                let loaded = KeychainManager.loadPassphrase()
+                // 修复 1（修正实现）: 原实现把 isPassphraseLoaded = true 放在 passphrase = loaded
+                // 之前，导致 onChange 触发时 guard 已通过，仍会无意义写回 Keychain。
+                // 正确顺序：先赋值（此时 flag 还是 false，guard 拦截），再置 flag。
+                passphrase = KeychainManager.loadPassphrase()
                 isPassphraseLoaded = true
-                passphrase = loaded
             }
             .onChange(of: passphrase) { _, newValue in
                 // 修复 1: 跳过 .task 初始加载触发的 onChange
@@ -513,6 +513,13 @@ struct SettingsView: View {
             applicationActivities: nil
         )
 
+        // 修复 H1: 原 shareFile 后立即返回，导出临时文件（含全部会话与消息明文）
+        // 永远不会被显式删除，系统低存储压力时才清理，期间敏感数据留在磁盘上。
+        // 设置 completionWithItemsHandler 在分享面板关闭后删除临时文件。
+        activityVC.completionWithItemsHandler = { _, _, _, _ in
+            try? FileManager.default.removeItem(at: url)
+        }
+
         // iPad 需要设置 popoverPresentationController
         if let popOver = activityVC.popoverPresentationController {
             popOver.sourceView = window.rootViewController?.view
@@ -529,6 +536,17 @@ struct SettingsView: View {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
+            // 修复 C2: fileImporter 返回的 URL 是 security-scoped URL。
+            // 沙盒外文件（iCloud Drive / Files App）必须先 startAccessingSecurityScopedResource
+            // 才能 Data(contentsOf:)，否则抛 NSCocoaErrorDomain 257（权限拒绝）。
+            // 同仓库 ChatRepository.importSession / BackupManager / AgentsView 均已正确处理，
+            // 此处遗漏导致从 iCloud Drive 选 JSON 100% 失败。
+            let didStartAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
             do {
                 let data = try Data(contentsOf: url)
                 let json = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
@@ -755,7 +773,15 @@ private struct ToastView: View {
 /// 性能监控详情页
 /// 展示 PerformanceMonitor 采集的实时指标
 struct PerformanceView: View {
-    @State private var monitor = PerformanceMonitor()
+    // 修复 H3: 原 `@State private var monitor = PerformanceMonitor()` 每次进入页面都新建
+    // 一个 monitor 实例，导致 totalMessages 永远显示 0、uptimeMinutes 永远从 0 开始、
+    // avgMessageLatencyMs 永远 0（因为 incrementMessageCount / recordMessageLatency
+    // 调用的是 appState.performanceMonitor，不是这个本地实例）。
+    // 改用 @Environment(AppState.self) 读取 appState.performanceMonitor，
+    // 与 App 启动时实例化并启动 5 秒定时器的那个 monitor 是同一实例。
+    @Environment(AppState.self) private var appState
+
+    private var monitor: PerformanceMonitor { appState.performanceMonitor }
 
     var body: some View {
         List {
@@ -827,7 +853,9 @@ struct PerformanceView: View {
         } else if minutes < 1440 {
             return "\(minutes / 60) 小时 \(minutes % 60) 分钟"
         } else {
-            return "\(minutes / 1440) 天 \(minutes / 60) 小时"
+            // 修复 H4: 原 `minutes / 60` 对 1500 分钟输出 "1 天 25 小时"。
+            // 应该取扣除整天后剩余的分钟数再换算成小时。
+            return "\(minutes / 1440) 天 \((minutes % 1440) / 60) 小时"
         }
     }
 }

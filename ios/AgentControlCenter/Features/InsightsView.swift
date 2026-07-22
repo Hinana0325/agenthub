@@ -7,9 +7,19 @@ import SwiftUI
 struct InsightsView: View {
     @Environment(AppState.self) private var appState
 
+    // 修复 PERF: 原实现 allMessages / agentUsageFrequency / fetchTasks 都是计算属性，
+    // 每次 body 重绘（任何 @Observable 状态变化都触发）都会全量 fetch。
+    // 10 个会话 × 100 条消息 = 4 个计算属性 × 1000 条 = 4000 次 SwiftData 查询/render。
+    // 改为 .task 中预计算到 @State 缓存，仅在视图出现时计算一次。
+    @State private var allMessages: [Message] = []
+    @State private var allTasks: [AgentTask] = []
+    @State private var hasLoaded: Bool = false
+
     var body: some View {
         Group {
-            if appState.sessionManager.sessions.isEmpty && appState.dataController.fetchTasks().isEmpty {
+            if !hasLoaded {
+                ProgressView("加载中…")
+            } else if appState.sessionManager.sessions.isEmpty && allTasks.isEmpty {
                 emptyView
             } else {
                 ScrollView {
@@ -31,6 +41,14 @@ struct InsightsView: View {
             }
         }
         .navigationTitle("数据洞察")
+        .task {
+            // 预计算所有指标到 @State 缓存，避免计算属性每次 body 重绘都全量 fetch
+            allMessages = appState.sessionManager.sessions.flatMap { session in
+                appState.dataController.fetchMessages(sessionId: session.id)
+            }
+            allTasks = appState.dataController.fetchTasks()
+            hasLoaded = true
+        }
     }
 
     // MARK: - 空状态
@@ -44,14 +62,7 @@ struct InsightsView: View {
         }
     }
 
-    // MARK: - 计算属性
-
-    /// 所有会话的完整消息数据（遍历每个会话获取消息）
-    private var allMessages: [Message] {
-        appState.sessionManager.sessions.flatMap { session in
-            appState.dataController.fetchMessages(sessionId: session.id)
-        }
-    }
+    // MARK: - 计算属性（基于 @State 缓存，不再触发 fetch）
 
     /// 总会话数
     private var totalSessions: Int {
@@ -79,9 +90,8 @@ struct InsightsView: View {
 
     /// Agent 使用频率（基于任务的 agentId 统计）
     private var agentUsageFrequency: [(name: String, count: Int)] {
-        let tasks = appState.dataController.fetchTasks()
         var agentCounts: [String: Int] = [:]
-        for task in tasks {
+        for task in allTasks {
             let agentName = appState.agentManager.getAgent(task.agentId)?.name ?? task.agentId
             agentCounts[agentName, default: 0] += 1
         }
@@ -92,14 +102,13 @@ struct InsightsView: View {
 
     /// 平均响应时间估算（基于会话更新间隔的简单启发式）
     private var averageResponseTime: String {
-        let messages = allMessages
-        guard messages.count >= 2 else { return "—" }
+        guard allMessages.count >= 2 else { return "—" }
 
         // 找出相邻的 user -> assistant 消息对，计算时间差
         var intervals: [TimeInterval] = []
-        for i in 0..<(messages.count - 1) {
-            if messages[i].role == .user && messages[i + 1].role == .assistant {
-                let interval = TimeInterval(messages[i + 1].timestamp - messages[i].timestamp) / 1000.0
+        for i in 0..<(allMessages.count - 1) {
+            if allMessages[i].role == .user && allMessages[i + 1].role == .assistant {
+                let interval = TimeInterval(allMessages[i + 1].timestamp - allMessages[i].timestamp) / 1000.0
                 if interval > 0 && interval < 300 { // 过滤异常值
                     intervals.append(interval)
                 }
@@ -118,12 +127,11 @@ struct InsightsView: View {
 
     /// 最活跃时段（简单统计：按小时聚合消息时间戳）
     private var peakHourRange: String {
-        let messages = allMessages
-        guard messages.count >= 5 else { return "数据不足" }
+        guard allMessages.count >= 5 else { return "数据不足" }
 
         // 统计每个小时的消息数
         var hourCounts: [Int: Int] = [:]
-        for msg in messages {
+        for msg in allMessages {
             let date = Date(timeIntervalSince1970: TimeInterval(msg.timestamp) / 1000)
             let hour = Calendar.current.component(.hour, from: date)
             hourCounts[hour, default: 0] += 1

@@ -78,8 +78,9 @@ struct PluginView: View {
         }
         .listStyle(.insetGrouped)
         .refreshable {
-            // 模拟下拉刷新
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            // 修复: 原实现只 sleep 1 秒不重新加载，用户下拉刷新看到 spinner 转一秒
+            // 但列表不变（假刷新）。改为真正调用 loadPlugins() 重新加载插件列表。
+            loadPlugins()
         }
     }
 

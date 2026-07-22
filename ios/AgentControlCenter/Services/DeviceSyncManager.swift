@@ -163,6 +163,43 @@ final class DeviceSyncManager {
         }
     }
 
+    /// 与指定设备发起数据同步（async 版本，返回是否成功）。
+    ///
+    /// 修复 DeviceSyncView asyncAfter(2.0) 探测结果错误：原实现用固定 2 秒延迟
+    /// 读取全局 syncStatus 判断结果，但多设备并发同步共享一个 syncStatus，
+    /// 且同步 > 2 秒未完成时仍记为 success。改为 async 版本直接 await 同步完成，
+    /// 返回 per-device 的成功/失败结果。
+    ///
+    /// - Parameter device: 目标同步设备
+    /// - Returns: true 表示同步成功，false 表示失败（含错误信息可通过 syncStatus 读取）
+    func syncWithDeviceAsync(_ device: SyncDevice) async -> Bool {
+        guard syncStatus == .idle || syncStatus == .scanning else { return false }
+        guard device.isOnline else {
+            syncStatus = .error("设备 \(device.deviceName) 不在线")
+            return false
+        }
+
+        syncStatus = .syncing
+
+        do {
+            _ = try await getExportData()
+
+            // TODO: 通过 MCSession 发送数据到目标设备
+
+            // 更新设备同步时间
+            if let index = discoveredDevices.firstIndex(where: { $0.id == device.id }) {
+                discoveredDevices[index].lastSyncTime = Date()
+            }
+            peerDeviceMap[device.id]?.lastSyncTime = Date()
+
+            syncStatus = .idle
+            return true
+        } catch {
+            syncStatus = .error("数据导出失败: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     /// 导出所有本地数据为 JSON。
     ///
     /// 将 Session、Message、AgentConfig 序列化为 JSON 格式，

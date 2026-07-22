@@ -50,10 +50,18 @@ struct ChatView: View {
     @State private var streamingText: String = ""
     /// 事件消费任务
     @State private var eventTask: Task<Void, Never>?
+    /// 发送任务（修复 C1: 原 sendMessage 的 Task 是孤儿任务未保存，
+    /// stopGenerating 只 cancel eventTask 不 cancel 它，导致 Stop 按钮失效，
+    /// transport.sendMessage 的 HTTP/SSE 流仍在后台消耗带宽和 token）
+    @State private var sendTask: Task<Void, Never>?
 
     // MARK: - 状态 — 交互
     /// 正在回复的消息 ID
     @State private var replyToId: String?
+    /// 当前流式响应对应的用户消息 ID（修复 H3: 用于 finalizeAssistantMessage
+    /// 设置助手消息的 replyToId。原实现把用户消息的 replyToId 直接赋给助手消息，
+    /// 导致助手气泡引用的是"用户回复的目标"而非"用户刚发的那条"）
+    @State private var currentUserMessageId: String?
     /// 斜杠命令匹配（输入框以 / 开头时）
     @State private var showSlashCommands: Bool = false
     /// 是否显示帮助 Sheet
@@ -261,7 +269,11 @@ struct ChatView: View {
                     .onSubmit {
                         if showSlashCommands {
                             showSlashCommands = false
-                        } else {
+                        } else if !isWaiting {
+                            // 修复 H5: 原实现不检查 isWaiting，回车键绕过 canSend 禁用逻辑，
+                            // 用户在等待响应时按回车会再创建一条 user message 并再发起一次
+                            // transport.sendMessage，多个并发流同时往同一个 streamingText
+                            // 累积，UI 完全错乱。
                             sendMessage()
                         }
                     }
@@ -535,6 +547,15 @@ struct ChatView: View {
 
     /// 清空当前会话消息
     private func clearMessages() {
+        // 修复 H4: 原实现只清 DB + messages 数组，不重置流式状态。如果在流式生成中
+        // 执行 /clear，UI 列表变空但 isWaiting 仍为 true、streamingText 仍累积、
+        // eventTask 仍在跑，下一个 delta 到来时 StreamingBubble 会从空列表里冒出。
+        sendTask?.cancel()
+        eventTask?.cancel()
+        isWaiting = false
+        streamingText = ""
+        errorMessage = nil
+        replyToId = nil
         appState.dataController.deleteMessages(sessionId: sessionId)
         messages.removeAll()
     }
@@ -658,6 +679,9 @@ struct ChatView: View {
 
     /// 取消当前事件任务并停止生成
     private func stopGenerating() {
+        // 修复 C1: 同时 cancel sendTask，否则 transport.sendMessage 的 HTTP/SSE
+        // 流仍在后台运行，继续消耗带宽和 token，Stop 按钮实际失效。
+        sendTask?.cancel()
         eventTask?.cancel()
         isWaiting = false
         // 如果有流式文本但未固化，直接清除
@@ -690,6 +714,9 @@ struct ChatView: View {
 
     /// 退出视图时：取消事件任务、断开传输、释放资源（修复 W-16）
     private func cleanup() {
+        // 修复 C1: 同时 cancel sendTask，避免视图销毁后 sendMessage Task 仍持有
+        // transport + URLSession + in-flight data task 继续运行（资源泄漏）
+        sendTask?.cancel()
         eventTask?.cancel()
         transport?.disconnect()
         transport?.shutdown()
@@ -753,6 +780,10 @@ struct ChatView: View {
             errorMessage = message
             isWaiting = false
             streamingText = ""
+            // 修复 M6: 错误路径也需重置 replyToId 和 currentUserMessageId，
+            // 否则发送失败后用户下一条消息会带着上次的回复上下文
+            replyToId = nil
+            currentUserMessageId = nil
         case .connected:
             // 连接成功，无需特殊处理
             break
@@ -776,7 +807,9 @@ struct ChatView: View {
             content: content,
             timestamp: Int64(Date().timeIntervalSince1970 * 1000),
             status: .received,
-            replyToId: replyToId
+            // 修复 H3: 助手消息的 replyToId 语义为"助手在回复哪条用户消息"，
+            // 应该是 currentUserMessageId，而非用户消息的 replyToId（用户回复的目标）。
+            replyToId: currentUserMessageId
         )
         messages.append(msg)
         appState.dataController.saveMessage(msg)
@@ -784,6 +817,7 @@ struct ChatView: View {
         streamingText = ""
         isWaiting = false
         replyToId = nil
+        currentUserMessageId = nil
     }
 
     // MARK: - 发送消息
@@ -818,6 +852,9 @@ struct ChatView: View {
         messages.append(userMessage)
         appState.dataController.saveMessage(userMessage)
         appState.sessionManager.incrementMessageCount(sessionId)
+        // 修复 H3: 保存当前用户消息 ID，finalizeAssistantMessage 时用于设置
+        // 助手消息的 replyToId（语义为"助手在回复哪条用户消息"）
+        currentUserMessageId = userMessage.id
 
         // 重置输入
         inputText = ""
@@ -846,7 +883,10 @@ struct ChatView: View {
         isWaiting = true
 
         // 3. 通过传输层发送消息（回复由事件流异步返回并展示）
-        Task {
+        // 修复 C1: 保存 Task 到 sendTask，stopGenerating / cleanup 时 cancel，
+        // 否则 Stop 按钮只 cancel eventTask，transport.sendMessage 的 HTTP/SSE
+        // 流仍在后台运行，继续消耗带宽和 token。
+        sendTask = Task {
             do {
                 try await transport.sendMessage(sessionId: sessionId, content: text)
             } catch {
@@ -860,6 +900,9 @@ struct ChatView: View {
                     format: NSLocalizedString("error.send.failed", comment: ""),
                     error.localizedDescription
                 )
+                // 修复 M6: 错误路径也需重置 replyToId 和 currentUserMessageId
+                replyToId = nil
+                currentUserMessageId = nil
             }
         }
     }

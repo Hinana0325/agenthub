@@ -585,20 +585,13 @@ struct DeviceSyncView: View {
 
     /// 与指定设备同步
     private func syncWithDevice(_ device: DeviceSyncManager.SyncDevice) {
-        appState.deviceSyncManager.syncWithDevice(device)
-
-        // 延迟检查同步结果并记录历史
         let deviceName = device.deviceName
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            let result: SyncHistoryEntry.SyncResult
-            switch appState.deviceSyncManager.syncStatus {
-            case .error:
-                result = .failed
-            case .idle:
-                result = .success
-            default:
-                result = .success
-            }
+        // 修复: 原实现调用同步的 syncWithDevice 后用 asyncAfter(2.0) 探测结果，
+        // 多设备并发同步共享一个 syncStatus，且同步 > 2 秒未完成时仍记为 success。
+        // 改用 async 版本 syncWithDeviceAsync 直接 await 结果，返回 per-device 成功/失败。
+        Task { @MainActor in
+            let success = await appState.deviceSyncManager.syncWithDeviceAsync(device)
+            let result: SyncHistoryEntry.SyncResult = success ? .success : .failed
 
             let entry = SyncHistoryEntry(deviceName: deviceName, result: result)
             syncHistory.insert(entry, at: 0)

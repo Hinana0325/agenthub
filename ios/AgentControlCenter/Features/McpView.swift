@@ -35,7 +35,10 @@ struct McpView: View {
                             McpServerRow(server: server)
                         }
                         .onDelete { indexSet in
-                            indexSet.forEach { servers.remove(at: $0) }
+                            // 修复: 原实现 `indexSet.forEach { servers.remove(at: $0) }`
+                            // 在删除多个非连续索引时会越界（删 index 0 后原 index 2 变成
+                            // index 1，再删 index 2 越界）。改用 remove(atOffsets:) 正确处理。
+                            servers.remove(atOffsets: indexSet)
                             // 删除后立即持久化,避免 App 重启后数据残留
                             saveServers()
                         }
