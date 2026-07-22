@@ -387,13 +387,14 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         // `@_unavailableFromAsync`，禁止从 async 上下文直接调用。改用 `NSLocking`
         // 扩展提供的 `withLock(_:)` —— 它是同步函数，内部调 lock/unlock 不会被
         // async 检查器拦截，且保证异常路径下也能 unlock（语义等价、行为更安全）。
-        historyLock.withLock {
+        // CI-fix: `withLock` 返回闭包结果，需显式忽略以避免"unused result"警告。
+        _ = historyLock.withLock {
             history.removeValue(forKey: sessionId)
         }
     }
 
     func clearAllHistory() async {
-        historyLock.withLock {
+        _ = historyLock.withLock {
             history.removeAll()
         }
     }
