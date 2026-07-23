@@ -9,16 +9,20 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.agentcontrolcenter.app.core.database.dao.ActivityDao
 import com.agentcontrolcenter.app.core.database.dao.AgentConfigDao
+import com.agentcontrolcenter.app.core.database.dao.MarketplaceFavoriteDao
 import com.agentcontrolcenter.app.core.database.dao.MessageDao
 import com.agentcontrolcenter.app.core.database.dao.PluginDao
 import com.agentcontrolcenter.app.core.database.dao.SessionDao
 import com.agentcontrolcenter.app.core.database.dao.TaskDao
+import com.agentcontrolcenter.app.core.database.dao.WorkflowRunDao
 import com.agentcontrolcenter.app.core.database.entity.ActivityLogEntity
 import com.agentcontrolcenter.app.core.database.entity.AgentConfigEntity
+import com.agentcontrolcenter.app.core.database.entity.MarketplaceFavoriteEntity
 import com.agentcontrolcenter.app.core.database.entity.MessageEntity
 import com.agentcontrolcenter.app.core.database.entity.PluginEntity
 import com.agentcontrolcenter.app.core.database.entity.SessionEntity
 import com.agentcontrolcenter.app.core.database.entity.TaskEntity
+import com.agentcontrolcenter.app.core.database.entity.WorkflowRunEntity
 
 @Database(
     entities = [
@@ -27,9 +31,11 @@ import com.agentcontrolcenter.app.core.database.entity.TaskEntity
         AgentConfigEntity::class,
         ActivityLogEntity::class,
         PluginEntity::class,
-        TaskEntity::class
+        TaskEntity::class,
+        WorkflowRunEntity::class,
+        MarketplaceFavoriteEntity::class
     ],
-    version = 9,
+    version = 11,
     // 启用 schema 导出以便迁移测试。
     // TODO: 需在 app/build.gradle 的 ksp / kapt 配置中添加
     //   ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -44,6 +50,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun activityDao(): ActivityDao
     abstract fun pluginDao(): PluginDao
     abstract fun taskDao(): TaskDao
+    abstract fun workflowRunDao(): WorkflowRunDao
+    abstract fun marketplaceFavoriteDao(): MarketplaceFavoriteDao
 
     companion object {
         @Volatile
@@ -115,6 +123,54 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v4.9.0: 新增 workflow_runs 表，支持工作流执行历史持久化。
+         * 对应 protocol/schemas/workflow-schema.json 中的 WorkflowRunRecord 契约。
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS workflow_runs (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        workflowId TEXT NOT NULL,
+                        workflowName TEXT NOT NULL,
+                        input TEXT NOT NULL DEFAULT '',
+                        output TEXT NOT NULL DEFAULT '',
+                        startedAt INTEGER NOT NULL,
+                        completedAt INTEGER,
+                        status TEXT NOT NULL,
+                        failedNodeIdsJson TEXT NOT NULL DEFAULT '[]',
+                        error TEXT,
+                        logsJson TEXT NOT NULL DEFAULT '[]'
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workflow_runs_workflowId ON workflow_runs (workflowId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_workflow_runs_startedAt ON workflow_runs (startedAt)")
+            }
+        }
+
+        /**
+         * v4.9.0: 新增 marketplace_favorites 表，支持 Marketplace 收藏持久化。
+         * 冗余 name/type/serverUrl 等字段，便于从收藏列表直接安装。
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS marketplace_favorites (
+                        agentId TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        type TEXT NOT NULL,
+                        serverUrl TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        tagsJson TEXT NOT NULL DEFAULT '[]',
+                        addedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_marketplace_favorites_addedAt ON marketplace_favorites (addedAt)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -127,7 +183,7 @@ abstract class AppDatabase : RoomDatabase() {
                     // 当前已提供 MIGRATION_4_5 / _5_6 / _6_7 / _7_8 / _8_9；后续新增版本时
                     // 必须显式补齐对应的 Migration。
                     .addMigrations(
-                        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+                        MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
                     )
                     .build().also { INSTANCE = it }
             }

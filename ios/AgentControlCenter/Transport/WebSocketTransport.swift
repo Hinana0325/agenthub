@@ -105,12 +105,15 @@ final class WebSocketTransport: AgentTransport, @unchecked Sendable {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = true
-        // H16 TODO（TLS 证书钉扎 / SPKI Pinning）：当前使用默认 URLSessionConfiguration
-        // 与默认 trust evaluator，仅校验系统 CA 链，无法防御 MITM 与伪造证书。
-        // 后续应通过自定义 URLSessionDelegate（urlSession(_:didReceive:completionHandler:)）
-        // 校验服务端证书链的 SPKI hash 与预置 pin 列表，对齐 Android NetworkSecurityConfig。
-        // 暂缓实现：详见 protocol/transport/tls-pinning.md（待补）。
-        self.session = URLSession(configuration: config)
+        // v4.9.0 H16：注入 TLSPinningDelegate.shared 实现证书公钥锁定（SPKI Pinning）。
+        // 对公网固定 API 端点校验证书 SPKI hash 与预置 pin 列表，防御 MITM 与伪造证书；
+        // 本地 / 自定义端点及占位 pin 期间降级为系统默认 CA 校验，不阻塞连接。
+        // 详见 TLSPinningDelegate 与 protocol/transport/tls-pinning.md。
+        self.session = URLSession(
+            configuration: config,
+            delegate: TLSPinningDelegate.shared,
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Connect

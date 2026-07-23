@@ -29,7 +29,7 @@
     <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun DetailSection(title: String, content: @Composable () -&gt; Unit)</ID>
     <ID>FunctionNaming:ActivityScreen.kt$@Composable private fun EmptyActivityHint()</ID>
     <ID>FunctionNaming:ActivityScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ActivityScreen( activityViewModel: ActivityViewModel = hiltViewModel() )</ID>
-    <ID>FunctionNaming:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, onInstall: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, isFavorite: Boolean, onInstall: () -&gt; Unit, onToggleFavorite: () -&gt; Unit )</ID>
     <ID>FunctionNaming:AgentMarketScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentMarketScreen( onInstall: (MarketplaceAgent) -&gt; Unit, onBack: () -&gt; Unit )</ID>
     <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
     <ID>FunctionNaming:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentGridCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
@@ -178,7 +178,7 @@
     <ID>LargeClass:SoCOptimizer.kt$SoCOptimizer</ID>
     <ID>LargeClass:WebSocketTransport.kt$WebSocketTransport : AgentTransport</ID>
     <ID>LongMethod:ActivityScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ActivityScreen( activityViewModel: ActivityViewModel = hiltViewModel() )</ID>
-    <ID>LongMethod:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, onInstall: () -&gt; Unit )</ID>
+    <ID>LongMethod:AgentMarketScreen.kt$@Composable private fun MarketplaceAgentCard( agent: MarketplaceAgent, isInstalled: Boolean, isFavorite: Boolean, onInstall: () -&gt; Unit, onToggleFavorite: () -&gt; Unit )</ID>
     <ID>LongMethod:AgentMarketScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AgentMarketScreen( onInstall: (MarketplaceAgent) -&gt; Unit, onBack: () -&gt; Unit )</ID>
     <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>
     <ID>LongMethod:AgentsScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun AgentGridCard( agent: AgentConfig, onEdit: () -&gt; Unit, onDelete: () -&gt; Unit )</ID>

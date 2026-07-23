@@ -7,15 +7,16 @@ import SwiftData
 
 // MARK: - Schema 版本与迁移计划
 //
-// 当前为 v1（无历史 schema），通过 `VersionedSchema` 显式标记版本号，
-// 便于未来发布 v2 时（如新增字段、修改关系）通过 `SchemaMigrationPlan`
-// 声明 v1 → v2 的迁移阶段。当前 MigrationPlan 不含任何 stage，
-// SwiftData 会自动执行轻量级迁移（如新增可选字段、添加关系）。
+// 当前最新为 v2。通过 `VersionedSchema` 显式标记版本号，通过
+// `SchemaMigrationPlan` 声明 v1 → v2 的迁移阶段。
+// v2 新增 2 个实体：`WorkflowRunEntity`（工作流执行历史）、
+// `MarketplaceFavoriteEntity`（Marketplace 收藏）。均为新增表，无破坏性
+// 变更，可由 SwiftData 自动执行轻量级迁移（`.lightweight`）。
 
 /// 应用持久化 schema 的版本 1。
 ///
-/// 当需要破坏性 schema 变更时，复制本类型为 `AppSchemaV2`，调整字段，
-/// 并在 `AppSchemaMigrationPlan` 中追加 `MigrationStage`（light 或 custom）。
+/// 仅包含 v1 发布时的 6 个实体。v2 新增 `WorkflowRunEntity` /
+/// `MarketplaceFavoriteEntity`，在 `AppSchemaV2` 中声明。
 enum AppSchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
 
@@ -31,21 +32,46 @@ enum AppSchemaV1: VersionedSchema {
     }
 }
 
+/// 应用持久化 schema 的版本 2（v4.9.0）。
+///
+/// 在 v1 的 6 个实体基础上新增：
+/// - `WorkflowRunEntity`：工作流执行历史记录，对应 protocol
+///   `WorkflowRunRecord` 契约与 Android `WorkflowRunEntity`。
+/// - `MarketplaceFavoriteEntity`：Marketplace 收藏，对应 Android
+///   `MarketplaceFavoriteEntity`。
+///
+/// v1 → v2 为纯增量迁移（新增表），由 `AppSchemaMigrationPlan` 声明
+/// `.lightweight` 阶段，SwiftData 自动执行。
+enum AppSchemaV2: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(2, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            SessionEntity.self,
+            MessageEntity.self,
+            AgentConfigEntity.self,
+            TaskEntity.self,
+            PluginEntity.self,
+            ActivityLogEntity.self,
+            WorkflowRunEntity.self,
+            MarketplaceFavoriteEntity.self
+        ]
+    }
+}
+
 /// 应用 schema 迁移计划。
 ///
-/// 当前为空（v1 → v1，无 stage）；未来追加 v2 时在此声明阶段：
-/// ```swift
-/// static var stages: [MigrationStage] { [
-///     .lightweight(fromVersion: AppSchemaV1.self, toVersion: AppSchemaV2.self),
-///     // 或 .custom(...) for breaking changes
-/// ] }
-/// ```
+/// v4.9.0：v1 → v2 为纯增量迁移（新增 `workflow_runs` /
+/// `marketplace_favorites` 两张表，无既有字段变更），声明 `.lightweight`
+/// 阶段由 SwiftData 自动迁移。
 enum AppSchemaMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [AppSchemaV1.self]
+        [AppSchemaV1.self, AppSchemaV2.self]
     }
 
-    static var stages: [MigrationStage] { [] }
+    static var stages: [MigrationStage] {
+        [.lightweight(fromVersion: AppSchemaV1.self, toVersion: AppSchemaV2.self)]
+    }
 }
 
 /// Session 实体 — 对应 `protocol/schemas/session-schema.json` 与 Android `SessionEntity`。
@@ -308,6 +334,143 @@ final class ActivityLogEntity {
         self.title = title
         self.descriptionText = descriptionText
         self.timestamp = timestamp
+    }
+}
+
+/// WorkflowRun 实体 — 对应 `protocol/schemas/workflow-schema.json` 中的
+/// `WorkflowRunRecord` 契约与 Android `WorkflowRunEntity`（`workflow_runs` 表）。
+///
+/// 每次 `WorkflowEngine.execute()` 生成一条记录并持久化，供用户回看执行历史。
+/// 与 `WorkflowExecutionState`（运行时内存快照）不同，本实体是落库的历史实体。
+/// 双端字段一致以保证历史数据格式统一。
+///
+/// 状态枚举（`status`）：`RUNNING` / `COMPLETED` / `FAILED` / `CANCELLED`。
+/// `failedNodeIdsJson` / `logsJson` 以 JSON 字符串序列化数组，避免引入额外
+/// TypeConverter（与 Android 端 `failedNodeIdsJson` / `logsJson` 字段对齐）。
+@Model
+final class WorkflowRunEntity {
+    /// 执行记录唯一标识（UUID）
+    @Attribute(.unique) var id: String
+    /// 关联的工作流 ID（工作流定义本身可能被删除，此字段用于历史归属）
+    var workflowId: String
+    /// 工作流名称快照（冗余存储，防止工作流被删后历史无意义）
+    var workflowName: String
+    /// 执行输入文本
+    var input: String = ""
+    /// 执行最终输出（OUTPUT 节点的输出，失败时可能为空）
+    var output: String = ""
+    /// 执行开始时间戳（Unix 毫秒）
+    var startedAt: Int64
+    /// 执行结束时间戳（Unix 毫秒，执行中为 nil）
+    var completedAt: Int64? = nil
+    /// 执行状态（RUNNING / COMPLETED / FAILED / CANCELLED）
+    var status: String
+    /// 失败节点 ID 列表的 JSON 字符串（正常完成时为 "[]"）
+    var failedNodeIdsJson: String = "[]"
+    /// 错误信息（status=FAILED 时设置）
+    var error: String? = nil
+    /// 执行日志快照的 JSON 字符串（按时间顺序的字符串列表）
+    var logsJson: String = "[]"
+
+    /// 创建工作流执行记录实体
+    /// - Parameters:
+    ///   - id: 执行记录唯一 ID
+    ///   - workflowId: 关联的工作流 ID
+    ///   - workflowName: 工作流名称快照
+    ///   - input: 执行输入文本
+    ///   - startedAt: 开始时间戳（毫秒）
+    ///   - status: 初始状态（通常为 "RUNNING"）
+    init(
+        id: String,
+        workflowId: String,
+        workflowName: String,
+        input: String = "",
+        output: String = "",
+        startedAt: Int64,
+        completedAt: Int64? = nil,
+        status: String,
+        failedNodeIdsJson: String = "[]",
+        error: String? = nil,
+        logsJson: String = "[]"
+    ) {
+        self.id = id
+        self.workflowId = workflowId
+        self.workflowName = workflowName
+        self.input = input
+        self.output = output
+        self.startedAt = startedAt
+        self.completedAt = completedAt
+        self.status = status
+        self.failedNodeIdsJson = failedNodeIdsJson
+        self.error = error
+        self.logsJson = logsJson
+    }
+}
+
+/// MarketplaceFavorite 实体 — 对应 Android `MarketplaceFavoriteEntity`
+/// （`marketplace_favorites` 表）。
+///
+/// 存储 `MarketplaceAgent` 的快照，便于从收藏列表直接安装，无需再次请求
+/// Marketplace API。`agentId` 为主键（唯一），重复收藏覆盖旧记录以刷新元数据。
+///
+/// 字段映射说明（iOS `MarketplaceAgent` 与 Android `MarketplaceAgent` 差异）：
+/// - `type`：Android 存 `agent.type.name`（AgentType 枚举名）。iOS
+///   `MarketplaceAgent` 无 AgentType 字段，改存 `agent.category`（市场分类），
+///   作为同等的分类信息来源（详见 `DataController.toggleMarketplaceFavorite`）。
+/// - `tagsJson`：Android 存 `agent.tags`。iOS `MarketplaceAgent` 无 tags，
+///   改存 `agent.capabilities` 的 JSON（最接近的"标签/能力"概念）。
+///
+/// `descriptionText` 复用 `PluginEntity` 模式：SwiftData `@Model` 不能用
+/// `description` 作属性名（与合成的 `CustomStringConvertible.description` 冲突），
+/// 通过 `@Attribute(originalName: "description")` 保留 DB 列名为 "description"，
+/// 与 Android 列名对齐。
+@Model
+final class MarketplaceFavoriteEntity {
+    /// Agent 唯一标识（主键）
+    @Attribute(.unique) var agentId: String
+    /// Agent 显示名称
+    var name: String
+    /// Agent 描述（列名保持 "description" 以与 Android 对齐）
+    @Attribute(originalName: "description") var descriptionText: String
+    /// 分类信息（iOS 存 `MarketplaceAgent.category`）
+    var type: String
+    /// 服务器地址
+    var serverUrl: String
+    /// 作者
+    var author: String
+    /// 能力标签的 JSON 字符串（iOS 存 `MarketplaceAgent.capabilities` 序列化）
+    var tagsJson: String = "[]"
+    /// 收藏时间戳（Unix 毫秒）
+    var addedAt: Int64
+
+    /// 创建收藏实体
+    /// - Parameters:
+    ///   - agentId: Agent 唯一 ID
+    ///   - name: Agent 名称
+    ///   - descriptionText: Agent 描述
+    ///   - type: 分类信息
+    ///   - serverUrl: 服务器地址
+    ///   - author: 作者
+    ///   - tagsJson: 能力标签 JSON
+    ///   - addedAt: 收藏时间戳（毫秒）
+    init(
+        agentId: String,
+        name: String,
+        descriptionText: String = "",
+        type: String,
+        serverUrl: String,
+        author: String,
+        tagsJson: String = "[]",
+        addedAt: Int64
+    ) {
+        self.agentId = agentId
+        self.name = name
+        self.descriptionText = descriptionText
+        self.type = type
+        self.serverUrl = serverUrl
+        self.author = author
+        self.tagsJson = tagsJson
+        self.addedAt = addedAt
     }
 }
 

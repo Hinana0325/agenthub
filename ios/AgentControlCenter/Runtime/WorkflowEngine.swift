@@ -99,11 +99,27 @@ final class WorkflowEngine {
         // 重置执行状态
         executionState = WorkflowExecutionState(isRunning: true)
 
+        // v4.9.0: 创建执行历史记录（RUNNING 状态），执行完成后更新为
+        // COMPLETED/FAILED/CANCELLED。对齐 Android WorkflowEngine.execute()
+        // 在入口 insert WorkflowRunEntity(status=RUNNING) 的行为。
+        let runId = UUID().uuidString
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let runEntity = WorkflowRunEntity(
+            id: runId,
+            workflowId: workflow.id,
+            workflowName: workflow.name,
+            input: input,
+            startedAt: now,
+            status: "RUNNING"
+        )
+        await dataController.saveWorkflowRun(runEntity)
+
         // 项1：FeatureFlag gate（对齐 Android WorkflowEngine.execute() 开头检查
         // !isEnabled(WORKFLOW_ENGINE)）。开关关闭时直接返回错误，不进入节点执行。
         if !featureFlagManager.isEnabled(.workflowEngine) {
             executionState.isRunning = false
             executionState.error = "工作流引擎已被禁用（请在设置 → 实验性功能中开启）"
+            await persistRunEnd(runId: runId, status: "FAILED", error: "工作流引擎已被禁用")
             return "Error: 工作流引擎已被禁用"
         }
 
@@ -114,6 +130,7 @@ final class WorkflowEngine {
             executionState.isRunning = false
             executionState.error = "工作流缺少 INPUT 节点"
             log("Error: 工作流缺少 INPUT 节点")
+            await persistRunEnd(runId: runId, status: "FAILED", error: "工作流缺少 INPUT 节点")
             return "Error: 工作流缺少 INPUT 节点"
         }
 
@@ -122,6 +139,7 @@ final class WorkflowEngine {
             executionState.isRunning = false
             executionState.error = "工作流包含循环依赖"
             log("Error: 工作流包含循环依赖")
+            await persistRunEnd(runId: runId, status: "FAILED", error: "工作流包含循环依赖")
             return "Error: 工作流包含循环依赖"
         }
 
@@ -133,6 +151,19 @@ final class WorkflowEngine {
 
         // 按拓扑顺序执行节点
         for node in sortedNodes {
+            // v4.9.0: 检测 Task 取消。iOS execute() 为非 throwing（保持向后兼容，
+            // 不破坏既有 `func execute(...) async -> String` 签名与调用方），无法
+            // 像 Android 那样 catch CancellationException 后 rethrow，故改用
+            // Task.isCancelled 检测并在取消时更新历史为 CANCELLED 后返回。
+            if Task.isCancelled {
+                executionState.isRunning = false
+                executionState.currentNodeId = nil
+                executionState.error = "Cancelled"
+                log("Error: 工作流已取消")
+                await persistRunEnd(runId: runId, status: "CANCELLED", error: "Cancelled")
+                return "Error: 工作流已取消"
+            }
+
             executionState.currentNodeId = node.id
             let nodeLabel = node.label.isEmpty ? node.id : node.label
             log("[\(node.type.rawValue)] \(nodeLabel): 开始执行")
@@ -208,12 +239,35 @@ final class WorkflowEngine {
         log("工作流执行完成")
 
         // 优先返回 OUTPUT 节点的结果
+        let finalOutput: String
         if let outputNode = workflow.nodes.first(where: { $0.type == .output }),
            let output = nodeOutputs[outputNode.id] {
-            return output
+            finalOutput = output
+        } else {
+            // 没有 OUTPUT 节点时，返回最后一个节点的输出
+            finalOutput = sortedNodes.last.flatMap { nodeOutputs[$0.id] } ?? ""
         }
-        // 没有 OUTPUT 节点时，返回最后一个节点的输出
-        return sortedNodes.last.flatMap { nodeOutputs[$0.id] } ?? ""
+
+        // v4.9.0: 更新历史记录为 COMPLETED。
+        await persistRunEnd(
+            runId: runId,
+            status: "COMPLETED",
+            output: finalOutput,
+            failedNodeIds: executionState.failedNodeIds
+        )
+        return finalOutput
+    }
+
+    /// 获取工作流执行历史（按时间倒序）。
+    ///
+    /// 供 UI 展示历史列表。对齐 Android `WorkflowEngine.getHistoryFlow(workflowId, limit)`：
+    /// `workflowId` 为 nil 时取全部（limit 默认 50），非 nil 时按工作流过滤。
+    /// - Parameters:
+    ///   - workflowId: 工作流 ID（nil 表示全部）
+    ///   - limit: 最多返回条数（默认 50）
+    /// - Returns: 执行历史记录列表（已按 startedAt DESC 排序）
+    func fetchHistory(workflowId: String?, limit: Int = 50) async -> [WorkflowRunEntity] {
+        await dataController.fetchRecentWorkflowRuns(workflowId: workflowId, limit: limit)
     }
 
     /// 重置执行状态
@@ -505,6 +559,56 @@ final class WorkflowEngine {
     /// - Parameter message: 日志消息
     private func log(_ message: String) {
         executionState.logs.append(message)
+    }
+
+    // MARK: - Run History Persistence (v4.9.0)
+
+    /// 将 `[String]` 序列化为 JSON 字符串，失败时回退为 "[]"。
+    ///
+    /// 对齐 Android `gson.toJson(stepLog)` / `gson.toJson(emptyList<String>())`，
+    /// 用于 `logsJson` 与 `failedNodeIdsJson` 字段持久化。
+    private func encodeStringArray(_ array: [String]) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: array),
+              let str = String(data: data, encoding: .utf8) else {
+            return "[]"
+        }
+        return str
+    }
+
+    /// 更新执行记录的终态（COMPLETED/FAILED/CANCELLED）。
+    ///
+    /// 封装 `DataController.updateWorkflowRunStatus(...)` 调用：
+    /// - `logs` 默认取当前 `executionState.logs` 快照
+    /// - `failedNodeIds` 序列化为 JSON 写入 `failedNodeIdsJson`
+    /// - `completedAt` 取当前毫秒时间戳
+    ///
+    /// - Parameters:
+    ///   - runId: 执行记录 ID
+    ///   - status: 终态（COMPLETED / FAILED / CANCELLED）
+    ///   - output: 最终输出（COMPLETED 时填充，FAILED/CANCELLED 时为空）
+    ///   - error: 错误信息（FAILED/CANCELLED 时设置）
+    ///   - logs: 执行日志快照（nil 时取当前 executionState.logs）
+    ///   - failedNodeIds: 失败节点 ID 集合（默认空集）
+    private func persistRunEnd(
+        runId: String,
+        status: String,
+        output: String = "",
+        error: String? = nil,
+        logs: [String]? = nil,
+        failedNodeIds: Set<String> = []
+    ) async {
+        let logsJson = encodeStringArray(logs ?? executionState.logs)
+        let failedNodeIdsJson = encodeStringArray(Array(failedNodeIds))
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        await dataController.updateWorkflowRunStatus(
+            id: runId,
+            status: status,
+            completedAt: now,
+            output: output,
+            error: error,
+            logsJson: logsJson,
+            failedNodeIdsJson: failedNodeIdsJson
+        )
     }
 
     // MARK: - Default Config

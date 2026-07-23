@@ -19,16 +19,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.marketplace.MarketplaceClient
+import com.agentcontrolcenter.app.data.marketplace.MarketplaceFavoriteRepository
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.agent.model.AgentTypeUi
 import com.agentcontrolcenter.app.data.model.MarketplaceAgent
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.theme.AppCard
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
+import dagger.hilt.android.EntryPointAccessors
 import java.text.NumberFormat
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@dagger.hilt.EntryPoint
+@kotlin.Suppress("unused")
+interface MarketplaceFavoriteEntryPoint {
+    fun favoriteRepository(): MarketplaceFavoriteRepository
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +57,19 @@ fun AgentMarketScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val marketClient = remember { MarketplaceClient() }
+
+    // v4.9.0: 收藏状态由 MarketplaceFavoriteRepository（Hilt @Singleton）驱动。
+    // 通过 EntryPoint 注入，避免破坏屏幕现有签名。
+    val entryPoint = remember {
+        EntryPointAccessors.fromApplication<MarketplaceFavoriteEntryPoint>(
+            context.applicationContext
+        )
+    }
+    val favoriteRepository = remember { entryPoint.favoriteRepository() }
+    val scope = rememberCoroutineScope()
+    val favoriteIds by favoriteRepository.favoriteIdsFlow()
+        .collectAsStateWithLifecycle(initialValue = emptySet())
+    var favoritesOnly by remember { mutableStateOf(false) }
 
     // Load agents from live OpenClaw + ClawHub APIs
     LaunchedEffect(Unit) {
@@ -86,14 +109,15 @@ fun AgentMarketScreen(
         agents.flatMap { it.tags }.distinct().sorted()
     }
 
-    val filteredAgents = remember(agents, searchQuery, selectedTag) {
+    val filteredAgents = remember(agents, searchQuery, selectedTag, favoritesOnly, favoriteIds) {
         agents.filter { agent ->
             val matchesSearch = searchQuery.isBlank() ||
                 agent.name.contains(searchQuery, ignoreCase = true) ||
                 agent.description.contains(searchQuery, ignoreCase = true) ||
                 agent.author.contains(searchQuery, ignoreCase = true)
             val matchesTag = selectedTag == null || agent.tags.contains(selectedTag)
-            matchesSearch && matchesTag
+            val matchesFavorite = !favoritesOnly || favoriteIds.contains(agent.id)
+            matchesSearch && matchesTag && matchesFavorite
         }
     }
 
@@ -155,6 +179,21 @@ fun AgentMarketScreen(
                             label = { Text(tag) }
                         )
                     }
+                    // v4.9.0: 收藏筛选 chip — 仅展示已收藏 Agent
+                    FilterChip(
+                        selected = favoritesOnly,
+                        onClick = { favoritesOnly = !favoritesOnly },
+                        label = {
+                            Text(stringResource(R.string.marketplace_favorites))
+                        },
+                        leadingIcon = {
+                            Icon(
+                                if (favoritesOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
             }
@@ -210,14 +249,17 @@ fun AgentMarketScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            Icons.Default.Storefront,
+                            if (favoritesOnly) Icons.Default.BookmarkBorder else Icons.Default.Storefront,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            stringResource(R.string.marketplace_no_results),
+                            stringResource(
+                                if (favoritesOnly) R.string.marketplace_no_favorites
+                                else R.string.marketplace_no_results
+                            ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
@@ -233,9 +275,13 @@ fun AgentMarketScreen(
                         MarketplaceAgentCard(
                             agent = agent,
                             isInstalled = installedIds.contains(agent.id),
+                            isFavorite = favoriteIds.contains(agent.id),
                             onInstall = {
                                 installedIds = installedIds + agent.id
                                 onInstall(agent)
+                            },
+                            onToggleFavorite = {
+                                scope.launch { favoriteRepository.toggle(agent) }
                             }
                         )
                     }
@@ -249,7 +295,9 @@ fun AgentMarketScreen(
 private fun MarketplaceAgentCard(
     agent: MarketplaceAgent,
     isInstalled: Boolean,
-    onInstall: () -> Unit
+    isFavorite: Boolean,
+    onInstall: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
@@ -294,6 +342,18 @@ private fun MarketplaceAgentCard(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                }
+                // v4.9.0: 收藏书签图标
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = stringResource(
+                            if (isFavorite) R.string.marketplace_unfavorite
+                            else R.string.marketplace_favorite
+                        ),
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 // Install button

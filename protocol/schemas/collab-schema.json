@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentcontrolcenter.dev/protocol/schemas/collab-schema.json",
+  "title": "Agent Control Center Collaboration Schema",
+  "description": "协作会话协议契约（DRAFT）。定义跨设备协作的信令帧格式。v4.9.0 仅定义契约草案，真实信令传输层推迟到 v5.2.0 实现（见 docs/product-strategy.md 主线 B）。双端实现须遵循此契约以保证信令格式一致。",
+  "type": "object",
+  "definitions": {
+    "ParticipantRole": {
+      "title": "ParticipantRole",
+      "description": "参与者角色枚举。HOST=会话创建者（拥有移除参与者权限），MEMBER=普通参与者。",
+      "type": "string",
+      "enum": ["HOST", "MEMBER"]
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "协作会话参与者。",
+      "type": "object",
+      "required": ["id", "displayName", "role"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "参与者唯一标识（userId）"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "参与者显示名称"
+        },
+        "role": { "$ref": "#/definitions/ParticipantRole" },
+        "joinedAt": {
+          "type": "integer",
+          "description": "加入时间戳（Unix 毫秒）",
+          "format": "int64"
+        }
+      }
+    },
+    "CollabSession": {
+      "title": "CollabSession",
+      "description": "协作会话。Host 创建会话后生成邀请码，其他参与者凭邀请码加入。",
+      "type": "object",
+      "required": ["id", "hostId", "participants"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "会话唯一标识（UUID）"
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "邀请码（6 位字母数字）。Host 分享给其他参与者用于加入会话",
+          "default": ""
+        },
+        "hostId": {
+          "type": "string",
+          "description": "会话创建者 userId"
+        },
+        "participants": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Participant" },
+          "description": "参与者列表"
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "会话创建时间戳（Unix 毫秒）",
+          "format": "int64"
+        }
+      }
+    },
+    "SignalType": {
+      "title": "SignalType",
+      "description": "信令帧类型枚举。SESSION_CREATED=会话创建广播，JOIN=加入请求，LEAVE=离开通知，PARTICIPANT_JOINED=参与者加入广播，PARTICIPANT_LEFT=参与者离开广播，MESSAGE_BROADCAST=消息广播。",
+      "type": "string",
+      "enum": ["SESSION_CREATED", "JOIN", "LEAVE", "PARTICIPANT_JOINED", "PARTICIPANT_LEFT", "MESSAGE_BROADCAST"]
+    },
+    "SignalFrame": {
+      "title": "SignalFrame",
+      "description": "协作信令帧。通过 WebSocket 传输，用于跨设备会话状态同步。",
+      "type": "object",
+      "required": ["type", "sessionId"],
+      "properties": {
+        "type": { "$ref": "#/definitions/SignalType" },
+        "sessionId": {
+          "type": "string",
+          "description": "目标会话 ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "发送者 userId"
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "邀请码（仅 JOIN 帧使用）",
+          "default": ""
+        },
+        "message": {
+          "type": "string",
+          "description": "广播消息内容（仅 MESSAGE_BROADCAST 帧使用）",
+          "default": ""
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "信令发送时间戳（Unix 毫秒）",
+          "format": "int64"
+        }
+      }
+    }
+  },
+  "notes": {
+    "draft_status": "本 schema 为 DRAFT，v4.9.0 仅定义契约，不实现传输层。真实信令服务推迟到 v5.2.0。",
+    "mvp_scope": "v4.9.0 仅实现本地会话状态管理（createSession/joinSession/leaveSession 本地持久化），不跨设备同步。真实 WebSocket 信令在 v5.2.0 实现。",
+    "signaling_transport": "信令帧通过 WebSocket 传输，帧格式为 JSON。与 websocket-protocol.md 定义的 Agent 通信帧不同，协作信令使用独立的 ws 路径（待 v5.2.0 定义）。",
+    "platform_consistency": "Android (Kotlin) 与 iOS (Swift) 实现须遵循相同的信令帧格式。本地 MVP 阶段双端 Participant/CollabSession 数据模型须对齐此 schema。"
+  }
+}

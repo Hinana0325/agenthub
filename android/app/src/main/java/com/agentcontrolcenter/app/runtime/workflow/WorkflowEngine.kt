@@ -3,10 +3,13 @@ package com.agentcontrolcenter.app.runtime.workflow
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.core.database.dao.AgentConfigDao
+import com.agentcontrolcenter.app.core.database.dao.WorkflowRunDao
 import com.agentcontrolcenter.app.core.database.entity.AgentConfigEntity
+import com.agentcontrolcenter.app.core.database.entity.WorkflowRunEntity
 import com.agentcontrolcenter.app.core.featureflag.FeatureFlagManager
 import com.agentcontrolcenter.app.transport.TransportFactory
 import com.agentcontrolcenter.app.transport.protocol.AgentEvent
+import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,11 +106,22 @@ data class WorkflowExecutionState(
 class WorkflowEngine @Inject constructor(
     private val transportFactory: TransportFactory,
     private val agentConfigDao: AgentConfigDao,
-    private val featureFlagManager: FeatureFlagManager
+    private val featureFlagManager: FeatureFlagManager,
+    private val workflowRunDao: WorkflowRunDao
 ) {
 
     private val _executionState = MutableStateFlow(WorkflowExecutionState())
     val executionState: StateFlow<WorkflowExecutionState> = _executionState.asStateFlow()
+
+    private val gson = Gson()
+
+    /**
+     * 获取工作流执行历史（按时间倒序，Flow 订阅）。
+     * 供 UI 展示历史列表。
+     */
+    fun getHistoryFlow(workflowId: String? = null, limit: Int = 50) =
+        if (workflowId != null) workflowRunDao.getRunsForWorkflowFlow(workflowId)
+        else workflowRunDao.getRecentRunsFlow(limit)
 
     /**
      * 执行工作流
@@ -121,6 +135,24 @@ class WorkflowEngine @Inject constructor(
         input: String
     ): String = withContext(Dispatchers.IO) {
         _executionState.value = WorkflowExecutionState(isRunning = true)
+
+        // v4.9.0: 创建执行历史记录（RUNNING 状态），执行完成后更新为 COMPLETED/FAILED。
+        val runId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        workflowRunDao.insert(
+            WorkflowRunEntity(
+                id = runId,
+                workflowId = workflow.id,
+                workflowName = workflow.name,
+                input = input,
+                startedAt = now,
+                completedAt = null,
+                status = "RUNNING",
+                failedNodeIdsJson = "[]",
+                error = null,
+                logsJson = "[]"
+            )
+        )
 
         try {
             // 痛点6 修复：工作流引擎受 WORKFLOW_ENGINE FeatureFlag 控制。
@@ -212,12 +244,35 @@ class WorkflowEngine @Inject constructor(
                 logs = stepLog
             )
 
+            // v4.9.0: 更新历史记录为 COMPLETED。
+            workflowRunDao.updateStatus(
+                id = runId,
+                status = "COMPLETED",
+                completedAt = System.currentTimeMillis(),
+                output = finalOutput,
+                error = null,
+                logsJson = gson.toJson(stepLog),
+                failedNodeIdsJson = gson.toJson(emptyList<String>())
+            )
+
             finalOutput
         } catch (e: CancellationException) {
             // 协程取消必须传播，绝不能被下面 catch (e: Exception) 吞掉，
             // 否则 execute 会把取消当成业务错误返回 "Error: ..." 字符串，
             // 破坏结构化并发（调用方永远等不到真正的取消信号）。
             _executionState.value = _executionState.value.copy(isRunning = false)
+            // v4.9.0: 更新历史记录为 CANCELLED。
+            runCatching {
+                workflowRunDao.updateStatus(
+                    id = runId,
+                    status = "CANCELLED",
+                    completedAt = System.currentTimeMillis(),
+                    output = "",
+                    error = "Cancelled",
+                    logsJson = gson.toJson(_executionState.value.logs),
+                    failedNodeIdsJson = gson.toJson(emptyList<String>())
+                )
+            }
             throw e
         } catch (e: Exception) {
             _executionState.value = _executionState.value.copy(
@@ -225,6 +280,18 @@ class WorkflowEngine @Inject constructor(
                 error = e.message,
                 logs = _executionState.value.logs + "Error: ${e.message}"
             )
+            // v4.9.0: 更新历史记录为 FAILED。
+            runCatching {
+                workflowRunDao.updateStatus(
+                    id = runId,
+                    status = "FAILED",
+                    completedAt = System.currentTimeMillis(),
+                    output = "",
+                    error = e.message,
+                    logsJson = gson.toJson(_executionState.value.logs),
+                    failedNodeIdsJson = gson.toJson(emptyList<String>())
+                )
+            }
             "Error: ${e.message}"
         }
     }

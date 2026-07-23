@@ -2,7 +2,7 @@
 
 > 仓库：`Hinana0325/Agent-Control-Center`
 > 包名：`com.agentcontrolcenter.app`（Android）/ `com.agentcontrolcenter.app.ios`（iOS）
-> 当前版本：v2.1.3
+> 当前版本：v4.8.0
 
 ## 1. 总览
 

@@ -55,9 +55,12 @@ final class DataController {
             AgentConfigEntity.self,
             TaskEntity.self,
             PluginEntity.self,
-            ActivityLogEntity.self
+            ActivityLogEntity.self,
+            // v4.9.0: 新增工作流执行历史与 Marketplace 收藏实体
+            WorkflowRunEntity.self,
+            MarketplaceFavoriteEntity.self
         ])
-        // 当前为 v1，无历史 schema 需要迁移；预留 MigrationPlan 接口
+        // v2：通过 AppSchemaMigrationPlan 声明 v1 → v2 轻量级迁移（新增表）
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
             container = try ModelContainer(for: schema, migrationPlan: AppSchemaMigrationPlan.self, configurations: config)
@@ -390,6 +393,185 @@ final class DataController {
             context.delete(entity)
         }
         save()
+    }
+
+    // MARK: - WorkflowRun CRUD
+    // 对应 Android WorkflowRunDao：insert / updateStatus / getRecentRunsFlow /
+    // getRunsForWorkflowFlow。iOS 通过「先查后更/插」显式 upsert（无 OnConflict.REPLACE）。
+
+    /// 保存或更新工作流执行记录（upsert）。
+    ///
+    /// 若已存在相同 `id` 的实体，逐字段更新；否则插入新实体。
+    /// 与 Android `WorkflowRunDao.insert(onConflict = REPLACE)` 行为一致。
+    /// - Parameter run: 执行记录实体（status 通常为 "RUNNING"）
+    func saveWorkflowRun(_ run: WorkflowRunEntity) async {
+        let targetId = run.id
+        let descriptor = FetchDescriptor<WorkflowRunEntity>(
+            predicate: #Predicate { $0.id == targetId }
+        )
+        if let existing = safeFetchFirst(descriptor, context: "saveWorkflowRun.fetch") {
+            existing.workflowId = run.workflowId
+            existing.workflowName = run.workflowName
+            existing.input = run.input
+            existing.output = run.output
+            existing.startedAt = run.startedAt
+            existing.completedAt = run.completedAt
+            existing.status = run.status
+            existing.failedNodeIdsJson = run.failedNodeIdsJson
+            existing.error = run.error
+            existing.logsJson = run.logsJson
+        } else {
+            context.insert(run)
+        }
+        save()
+    }
+
+    /// 更新执行记录的终态字段（status / completedAt / output / error / logs / failedNodeIds）。
+    ///
+    /// 对应 Android `WorkflowRunDao.updateStatus(...)`：仅更新落库所需字段，
+    /// 不覆盖 input / workflowId / workflowName / startedAt。
+    /// - Parameters:
+    ///   - id: 执行记录 ID
+    ///   - status: 终态（COMPLETED / FAILED / CANCELLED）
+    ///   - completedAt: 结束时间戳（毫秒）
+    ///   - output: 最终输出
+    ///   - error: 错误信息（FAILED/CANCELLED 时设置）
+    ///   - logsJson: 执行日志 JSON
+    ///   - failedNodeIdsJson: 失败节点 ID 列表 JSON
+    func updateWorkflowRunStatus(
+        id: String,
+        status: String,
+        completedAt: Int64?,
+        output: String,
+        error: String?,
+        logsJson: String,
+        failedNodeIdsJson: String
+    ) async {
+        let targetId = id
+        let descriptor = FetchDescriptor<WorkflowRunEntity>(
+            predicate: #Predicate { $0.id == targetId }
+        )
+        guard let existing = safeFetchFirst(descriptor, context: "updateWorkflowRunStatus.fetch") else {
+            // 记录不存在（极端情况：刚 insert 即被清理），仅记录日志不报错
+            return
+        }
+        existing.status = status
+        existing.completedAt = completedAt
+        existing.output = output
+        existing.error = error
+        existing.logsJson = logsJson
+        existing.failedNodeIdsJson = failedNodeIdsJson
+        save()
+    }
+
+    /// 获取近期工作流执行记录，按 `startedAt` 降序排列。
+    ///
+    /// 与 Android `WorkflowRunDao.getRecentRunsFlow` /
+    /// `getRunsForWorkflowFlow` 对齐：`workflowId` 为 nil 时取全部（limit 默认 50），
+    /// 非 nil 时按工作流过滤。
+    /// - Parameters:
+    ///   - workflowId: 工作流 ID（nil 表示全部）
+    ///   - limit: 最多返回条数（默认 50）
+    /// - Returns: 执行记录列表（已按 startedAt DESC 排序）
+    func fetchRecentWorkflowRuns(workflowId: String?, limit: Int = 50) async -> [WorkflowRunEntity] {
+        let targetWorkflowId = workflowId
+        var descriptor: FetchDescriptor<WorkflowRunEntity>
+        if let targetWorkflowId {
+            descriptor = FetchDescriptor<WorkflowRunEntity>(
+                predicate: #Predicate { $0.workflowId == targetWorkflowId },
+                sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+            )
+        } else {
+            descriptor = FetchDescriptor<WorkflowRunEntity>(
+                sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+            )
+        }
+        descriptor.fetchLimit = limit
+        return safeFetch(descriptor, context: "fetchRecentWorkflowRuns", fallback: [])
+    }
+
+    // MARK: - MarketplaceFavorite CRUD
+    // 对应 Android MarketplaceFavoriteDao：upsert / delete / getAllFlow /
+    // getAllOnce / isFavorite / getFavoriteIdsFlow。
+
+    /// 切换指定 Agent 的收藏状态。
+    ///
+    /// 未收藏则新增（携带 `MarketplaceAgent` 快照），已收藏则移除。
+    /// 与 Android `MarketplaceFavoriteRepository.toggle(agent:)` 行为一致。
+    ///
+    /// 字段映射（iOS `MarketplaceAgent` 与 Android 差异）：
+    /// - `type` ← `agent.category`（iOS 无 AgentType，用市场分类代替）
+    /// - `tagsJson` ← `agent.capabilities` 的 JSON 序列化（iOS 无 tags 字段）
+    ///
+    /// - Parameter agent: 市场 Agent
+    /// - Returns: 切换后的收藏状态：true=已收藏，false=已取消
+    func toggleMarketplaceFavorite(agent: MarketplaceAgent) async -> Bool {
+        let targetAgentId = agent.id
+        let descriptor = FetchDescriptor<MarketplaceFavoriteEntity>(
+            predicate: #Predicate { $0.agentId == targetAgentId }
+        )
+        if let existing = safeFetchFirst(descriptor, context: "toggleMarketplaceFavorite.fetch") {
+            // 已收藏 → 移除
+            context.delete(existing)
+            save()
+            return false
+        }
+        // 未收藏 → 新增
+        let tagsJson: String
+        if let data = try? JSONSerialization.data(withJSONObject: agent.capabilities),
+           let str = String(data: data, encoding: .utf8) {
+            tagsJson = str
+        } else {
+            tagsJson = "[]"
+        }
+        let favorite = MarketplaceFavoriteEntity(
+            agentId: agent.id,
+            name: agent.name,
+            descriptionText: agent.description,
+            type: agent.category,
+            serverUrl: agent.serverUrl,
+            author: agent.author,
+            tagsJson: tagsJson,
+            addedAt: Int64(Date().timeIntervalSince1970 * 1000)
+        )
+        context.insert(favorite)
+        save()
+        return true
+    }
+
+    /// 查询所有已收藏的 Agent ID 集合。
+    ///
+    /// 供 UI 批量判断卡片书签状态。
+    /// - Returns: 已收藏 agentId 的集合
+    func fetchFavoriteIds() async -> Set<String> {
+        let descriptor = FetchDescriptor<MarketplaceFavoriteEntity>()
+        let entities = safeFetch(descriptor, context: "fetchFavoriteIds", fallback: [])
+        return Set(entities.map { $0.agentId })
+    }
+
+    /// 查询所有收藏记录，按 `addedAt` 降序排列。
+    ///
+    /// 与 Android `MarketplaceFavoriteDao.getAllOnce()` 的
+    /// `ORDER BY addedAt DESC` 行为一致，供收藏筛选视图展示完整卡片信息。
+    /// - Returns: 收藏记录列表（已排序）
+    func fetchAllFavorites() async -> [MarketplaceFavoriteEntity] {
+        let descriptor = FetchDescriptor<MarketplaceFavoriteEntity>(
+            sortBy: [SortDescriptor(\.addedAt, order: .reverse)]
+        )
+        return safeFetch(descriptor, context: "fetchAllFavorites", fallback: [])
+    }
+
+    /// 判断指定 Agent 是否已收藏。
+    ///
+    /// 与 Android `MarketplaceFavoriteDao.isFavorite(agentId:)` 对齐。
+    /// - Parameter agentId: Agent ID
+    /// - Returns: 是否已收藏
+    func isFavorite(agentId: String) async -> Bool {
+        let targetAgentId = agentId
+        let descriptor = FetchDescriptor<MarketplaceFavoriteEntity>(
+            predicate: #Predicate { $0.agentId == targetAgentId }
+        )
+        return safeFetchFirst(descriptor, context: "isFavorite.fetch") != nil
     }
 
     // MARK: - Private

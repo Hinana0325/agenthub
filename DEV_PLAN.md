@@ -24,6 +24,8 @@
 - **v2.1.1**：代码审查 Hotfix（SSE 流式、Widget、WebSocket 生命周期、ProGuard 规则等）
 - **v2.1.3**：建立 `protocol/` 统一协议层 + iOS 原生骨架（十层架构、6 功能视图、SwiftData 持久化）
 
+> 注：v2.2 → v4.7 的版本演进历史见 [`CHANGELOG.md`](CHANGELOG.md)。本文件仅记录 v4.8.0 起的 Sprint 规划。
+
 ---
 
 ## Sprint 12：iOS 对齐 + 协议验证（第 1–2 周）
@@ -64,7 +66,7 @@
 
 ---
 
-## Sprint 15：文档 + 发布 v2.2.0（第 7 周）
+## Sprint 15：文档 + 发布 v4.9.0（第 7 周）
 
 | # | 任务 | 文件 |
 |:-:|:-----|:-----|
@@ -73,18 +75,30 @@
 | 15.3 | 架构文档更新 | `docs/architecture.md` |
 | 15.4 | README 更新 | `README.md` |
 | 15.5 | CHANGELOG + 版本号 | `CHANGELOG.md` |
-| 15.6 | Release v2.2.0 | tag + CI + GitHub Release（双端） |
+| 15.6 | Release v4.9.0 | tag + CI + GitHub Release（双端） |
 
 ---
 
-## v2.3.0 — 未来版本
+## v5.0.0+ — 未来版本（编排可视化 / 端侧推理）
+
+> v5.0.0+ 的完整路线图以 [`docs/product-strategy.md`](docs/product-strategy.md) 为单一事实来源。下表为概览，详细优先级与理由以策略文档为准。
+
+### v5.0.0 — 编排可视化 + 端侧推理 MVP
 
 | 优先级 | 任务 | 说明 |
 |:------|:-----|:-----|
-| P1 | 真正的 Backdrop Blur | Android：View 快照 + RenderEffect；iOS：评估 `.ultraThinMaterial` |
-| P1 | 本地模型推理 | Android：llama.cpp / MediaPipe；iOS：MLX / llama.cpp |
-| P2 | Workflow 可视化编辑器 | 拖拽式节点编辑 + 连线 + 实时预览 |
-| P2 | Agent Marketplace 集成 | 社区 Agent 配置发现与下载 |
+| P0 | Workflow 可视化拖拽编辑器 | Canvas + 节点连线 + 实时预览（用户感知最强的差异化，分水岭特性） |
+| P1 | 端侧推理 MVP | Android：MediaPipe LLM Inference；iOS：MLX Swift（4B 量化模型） |
+| P2 | RAG Agent 类型 | 接向量库，从"聊天"走向"知识工作" |
+
+### v5.1.0+ — 生态扩展
+
+| 优先级 | 任务 | 说明 |
+|:------|:-----|:-----|
+| P1 | Workflow 并行分支 + 条件节点 | if/else 节点，编排能力完整化 |
+| P1 | MCP 工具市场 | Agent 能力扩展机制，把 MCP 从"连接框架"升级为"工具市场" |
+| P2 | 轻量团队协作 | 填平 CollaborationManager，从个人工具走向团队工具 |
+| P2 | 语音 Agent | 复用 VoiceChatScreen 骨架（本地 Whisper + 云端 TTS） |
 | P3 | iOS Widget / 快捷指令 | WidgetKit + App Intents |
 | P3 | 跨端同步 | 双端会话 / 配置同步（与 DeviceSyncManager 协同） |
 
@@ -107,10 +121,10 @@ Sprint 13（Android 功能深化）  ← 可与 Sprint 12 部分并行
 Sprint 14（双端测试 + 一致性）
   │
   ▼
-Sprint 15（文档 + 发布 v2.2.0）
+Sprint 15（文档 + 发布 v4.9.0）
   │
   ▼
-v2.3.0（独立调研，可并行）
+v5.0.0+（独立调研，可并行）
 ```
 
 ---

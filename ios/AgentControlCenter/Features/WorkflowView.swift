@@ -27,6 +27,13 @@ struct WorkflowView: View {
     /// 执行任务引用（用于取消）
     @State private var executeTask: Task<String, Never>?
 
+    /// v4.9.0: 工作流执行历史（落库记录，按时间倒序）。
+    /// 通过 `WorkflowEngine.fetchHistory(workflowId: nil)` 拉取全部工作流的历史。
+    @State private var history: [WorkflowRunEntity] = []
+
+    /// v4.9.0: 历史列表是否展开
+    @State private var showHistory: Bool = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -57,10 +64,17 @@ struct WorkflowView: View {
                 if !executionState.logs.isEmpty {
                     logSection
                 }
+
+                // MARK: 执行历史
+                historySection
             }
             .padding(16)
         }
         .navigationTitle("工作流")
+        // v4.9.0: 进入页面时加载执行历史（落库记录，按时间倒序）
+        .task {
+            await loadHistory()
+        }
         // 视图销毁时取消未完成的工作流执行任务，避免后台继续占用资源 / 触发无用 LLM 调用
         .onDisappear {
             executeTask?.cancel()
@@ -235,8 +249,145 @@ struct WorkflowView: View {
             if appState.workflowEngine.executionState.error == nil {
                 inputText = ""
             }
+            // v4.9.0: 执行完成后刷新历史列表（无论成功/失败/取消均已落库一条记录）
+            await loadHistory()
             return result
         }
+    }
+
+    // MARK: - 执行历史（v4.9.0）
+
+    /// 加载工作流执行历史（按时间倒序，最多 50 条）。
+    /// `workflowId` 传 nil 取全部工作流的历史，对齐 Android `WorkflowEngine.getHistoryFlow(null)`。
+    private func loadHistory() async {
+        history = await appState.workflowEngine.fetchHistory(workflowId: nil, limit: 50)
+    }
+
+    /// 执行历史列表段 — 可展开的近期执行记录。
+    /// 每行展示状态图标、工作流名称、相对时间与输入预览。
+    /// 无历史记录时不渲染整个段（`@ViewBuilder` 下 if 分支不命中即产出 EmptyView，
+    /// 避免空卡片占据页面空间）。
+    @ViewBuilder
+    private var historySection: some View {
+        if !history.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    withAnimation { showHistory.toggle() }
+                } label: {
+                    HStack {
+                        Label("执行历史 (\(history.count))", systemImage: "clock.arrow.circlepath")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        Image(systemName: showHistory ? "chevron.up" : "chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if showHistory {
+                    LazyVStack(spacing: 8) {
+                        // WorkflowRunEntity 是 SwiftData @Model，未自动遵循 Identifiable，
+                        // 故用 id: \.id 显式指定（实体已有 @Attribute(.unique) var id: String）。
+                        ForEach(history, id: \.id) { run in
+                            historyRow(run)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    /// 单条历史记录行
+    private func historyRow(_ run: WorkflowRunEntity) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                // 状态图标
+                Image(systemName: historyStatusIcon(run.status))
+                    .foregroundStyle(historyStatusColor(run.status))
+                    .font(.subheadline)
+
+                // 工作流名称
+                Text(run.workflowName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+
+                Spacer()
+
+                // 状态标签
+                Text(run.status)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundStyle(historyStatusColor(run.status))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(historyStatusColor(run.status).opacity(0.12), in: Capsule())
+            }
+
+            // 时间 + 输入预览
+            HStack(spacing: 8) {
+                Text(historyTimeText(run.startedAt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !run.input.isEmpty {
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text(run.input)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+
+            // 失败时展示错误信息
+            if run.status == "FAILED", let error = run.error, !error.isEmpty {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// 历史状态对应的 SF Symbol 图标
+    private func historyStatusIcon(_ status: String) -> String {
+        switch status {
+        case "COMPLETED": return "checkmark.circle.fill"
+        case "FAILED":    return "xmark.circle.fill"
+        case "CANCELLED": return "minus.circle.fill"
+        case "RUNNING":   return "circle.dashed"
+        default:          return "circle"
+        }
+    }
+
+    /// 历史状态对应的颜色
+    private func historyStatusColor(_ status: String) -> Color {
+        switch status {
+        case "COMPLETED": return .green
+        case "FAILED":    return .red
+        case "CANCELLED": return .orange
+        case "RUNNING":   return AppTheme.primaryColor
+        default:          return .secondary
+        }
+    }
+
+    /// 毫秒时间戳格式化为可读文本（日期 + 时:分）
+    private func historyTimeText(_ milliseconds: Int64) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(milliseconds) / 1000)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 
     // MARK: - DAG 可视化

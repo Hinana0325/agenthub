@@ -312,6 +312,10 @@
     <string name="marketplace_no_results">未找到 Agent</string>
     <string name="marketplace_subtitle">发现并安装社区 Agent</string>
     <string name="marketplace_loading">正在从 OpenClaw / ClawHub 拉取 Agent…</string>
+    <string name="marketplace_favorites">收藏</string>
+    <string name="marketplace_favorite">收藏</string>
+    <string name="marketplace_unfavorite">取消收藏</string>
+    <string name="marketplace_no_favorites">还没有收藏</string>
 
     <!-- 数据洞察 -->
     <string name="insights_title">数据洞察</string>

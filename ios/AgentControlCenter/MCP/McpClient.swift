@@ -68,11 +68,15 @@ final class McpClient: @unchecked Sendable {
         config.timeoutIntervalForRequest = 30   // 单次请求超时 30s
         config.timeoutIntervalForResource = 30  // 资源整体超时 30s
         config.waitsForConnectivity = false     // 不等待连通性，立即失败
-        // H16 TODO（TLS 证书钉扎 / SPKI Pinning）：当前使用默认 URLSessionConfiguration，
-        // 无 URLSessionDelegate，仅依赖系统 CA 链校验。后续应通过 URLSessionDelegate
-        // 校验 MCP Server 证书 SPKI hash 与预置 pin 列表，对齐 Android NetworkSecurityConfig。
-        // 暂缓实现：详见 protocol/transport/tls-pinning.md（待补）。
-        self.session = URLSession(configuration: config)
+        // v4.9.0 H16：注入 TLSPinningDelegate.shared 实现证书公钥锁定（SPKI Pinning）。
+        // 对公网固定 API 端点校验证书 SPKI hash 与预置 pin 列表，防御 MITM；
+        // 本地 / 自定义端点及占位 pin 期间降级为系统默认 CA 校验，不阻塞连接。
+        // 详见 TLSPinningDelegate 与 protocol/transport/tls-pinning.md。
+        self.session = URLSession(
+            configuration: config,
+            delegate: TLSPinningDelegate.shared,
+            delegateQueue: nil
+        )
     }
 
     // MARK: - 公共方法

@@ -149,8 +149,7 @@ final class CollaborationManager {
         activeCollabSession = session
         saveSessionToStore(sessionId)
 
-        // TODO: 建立与后端信令服务的 WebSocket 连接
-        // TODO: 广播 session:created 事件给其他潜在参与者
+        // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
     }
 
     /// 加入已有的协作会话。
@@ -179,9 +178,7 @@ final class CollaborationManager {
         activeCollabSession = session
         saveSessionToStore(sessionId)
 
-        // TODO: 通过 WebSocket 发送 join 请求到后端信令服务
-        // TODO: 后端返回当前参与者列表后更新 session.participants
-        // TODO: 验证邀请码 code 的有效性
+        // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
     }
 
     /// 离开当前协作会话。
@@ -190,8 +187,7 @@ final class CollaborationManager {
     func leaveSession() {
         guard let session = activeCollabSession else { return }
 
-        // TODO: 通过 WebSocket 发送 leave 通知给后端信令服务
-        // TODO: 若为 host 且会话无其他参与者，向后端请求销毁会话
+        // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
 
         removeFromStore(sessionId: session.sessionId)
         activeCollabSession = nil
@@ -208,7 +204,7 @@ final class CollaborationManager {
 
         // 权限检查：仅 host 可添加参与者
         guard session.participants.contains(where: { $0.role == .host && $0.isOnline }) else {
-            // TODO: 通过 error 回调通知 UI 层权限不足
+            // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
             return
         }
 
@@ -218,7 +214,7 @@ final class CollaborationManager {
         session.participants.append(participant)
         activeCollabSession = session
 
-        // TODO: 通过 WebSocket 广播 participant:joined 事件
+        // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
     }
 
     /// 从当前会话移除参与者。
@@ -236,8 +232,7 @@ final class CollaborationManager {
         session.participants.removeAll { $0.id == id }
         activeCollabSession = session
 
-        // TODO: 通过 WebSocket 广播 participant:left 事件
-        // TODO: 若被移除的参与者有活跃连接，后端应主动断开其 WebSocket
+        // MVP: 本地会话状态管理已实现。真实 WebSocket 信令推迟到 v5.2.0（见 docs/product-strategy.md 主线 B）
     }
 
     // MARK: - 私有方法

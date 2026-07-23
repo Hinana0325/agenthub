@@ -100,11 +100,15 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         config.timeoutIntervalForRequest = 120  // request 120s
         config.timeoutIntervalForResource = 120
         config.waitsForConnectivity = true
-        // H16 TODO（TLS 证书钉扎 / SPKI Pinning）：当前使用默认 URLSessionConfiguration，
-        // 无 URLSessionDelegate，仅依赖系统 CA 链校验，无法防御 MITM。
-        // 后续应通过 URLSessionDelegate 校验服务端证书 SPKI hash 与预置 pin 列表，
-        // 对齐 Android NetworkSecurityConfig。暂缓实现：详见 protocol/transport/tls-pinning.md（待补）。
-        self.session = URLSession(configuration: config)
+        // v4.9.0 H16：注入 TLSPinningDelegate.shared 实现证书公钥锁定（SPKI Pinning）。
+        // 对公网固定 API 端点校验证书 SPKI hash 与预置 pin 列表，防御 MITM；
+        // 本地 / 自定义端点及占位 pin 期间降级为系统默认 CA 校验，不阻塞连接。
+        // 详见 TLSPinningDelegate 与 protocol/transport/tls-pinning.md。
+        self.session = URLSession(
+            configuration: config,
+            delegate: TLSPinningDelegate.shared,
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Connect
@@ -379,12 +383,17 @@ final class OpenAIHTTPTransport: AgentTransport, @unchecked Sendable {
         // invalidateAndCancel 会使所有 in-flight task 立即 cancel，
         // bytes 的 for await 会抛 URLError(.cancelled) 退出
         session.invalidateAndCancel()
-        // 重建 session 供下次使用
+        // 重建 session 供下次使用（保持 H16 的 TLSPinningDelegate 注入，
+        // 否则 invalidateAndCancel 后重建的 session 会丢失证书锁定）
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 120
         cfg.timeoutIntervalForResource = 120
         cfg.waitsForConnectivity = true
-        session = URLSession(configuration: cfg)
+        session = URLSession(
+            configuration: cfg,
+            delegate: TLSPinningDelegate.shared,
+            delegateQueue: nil
+        )
     }
 
     // MARK: - Disconnect / Shutdown

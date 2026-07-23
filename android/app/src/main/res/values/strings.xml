@@ -331,6 +331,10 @@
     <string name="marketplace_no_results">No agents found</string>
     <string name="marketplace_subtitle">Discover and install community agents</string>
     <string name="marketplace_loading">Fetching agents from OpenClaw / ClawHub…</string>
+    <string name="marketplace_favorites">Favorites</string>
+    <string name="marketplace_favorite">Favorite</string>
+    <string name="marketplace_unfavorite">Unfavorite</string>
+    <string name="marketplace_no_favorites">No favorites yet</string>
 
     <!-- Data Insights -->
     <string name="insights_title">Insights</string>

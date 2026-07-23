@@ -23,13 +23,15 @@ protocol/
 │   ├── error-codes.json            # 错误码注册表（37 个码，10 个类别）
 │   ├── plugin-schema.json          # 插件协议（HttpCall/Broadcast/Workflow）
 │   ├── mcp-schema.json             # MCP 桥接协议（JSON-RPC 2.0）
-│   └── file-transfer-schema.json   # 文件传输协议（v1 内联 / v2 分块）
+│   ├── file-transfer-schema.json   # 文件传输协议（v1 内联 / v2 分块）
+│   └── collab-schema.json          # 协作会话信令协议（DRAFT，v4.9.0）
 │
 ├── transport/                      # 传输协议规范（人类可读）
 │   ├── http-api.md                 # HTTP REST API（OpenAI 兼容）
 │   ├── sse-protocol.md             # SSE 流式输出协议
 │   ├── websocket-protocol.md       # WebSocket 双向通信协议
-│   └── auth.md                     # 认证与令牌机制
+│   ├── auth.md                     # 认证与令牌机制
+│   └── tls-pinning.md             # TLS 证书锁定策略与 pin 列表
 │
 └── README.md                       # 本文件
 ```

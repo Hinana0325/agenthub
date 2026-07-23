@@ -34,6 +34,12 @@ struct MarketplaceView: View {
     /// 安装结果提示
     @State private var resultMessage: String?
     @State private var showingResultAlert: Bool = false
+    /// v4.9.0: 已收藏的 Agent ID 集合（驱动卡片书签状态 + 收藏筛选）。
+    /// 对齐 Android `MarketplaceFavoriteRepository.favoriteIdsFlow`。
+    @State private var favoriteIds: Set<String> = []
+    /// v4.9.0: 是否仅展示已收藏 Agent（收藏筛选开关）。
+    /// 对齐 Android `AgentMarketScreen` 的 `favoritesOnly` 状态。
+    @State private var favoritesOnly: Bool = false
 
     /// 网格列定义：两列自适应
     private let columns: [GridItem] = [
@@ -99,6 +105,8 @@ struct MarketplaceView: View {
             }
             // 同步已安装状态：扫描本地 AgentConfig
             syncInstalledState()
+            // v4.9.0: 加载收藏 ID 集合，驱动卡片书签图标状态
+            await loadFavorites()
         }
     }
 
@@ -146,6 +154,17 @@ struct MarketplaceView: View {
                         }
                     }
                 }
+                // v4.9.0: 收藏筛选 Chip — 仅展示已收藏 Agent。
+                // 对齐 Android `AgentMarketScreen` 的 `favoritesOnly` FilterChip。
+                FilterChip(
+                    title: "收藏",
+                    isSelected: favoritesOnly,
+                    systemImage: favoritesOnly ? "bookmark.fill" : "bookmark"
+                ) {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        favoritesOnly.toggle()
+                    }
+                }
             }
             .padding(.horizontal, AppTheme.Spacing.xs)
         }
@@ -169,8 +188,10 @@ struct MarketplaceView: View {
                     agent: agent,
                     isInstalled: appState.marketplaceClient.isInstalled(agent.id),
                     isInstalling: installingId == agent.id,
+                    isFavorite: favoriteIds.contains(agent.id),
                     onTap: { detailAgent = agent },
-                    onInstall: { install(agent) }
+                    onInstall: { install(agent) },
+                    onToggleFavorite: { toggleFavorite(agent) }
                 )
             }
         }
@@ -189,15 +210,18 @@ struct MarketplaceView: View {
     }
 
     /// 空状态视图
+    // v4.9.0: 区分收藏筛选空状态与普通筛选空状态。
+    // 对齐 Android `AgentMarketScreen`：favoritesOnly 时展示 BookmarkBorder 图标
+    // 与"暂无收藏"文案；否则展示 Storefront 图标与"暂无匹配"文案。
     private var emptyView: some View {
         VStack(spacing: AppTheme.Spacing.md) {
-            Image(systemName: "storefront")
+            Image(systemName: favoritesOnly ? "bookmark" : "storefront")
                 .font(.system(size: 56))
                 .foregroundStyle(.tertiary)
-            Text("暂无匹配的 Agent")
+            Text(favoritesOnly ? "暂无收藏的 Agent" : "暂无匹配的 Agent")
                 .font(.headline)
                 .foregroundStyle(.secondary)
-            Text("尝试更换关键字或切换分类")
+            Text(favoritesOnly ? "点击卡片上的书签图标即可收藏" : "尝试更换关键字或切换分类")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
@@ -214,6 +238,12 @@ struct MarketplaceView: View {
         // 分类过滤
         if selectedCategory != .all {
             result = result.filter { $0.category == selectedCategory.rawValue }
+        }
+
+        // v4.9.0: 收藏筛选 — 仅展示已收藏 Agent。
+        // 对齐 Android `AgentMarketScreen` 的 `matchesFavorite` 条件。
+        if favoritesOnly {
+            result = result.filter { favoriteIds.contains($0.id) }
         }
 
         // 搜索过滤
@@ -239,6 +269,28 @@ struct MarketplaceView: View {
         let configs = appState.dataController.fetchAgentConfigs()
         for config in configs {
             appState.marketplaceClient.markInstalled(id: config.id)
+        }
+    }
+
+    // MARK: - 收藏（v4.9.0）
+
+    /// 从持久化存储加载已收藏的 Agent ID 集合。
+    /// 对齐 Android `MarketplaceFavoriteRepository.favoriteIdsFlow` 的一次性快照读取。
+    private func loadFavorites() async {
+        favoriteIds = await appState.dataController.fetchFavoriteIds()
+    }
+
+    /// 切换指定 Agent 的收藏状态。
+    /// 收藏后立即刷新 `favoriteIds`；若当前处于收藏筛选视图，取消收藏的 Agent 会自动从列表消失。
+    /// - Parameter agent: 市场 Agent
+    private func toggleFavorite(_ agent: MarketplaceAgent) {
+        Task {
+            let nowFavorite = await appState.dataController.toggleMarketplaceFavorite(agent: agent)
+            if nowFavorite {
+                favoriteIds.insert(agent.id)
+            } else {
+                favoriteIds.remove(agent.id)
+            }
         }
     }
 
@@ -314,13 +366,19 @@ private struct MarketplaceAgentCard: View {
     let agent: MarketplaceAgent
     let isInstalled: Bool
     let isInstalling: Bool
+    // v4.9.0: 收藏状态，驱动书签图标
+    let isFavorite: Bool
     let onTap: () -> Void
     let onInstall: () -> Void
+    // v4.9.0: 切换收藏回调
+    let onToggleFavorite: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                // 顶部：图标 + 官方标识
+                // 顶部：图标 + 官方标识 + 收藏书签
+                // v4.9.0: 收藏书签图标放在右上角，对齐 Android `MarketplaceAgentCard`
+                // 的 IconButton(Bookmark/BookmarkBorder)。
                 HStack {
                     iconView
                     Spacer()
@@ -329,6 +387,14 @@ private struct MarketplaceAgentCard: View {
                             .labelStyle(.iconOnly)
                             .foregroundStyle(AppTheme.primaryColor)
                     }
+                    // v4.9.0: 收藏书签按钮
+                    Button(action: onToggleFavorite) {
+                        Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
+                            .foregroundStyle(isFavorite ? AppTheme.primaryColor : .secondary)
+                            .font(.system(size: 18, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isFavorite ? "取消收藏" : "收藏")
                 }
 
                 // 名称

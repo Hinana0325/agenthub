@@ -48,7 +48,9 @@ import java.net.URI
  * - pin 绑定的是**公钥**而非证书本身，因此证书轮换（同一密钥对）不会导致失效。
  * - 但如果服务端更换密钥对（罕见但可能），pin 会失效导致连接被拒。
  *   建议每个主机至少配置一个 primary pin 和一个 backup pin，并在更换前提前更新。
- * - 本类目前作为框架实现，[PUBLIC_API_PINS] 为空——不锁定任何主机。
+ * - [PUBLIC_API_PINS] 当前仅含占位 pin（含 "PLACEHOLDER" 标记），[hasRealPins] 返回
+ *   `false`，[buildPinner] 不会启用锁定。真实部署前需将占位 pin 替换为实际 SPKI
+ *   哈希（获取方法见 [PUBLIC_API_PINS] 上方注释及 protocol/transport/tls-pinning.md）。
  */
 object CertificatePinnerFactory {
 
@@ -63,12 +65,22 @@ object CertificatePinnerFactory {
      */
     @Suppress("MemberVisibilityCanBePrivate")
     val PUBLIC_API_PINS: Map<String, List<String>> = buildMap {
+        // ⚠️ Pin 值需通过 protocol/transport/tls-pinning.md 第 3.3 节方法获取。
+        //    以下为占位值，真实部署前必须替换（含 "PLACEHOLDER" 标记的 pin 会被
+        //    [hasRealPins] 判定为非真实 pin，[buildPinner] 在此期间不会启用锁定，
+        //    从而保证占位 pin 不会导致连接失败）。
+        //
         // OpenAI API
-        // put("api.openai.com", listOf(
-        //     "sha256/PRIMARY_PIN_BASE64=",   // primary — 当前公钥
-        //     "sha256/BACKUP_PIN_BASE64="     // backup  — 备用公钥（轮换时启用）
-        // ))
-        // Google Generative Language API（Gemini）
+        // TODO_GET_REAL_PIN: 用以下命令获取（见 protocol/transport/tls-pinning.md 第 3.3 节）：
+        //   echo | openssl s_client -connect api.openai.com:443 2>/dev/null \
+        //     | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der \
+        //     | openssl dgst -sha256 -binary | openssl enc -base64
+        // 当前为占位值，真实部署前必须替换。
+        put("api.openai.com", listOf(
+            "sha256/PLACEHOLDER_PRIMARY_PIN_REPLACE_BEFORE_PRODUCTION=",   // primary — 当前公钥
+            "sha256/PLACEHOLDER_BACKUP_PIN_REPLACE_BEFORE_PRODUCTION="     // backup  — 备用公钥（轮换时启用）
+        ))
+        // Google Generative Language API（Gemini）—— 暂未启用，需获取真实 pin 后取消注释
         // put("generativelanguage.googleapis.com", listOf(
         //     "sha256/PRIMARY_PIN_BASE64="
         // ))
@@ -84,7 +96,9 @@ object CertificatePinnerFactory {
      * @return 配置好的 [CertificatePinner]。
      */
     fun buildPinner(enabled: Boolean = false): CertificatePinner {
-        if (!enabled || PUBLIC_API_PINS.isEmpty()) {
+        // 双重保险：即便上层误传 enabled=true，只要 pin 全为占位（[hasRealPins] 为
+        // false）也返回空 pinner，确保占位 pin 绝不会导致连接失败。
+        if (!enabled || PUBLIC_API_PINS.isEmpty() || !hasRealPins()) {
             // CertificatePinner.Builder().build() 创建一个不锁定任何主机的空 pinner，
             // 跨 OkHttp 3.x/4.x/5.x 版本兼容（EMPTY 常量在部分版本中不可见）。
             return CertificatePinner.Builder().build()
@@ -95,6 +109,20 @@ object CertificatePinnerFactory {
         }
         return builder.build()
     }
+
+    /**
+     * 判断 [PUBLIC_API_PINS] 中是否存在至少一个真实（非占位）pin。
+     *
+     * 占位 pin 以 "PLACEHOLDER" 标记（见 [PUBLIC_API_PINS] 中条目），在真实部署前
+     * 必须替换为实际 SPKI 哈希。本方法用于：
+     * - 上层（如 [com.agentcontrolcenter.app.transport.TransportFactory]）动态决定
+     *   是否启用证书锁定——仅当存在真实 pin 时才开启，避免占位 pin 导致连接失败。
+     * - [buildPinner] 的二次保险，确保占位 pin 永不进入 pinner。
+     *
+     * @return `true` 表示至少存在一个不含 "PLACEHOLDER" 标记的 pin。
+     */
+    fun hasRealPins(): Boolean =
+        PUBLIC_API_PINS.values.flatten().any { !it.contains("PLACEHOLDER") }
 
     /**
      * 判断给定 URL 是否为公网 API 端点（即应考虑应用证书锁定的端点）。
