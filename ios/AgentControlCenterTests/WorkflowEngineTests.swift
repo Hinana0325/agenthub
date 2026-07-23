@@ -254,10 +254,10 @@ final class WorkflowEngineTests: XCTestCase {
 
     // MARK: - 模板完整性
 
-    /// WorkflowTemplates.allTemplates() 应返回 3 个模板
+    /// WorkflowTemplates.allTemplates() 应返回 4 个模板
     func testAllTemplatesCount() {
         let templates = WorkflowTemplates.allTemplates()
-        XCTAssertEqual(templates.count, 3)
+        XCTAssertEqual(templates.count, 4)
     }
 
     /// 每个模板都应包含至少一个 INPUT 节点
