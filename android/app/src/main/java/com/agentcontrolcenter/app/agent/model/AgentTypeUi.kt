@@ -3,7 +3,7 @@ package com.agentcontrolcenter.app.agent.model
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Cpu
+import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Memory
@@ -27,15 +27,15 @@ object AgentTypeUi {
      * 按 [AgentType] 返回代表性图标。
      *
      * - WebSocket 系（Hermes/OpenClaw/OpenCode）→ SmartToy / Code / AutoAwesome
-     * - OpenAI 兼容（OpenAI/XiaomiMiMo/LocalModel/OpenWebUI）→ Cpu / Memory / LocalFireDepartment / Public
+     * - OpenAI 兼容（OpenAI/XiaomiMiMo/LocalModel/OpenWebUI）→ Memory / DeveloperBoard / LocalFireDepartment / Public
      * - ComfyUI → Image（图像生成）
      */
     fun icon(type: AgentType): ImageVector = when (type) {
         AgentType.Hermes -> Icons.Default.SmartToy
         AgentType.OpenCode -> Icons.Default.Code
         AgentType.OpenClaw -> Icons.Default.AutoAwesome
-        AgentType.OpenAI -> Icons.Default.Cpu
-        AgentType.XiaomiMiMo -> Icons.Default.Memory
+        AgentType.OpenAI -> Icons.Default.Memory
+        AgentType.XiaomiMiMo -> Icons.Default.DeveloperBoard
         AgentType.LocalModel -> Icons.Default.LocalFireDepartment
         AgentType.ComfyUI -> Icons.Default.Image
         AgentType.OpenWebUI -> Icons.Default.Public
