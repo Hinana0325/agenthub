@@ -513,9 +513,49 @@ object WorkflowTemplates {
         )
     }
 
+    /**
+     * ComfyUI 文生图工作流 — INPUT → AGENT(ComfyUI) → OUTPUT。
+     *
+     * 用户输入提示词，ComfyUI 节点根据 serverUrl 配置自动选择文生图端点
+     * （纯文本 → 默认文生图工作流；`{` 开头 → 直接提交 JSON 工作流）。
+     */
+    fun imageGeneration(): Workflow {
+        val input = WorkflowNode(
+            id = "input",
+            type = NodeType.INPUT,
+            label = "Prompt",
+            positionX = 50f, positionY = 200f
+        )
+        val generate = WorkflowNode(
+            id = "generate",
+            type = NodeType.AGENT,
+            label = "Generate Image",
+            agentType = AgentType.ComfyUI,
+            prompt = "{input}",
+            positionX = 250f, positionY = 200f
+        )
+        val output = WorkflowNode(
+            id = "output",
+            type = NodeType.OUTPUT,
+            label = "Image Result",
+            positionX = 450f, positionY = 200f
+        )
+
+        return Workflow(
+            name = "Image Generation",
+            description = "ComfyUI 文生图",
+            nodes = listOf(input, generate, output),
+            edges = listOf(
+                WorkflowEdge(fromNodeId = "input", toNodeId = "generate"),
+                WorkflowEdge(fromNodeId = "generate", toNodeId = "output")
+            )
+        )
+    }
+
     fun allTemplates(): List<Workflow> = listOf(
         translationChain(),
         codeReview(),
-        researchAssistant()
+        researchAssistant(),
+        imageGeneration()
     )
 }

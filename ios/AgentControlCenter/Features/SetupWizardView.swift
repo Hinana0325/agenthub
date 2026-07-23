@@ -135,6 +135,24 @@ struct SetupWizardView: View {
                 }
             }
             .pickerStyle(.wheel)
+            // 切换类型时预填合理默认值（仅填充空白 / 默认字段，不覆盖用户已输入内容）
+            .onChange(of: type) { _, newType in
+                var draft = AgentConfig(
+                    name: "Default Agent",
+                    type: newType,
+                    serverUrl: serverUrl,
+                    apiKey: apiKey,
+                    model: model,
+                    systemPrompt: "",
+                    temperature: temperature,
+                    maxTokens: maxTokens
+                )
+                draft = AgentTypeUI.withDefaults(for: draft)
+                serverUrl = draft.serverUrl
+                model = draft.model
+                temperature = draft.temperature
+                maxTokens = draft.maxTokens
+            }
 
             Spacer()
         }
@@ -150,7 +168,7 @@ struct SetupWizardView: View {
                 Label("服务器地址", systemImage: "network")
                     .font(.headline)
 
-                TextField("https://api.example.com/v1", text: $serverUrl)
+                TextField(serverUrlFieldPlaceholder, text: $serverUrl)
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
@@ -189,6 +207,18 @@ struct SetupWizardView: View {
         return nil
     }
 
+    /// serverUrl 占位提示：优先使用 AgentTypeUI 的类型专属提示，为空时回退通用文案
+    private var serverUrlFieldPlaceholder: String {
+        let placeholder = AgentTypeUI.serverUrlPlaceholder(for: type)
+        return placeholder.isEmpty ? "https://api.example.com/v1" : placeholder
+    }
+
+    /// model 占位提示：优先使用 AgentTypeUI 的类型专属提示，为空时回退通用文案
+    private var modelFieldPlaceholder: String {
+        let placeholder = AgentTypeUI.modelPlaceholder(for: type)
+        return placeholder.isEmpty ? "gpt-4o / claude-3.5-sonnet / ..." : placeholder
+    }
+
     // MARK: - Step 3: apiKey + model
 
     private var stepCredentials: some View {
@@ -201,17 +231,17 @@ struct SetupWizardView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .textFieldStyle(.roundedBorder)
-                // LocalModel / ComfyUI 豁免 apiKey（与 AgentConfigValidator 对齐）
-                if type != .localModel && type != .comfyUI
+                // LocalModel / ComfyUI 豁免 apiKey（与 AgentConfigValidator / AgentTypeUI 对齐）
+                if !AgentTypeUI.apiKeyOptional(for: type)
                     && apiKey.trimmingCharacters(in: .whitespaces).isEmpty {
                     Label("LocalModel / ComfyUI 之外的类型需要 API Key", systemImage: "info.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Label("模型", systemImage: "cube")
+                Label(AgentTypeUI.modelLabel(for: type), systemImage: "cube")
                     .font(.headline)
-                TextField("gpt-4o / claude-3.5-sonnet / ...", text: $model)
+                TextField(modelFieldPlaceholder, text: $model)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .textFieldStyle(.roundedBorder)
@@ -233,9 +263,9 @@ struct SetupWizardView: View {
                 configSummaryRow("类型", type.displayName)
                 configSummaryRow("服务器", serverUrl.isEmpty ? "（未填写）" : serverUrl)
                 configSummaryRow("API Key", apiKey.isEmpty ? "（未填写）" : String(repeating: "•", count: min(apiKey.count, 12)))
-                configSummaryRow("模型", model.isEmpty ? "（未填写）" : model)
-                configSummaryRow("温度", String(format: "%.1f", temperature))
-                configSummaryRow("最大 Tokens", "\(maxTokens)")
+                configSummaryRow(AgentTypeUI.modelLabel(for: type), model.isEmpty ? "（未填写）" : model)
+                configSummaryRow(AgentTypeUI.temperatureLabel(for: type), String(format: "%.1f", temperature))
+                configSummaryRow(AgentTypeUI.maxTokensLabel(for: type), "\(maxTokens)")
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
 

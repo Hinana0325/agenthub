@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.agent.model.AgentTypeUi
 import com.agentcontrolcenter.app.agent.model.ConnectionState
 import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 
@@ -129,7 +130,7 @@ fun WizardOverlay(
         val trimmed = url.trim()
         if (trimmed.isBlank()) return ""
         // Only add ws:// prefix for WebSocket-based agents (Hermes/OpenClaw/OpenCode)
-        // HTTP-based agents (OpenAI/LocalModel/XiaomiMiMo) should keep their http(s):// URL
+        // HTTP-based agents (OpenAI/LocalModel/XiaomiMiMo/ComfyUI/OpenWebUI) keep their http(s):// URL
         if (selectedType in setOf(
                 AgentType.Hermes,
                 AgentType.OpenClaw,
@@ -248,7 +249,7 @@ fun WizardOverlay(
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
-                                                    Icons.Default.SmartToy,
+                                                    AgentTypeUi.icon(agent.type),
                                                     contentDescription = null,
                                                     modifier = Modifier.size(18.dp),
                                                     tint = if (isSelected)

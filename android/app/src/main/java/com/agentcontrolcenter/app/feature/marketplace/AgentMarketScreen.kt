@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.marketplace.MarketplaceClient
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.agent.model.AgentTypeUi
 import com.agentcontrolcenter.app.data.model.MarketplaceAgent
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.theme.AppCard
@@ -271,7 +272,7 @@ private fun MarketplaceAgentCard(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.SmartToy,
+                            AgentTypeUi.icon(agent.type),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer

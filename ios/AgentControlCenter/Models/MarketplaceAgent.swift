@@ -92,6 +92,35 @@ enum MarketplaceSamples {
 
     /// 全部分类示例
     static let agents: [MarketplaceAgent] = [
+        // MARK: 本地端点模板（置顶，对应 Android MarketplaceClient.fetchLocalTemplates）
+        MarketplaceAgent(
+            id: "local_comfyui",
+            name: "ComfyUI (Local)",
+            description: "本地 ComfyUI 文生图端点，支持原生 JSON 工作流与默认文生图工作流自动切换。",
+            author: "Local",
+            category: MarketplaceCategory.creative.rawValue,
+            iconUrl: nil,
+            downloadCount: 0,
+            rating: 0,
+            serverUrl: "http://127.0.0.1:8188",
+            capabilities: ["Image", "Local", "ComfyUI"],
+            isOfficial: false,
+            version: "1.0.0"
+        ),
+        MarketplaceAgent(
+            id: "local_openwebui",
+            name: "OpenWebUI (Local)",
+            description: "本地 OpenWebUI 对话端点，兼容 OpenAI API 格式，可接入任意本地大模型。",
+            author: "Local",
+            category: MarketplaceCategory.assistant.rawValue,
+            iconUrl: nil,
+            downloadCount: 0,
+            rating: 0,
+            serverUrl: "http://127.0.0.1:3000/api/v1",
+            capabilities: ["Chat", "Local", "OpenWebUI"],
+            isOfficial: false,
+            version: "1.0.0"
+        ),
         MarketplaceAgent(
             id: "mkt-hermes-pro",
             name: "Hermes Pro",

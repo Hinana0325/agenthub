@@ -580,6 +580,7 @@ final class WorkflowEngine {
 /// - translationChain: 翻译链（英译中）
 /// - codeReview: 代码审查
 /// - researchAssistant: 研究助手
+/// - imageGeneration: ComfyUI 文生图
 enum WorkflowTemplates {
 
     /// 翻译链：INPUT → AGENT(翻译为英文) → AGENT(翻译为中文) → OUTPUT
@@ -713,9 +714,44 @@ enum WorkflowTemplates {
         )
     }
 
+    /// ComfyUI 文生图工作流 — INPUT → AGENT(ComfyUI) → OUTPUT。
+    ///
+    /// 用户输入提示词，ComfyUI 节点根据 serverUrl 配置自动选择文生图端点
+    /// （纯文本 → 默认文生图工作流；`{` 开头 → 直接提交 JSON 工作流）。
+    static func imageGeneration() -> Workflow {
+        Workflow(
+            id: "image_generation",
+            name: "Image Generation",
+            description: "ComfyUI 文生图",
+            nodes: [
+                WorkflowNode(
+                    id: "input",
+                    type: .input,
+                    label: "Prompt"
+                ),
+                WorkflowNode(
+                    id: "generate",
+                    type: .agent,
+                    label: "Generate Image",
+                    agentType: .comfyUI,
+                    prompt: "{input}"
+                ),
+                WorkflowNode(
+                    id: "output",
+                    type: .output,
+                    label: "Image Result"
+                ),
+            ],
+            edges: [
+                WorkflowEdge(fromNodeId: "input", toNodeId: "generate"),
+                WorkflowEdge(fromNodeId: "generate", toNodeId: "output"),
+            ]
+        )
+    }
+
     /// 获取所有模板
     /// - Returns: 所有预置工作流模板
     static func allTemplates() -> [Workflow] {
-        [translationChain(), codeReview(), researchAssistant()]
+        [translationChain(), codeReview(), researchAssistant(), imageGeneration()]
     }
 }

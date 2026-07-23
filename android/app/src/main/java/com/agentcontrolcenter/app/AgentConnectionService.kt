@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
+import com.agentcontrolcenter.app.agent.model.AgentProtocol
 import com.agentcontrolcenter.app.data.notification.SmartNotificationManager
 import com.agentcontrolcenter.app.data.repository.ChatRepository
 import com.agentcontrolcenter.app.core.datastore.SettingsDataStore
@@ -148,11 +149,8 @@ class AgentConnectionService : Service() {
                 }
 
                 // E2E 密钥逻辑与 ChatViewModel.connectWith 保持一致
-                val e2eKey = if (savedConfig.type in setOf(
-                        com.agentcontrolcenter.app.agent.model.AgentType.Hermes,
-                        com.agentcontrolcenter.app.agent.model.AgentType.OpenClaw,
-                        com.agentcontrolcenter.app.agent.model.AgentType.OpenCode
-                    )) {
+                // 通过 protocolType 判断比枚举列表更稳健（未来新增 WebSocket 类型无需改这里）
+                val e2eKey = if (savedConfig.protocolType == AgentProtocol.WebSocket) {
                     val enabled = settingsDataStore.e2eEnabled.first()
                     if (enabled) settingsDataStore.e2eKey.first().takeIf { it.isNotBlank() } else null
                 } else null

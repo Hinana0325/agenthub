@@ -136,7 +136,7 @@
     <string name="notif_reply_hint">답장을 입력하세요…</string>
 
     <!-- Widget (legacy) -->
-    <string name="widget_status">연결됨 · Hermes Agent</string>
+    <string name="widget_status">연결됨 · Agent</string>
 
     <!-- E2E Encryption -->
     <string name="e2e_security">보안</string>

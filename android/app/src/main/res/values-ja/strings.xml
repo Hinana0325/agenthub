@@ -136,7 +136,7 @@
     <string name="notif_reply_hint">返信を入力…</string>
 
     <!-- Widget (legacy) -->
-    <string name="widget_status">接続済み · Hermes Agent</string>
+    <string name="widget_status">接続済み · Agent</string>
 
     <!-- E2E Encryption -->
     <string name="e2e_security">セキュリティ</string>

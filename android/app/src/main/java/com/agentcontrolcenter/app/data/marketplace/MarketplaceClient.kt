@@ -153,6 +153,7 @@ class MarketplaceClient {
 
     /**
      * Fetches from both sources concurrently and merges results.
+     * 始终在结果顶部插入本地端点模板（ComfyUI / OpenWebUI），方便用户一键连接本地服务。
      */
     suspend fun fetchAll(search: String? = null): Result<List<MarketplaceAgent>> =
         withContext(Dispatchers.IO) {
@@ -161,6 +162,8 @@ class MarketplaceClient {
                 val clawHubResult = fetchClawHubSkills(limit = 50, search = search)
 
                 val combined = mutableListOf<MarketplaceAgent>()
+                // 本地端点模板置顶，且不受搜索词过滤影响 —— 用户随时都能看到这两个本地起手模板
+                combined.addAll(fetchLocalTemplates(search))
                 openClawResult.getOrNull()?.let { combined.addAll(it) }
                 clawHubResult.getOrNull()?.let { combined.addAll(it) }
 
@@ -179,6 +182,46 @@ class MarketplaceClient {
                 Result.failure(e)
             }
         }
+
+    /**
+     * 本地端点起手模板 — ComfyUI / OpenWebUI。
+     *
+     * 这两个端点无需联网即可使用（指向 127.0.0.1），作为 marketplace 的内置推荐项，
+     * 让用户在浏览在线 Agent 之余能快速连接本地部署的图像 / 对话服务。
+     *
+     * @param search 搜索词；为空时返回全部模板，非空时按名称/描述做大小写不敏感匹配。
+     */
+    fun fetchLocalTemplates(search: String? = null): List<MarketplaceAgent> {
+        val templates = listOf(
+            MarketplaceAgent(
+                id = "local_comfyui",
+                name = "ComfyUI (Local)",
+                description = "本地 ComfyUI 文生图端点，支持原生 JSON 工作流与默认文生图工作流自动切换。",
+                type = AgentType.ComfyUI,
+                serverUrl = "http://127.0.0.1:8188",
+                author = "Local",
+                tags = listOf("Image", "Local", "ComfyUI")
+            ),
+            MarketplaceAgent(
+                id = "local_openwebui",
+                name = "OpenWebUI (Local)",
+                description = "本地 OpenWebUI 对话端点，兼容 OpenAI API 格式，可接入任意本地大模型。",
+                type = AgentType.OpenWebUI,
+                serverUrl = "http://127.0.0.1:3000/api/v1",
+                author = "Local",
+                tags = listOf("Chat", "Local", "OpenWebUI")
+            )
+        )
+        return if (search.isNullOrBlank()) {
+            templates
+        } else {
+            templates.filter {
+                it.name.contains(search, ignoreCase = true) ||
+                    it.description.contains(search, ignoreCase = true) ||
+                    it.tags.any { tag -> tag.contains(search, ignoreCase = true) }
+            }
+        }
+    }
 
     // ── Mappers ──
 

@@ -95,7 +95,7 @@
     <!-- Widget -->
     <string name="widget_description">Agent Control Center · Quick view Agent status</string>
     <string name="widget_title">🤖 Agent Control Center</string>
-    <string name="widget_status">Connected · Hermes Agent</string>
+    <string name="widget_status">Connected · Agent</string>
     <string name="widget_new_conversation">💬 New conversation</string>
 
     <!-- Error / Status -->

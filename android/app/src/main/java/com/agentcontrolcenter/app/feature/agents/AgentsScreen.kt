@@ -38,6 +38,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
+import com.agentcontrolcenter.app.agent.model.AgentTypeUi
 import com.agentcontrolcenter.app.core.config.AgentConfigValidator
 import com.agentcontrolcenter.app.ui.adaptive.WindowSize
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
@@ -272,10 +273,11 @@ private fun AgentGridCard(
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = agent.name.take(2).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        Icon(
+                            AgentTypeUi.icon(agent.type),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -490,6 +492,8 @@ private fun AgentFormDialog(
     val validationResult = remember(draft) { AgentConfigValidator.validate(draft) }
     // LocalModel 走本地进程，serverUrl / apiKey 豁免校验且 UI 隐藏对应输入框
     val isLocal = type == AgentType.LocalModel
+    // ComfyUI 本地部署通常无认证，apiKey 可选（与 AgentConfigValidator 一致）
+    val apiKeyOptional = AgentTypeUi.apiKeyOptional(type)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -512,7 +516,27 @@ private fun AgentFormDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 TypeSelector(
                     selected = type,
-                    onSelect = { type = it }
+                    onSelect = { newType ->
+                        // 切换类型时预填合理默认值（serverUrl/model/temperature/maxTokens/systemPrompt），
+                        // 仅在用户尚未填写时填充，避免覆盖已输入内容
+                        val prefilled = AgentTypeUi.withDefaults(
+                            agent.copy(
+                                type = newType,
+                                serverUrl = serverUrl,
+                                apiKey = apiKey,
+                                model = model,
+                                systemPrompt = systemPrompt,
+                                temperature = temperature.toFloatOrNull() ?: 0.7f,
+                                maxTokens = maxTokens.toIntOrNull() ?: 4096
+                            )
+                        )
+                        type = newType
+                        serverUrl = prefilled.serverUrl
+                        model = prefilled.model
+                        systemPrompt = prefilled.systemPrompt
+                        temperature = prefilled.temperature.toString()
+                        maxTokens = prefilled.maxTokens.toString()
+                    }
                 )
                 if (isLocal) {
                     // LocalModel 走本地进程（Ollama / LM Studio），无需远程端点与 API Key
@@ -528,6 +552,7 @@ private fun AgentFormDialog(
                         value = serverUrl,
                         onValueChange = { serverUrl = it },
                         label = { Text(stringResource(R.string.label_server_url)) },
+                        placeholder = { Text(AgentTypeUi.serverUrlPlaceholder(type)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -537,18 +562,28 @@ private fun AgentFormDialog(
                         }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val apiKeyLabelRes = if (apiKeyOptional) {
+                        R.string.label_api_key_optional
+                    } else {
+                        R.string.label_api_key
+                    }
                     OutlinedTextField(
                         value = apiKey,
                         onValueChange = { apiKey = it },
-                        label = { Text(stringResource(R.string.label_api_key)) },
+                        label = { Text(stringResource(apiKeyLabelRes)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         // H5: 视觉掩码，避免 apiKey 明文显示被肩窥/录屏泄漏
                         visualTransformation = PasswordVisualTransformation(),
                         isError = validationResult.errorFor("apiKey") != null,
-                        supportingText = validationResult.errorFor("apiKey")?.let { msg ->
-                            { Text(msg) }
+                        supportingText = {
+                            val err = validationResult.errorFor("apiKey")
+                            if (err != null) {
+                                Text(err)
+                            } else if (apiKeyOptional && type == AgentType.ComfyUI) {
+                                Text("ComfyUI 本地部署通常无需 API Key")
+                            }
                         }
                     )
                 }
@@ -556,7 +591,8 @@ private fun AgentFormDialog(
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
-                    label = { Text(stringResource(R.string.label_model)) },
+                    label = { Text(AgentTypeUi.modelLabel(type)) },
+                    placeholder = { Text(AgentTypeUi.modelPlaceholder(type)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = validationResult.errorFor("model") != null,
@@ -568,7 +604,7 @@ private fun AgentFormDialog(
                 OutlinedTextField(
                     value = systemPrompt,
                     onValueChange = { systemPrompt = it },
-                    label = { Text(stringResource(R.string.label_system_prompt)) },
+                    label = { Text(AgentTypeUi.systemPromptLabel(type)) },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     isError = validationResult.errorFor("systemPrompt") != null,
                     supportingText = validationResult.errorFor("systemPrompt")?.let { msg ->
@@ -579,7 +615,7 @@ private fun AgentFormDialog(
                 OutlinedTextField(
                     value = temperature,
                     onValueChange = { temperature = it },
-                    label = { Text(stringResource(R.string.label_temperature)) },
+                    label = { Text(AgentTypeUi.temperatureLabel(type)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -592,7 +628,7 @@ private fun AgentFormDialog(
                 OutlinedTextField(
                     value = maxTokens,
                     onValueChange = { maxTokens = it },
-                    label = { Text(stringResource(R.string.label_max_tokens)) },
+                    label = { Text(AgentTypeUi.maxTokensLabel(type)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

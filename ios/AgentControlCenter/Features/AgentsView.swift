@@ -374,6 +374,12 @@ private struct AgentRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // Agent 类型图标（按类型语义化展示，对应 Android AgentTypeUi.icon）
+            Image(systemName: AgentTypeUI.icon(for: agent.config?.type ?? .hermes))
+                .font(.title2)
+                .foregroundStyle(.secondary)
+                .frame(width: 28)
+
             // 在线/离线/连接中/错误 状态圆点
             Circle()
                 .fill(AppTheme.statusColors[agent.status] ?? .gray)
@@ -498,6 +504,12 @@ private struct AgentFormSheet: View {
         }
     }
 
+    /// serverUrl 占位提示：优先使用 AgentTypeUI 的类型专属提示，为空时回退通用文案
+    private var serverUrlFieldPlaceholder: String {
+        let placeholder = AgentTypeUI.serverUrlPlaceholder(for: type)
+        return placeholder.isEmpty ? "服务器地址" : placeholder
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -512,6 +524,25 @@ private struct AgentFormSheet: View {
                             Text(t.displayName).tag(t)
                         }
                     }
+                    // 切换类型时预填合理默认值（仅填充空白 / 默认字段，不覆盖用户已输入内容）
+                    .onChange(of: type) { _, newType in
+                        var draft = AgentConfig(
+                            name: name,
+                            type: newType,
+                            serverUrl: serverUrl,
+                            apiKey: apiKey,
+                            model: model,
+                            systemPrompt: systemPrompt,
+                            temperature: temperature,
+                            maxTokens: maxTokens
+                        )
+                        draft = AgentTypeUI.withDefaults(for: draft)
+                        serverUrl = draft.serverUrl
+                        model = draft.model
+                        systemPrompt = draft.systemPrompt
+                        temperature = draft.temperature
+                        maxTokens = draft.maxTokens
+                    }
                 }
 
                 // MARK: 连接配置
@@ -519,7 +550,7 @@ private struct AgentFormSheet: View {
                 // 仅保留 model 字段。LocalModel 走 LocalModelManager，无需远程地址。
                 Section("连接") {
                     if type != .localModel {
-                        TextField("服务器地址", text: $serverUrl)
+                        TextField(serverUrlFieldPlaceholder, text: $serverUrl)
                             .keyboardType(.URL)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
@@ -529,6 +560,12 @@ private struct AgentFormSheet: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                         inlineErrorView(for: AgentConfigValidator.Field.apiKey)
+                        // 本地部署类型（ComfyUI）通常无需 API Key，给出可选提示
+                        if AgentTypeUI.apiKeyOptional(for: type) {
+                            Label("本地部署通常无需 API Key", systemImage: "info.circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     } else {
                         // LocalModel 豁免提示（参考 SetupWizardView 文案风格）
                         Label("LocalModel 类型豁免服务器地址与 API Key，将走 LocalModelManager", systemImage: "info.circle")
@@ -536,23 +573,29 @@ private struct AgentFormSheet: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    TextField("模型", text: $model)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
+                    // model 字段：标签与占位提示按类型语义化（ComfyUI → Checkpoint 文件名）
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(AgentTypeUI.modelLabel(for: type))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField(AgentTypeUI.modelPlaceholder(for: type), text: $model)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
                     inlineErrorView(for: AgentConfigValidator.Field.model)
                 }
 
                 // MARK: 高级配置
                 Section("高级配置") {
                     // System Prompt 多行输入（3~8 行）
-                    TextField("System Prompt", text: $systemPrompt, axis: .vertical)
+                    TextField(AgentTypeUI.systemPromptLabel(for: type), text: $systemPrompt, axis: .vertical)
                         .lineLimit(3...8)
                     inlineErrorView(for: AgentConfigValidator.Field.systemPrompt)
 
                     // 温度滑块（0 ~ 2，步进 0.1，默认 0.7）
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("温度")
+                            Text(AgentTypeUI.temperatureLabel(for: type))
                             Spacer()
                             Text(String(format: "%.1f", temperature))
                                 .foregroundStyle(.secondary)
@@ -564,7 +607,7 @@ private struct AgentFormSheet: View {
 
                     // 最大 Tokens 步进器（256 ~ 128000，步进 256，默认 4096）
                     Stepper(
-                        "最大 Tokens: \(maxTokens)",
+                        "\(AgentTypeUI.maxTokensLabel(for: type)): \(maxTokens)",
                         value: $maxTokens,
                         in: 256...128_000,
                         step: 256

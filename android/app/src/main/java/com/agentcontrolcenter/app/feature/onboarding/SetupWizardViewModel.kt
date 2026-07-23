@@ -118,8 +118,13 @@ class SetupWizardViewModel @Inject constructor(
             AgentType.LocalModel -> AgentProtocol.Local
             AgentType.ComfyUI -> AgentProtocol.HttpSSE
         }
+        // 切换类型时预填合理默认值（serverUrl/model/temperature/maxTokens/systemPrompt），
+        // 仅在用户尚未填写时填充，避免覆盖已输入内容
+        val prefilled = com.agentcontrolcenter.app.agent.model.AgentTypeUi.withDefaults(
+            _uiState.value.draft.copy(type = type, protocolType = protocol)
+        )
         _uiState.update {
-            it.copy(draft = it.draft.copy(type = type, protocolType = protocol))
+            it.copy(draft = prefilled)
         }
         validateCurrentStep()
     }

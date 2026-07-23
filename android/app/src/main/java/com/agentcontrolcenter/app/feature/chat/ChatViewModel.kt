@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agentcontrolcenter.app.agent.model.AgentConfig
+import com.agentcontrolcenter.app.agent.model.AgentProtocol
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.agent.model.ConnectionState
 import com.agentcontrolcenter.app.data.model.Message
@@ -357,8 +358,8 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun connectWith(config: AgentConfig) {
         // E2E 仅对 WebSocket 对等传输（Hermes/OpenClaw/OpenCode）生效；
-        // 从全局设置读取开关与密钥，未启用则为 null。
-        val e2eKey = if (config.type in setOf(AgentType.Hermes, AgentType.OpenClaw, AgentType.OpenCode)) {
+        // 通过 protocolType 判断比枚举列表更稳健（未来新增 WebSocket 类型无需改这里）。
+        val e2eKey = if (config.protocolType == AgentProtocol.WebSocket) {
             val enabled = settingsDataStore.e2eEnabled.first()
             if (enabled) settingsDataStore.e2eKey.first().takeIf { it.isNotBlank() } else null
         } else null

@@ -90,7 +90,7 @@
     <!-- Widget -->
     <string name="widget_description">Agent Control Center · 快速查看 Agent 状态</string>
     <string name="widget_title">🤖 Agent Control Center</string>
-    <string name="widget_status">已连接 · Hermes Agent</string>
+    <string name="widget_status">已连接 · Agent</string>
     <string name="widget_new_conversation">💬 新对话</string>
 
     <!-- Error / Status -->

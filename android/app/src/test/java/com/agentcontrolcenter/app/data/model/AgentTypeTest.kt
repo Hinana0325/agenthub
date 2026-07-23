@@ -26,6 +26,8 @@ class AgentTypeTest {
         assertEquals(AgentType.OpenAI, AgentType.valueOf("OpenAI"))
         assertEquals(AgentType.XiaomiMiMo, AgentType.valueOf("XiaomiMiMo"))
         assertEquals(AgentType.LocalModel, AgentType.valueOf("LocalModel"))
+        assertEquals(AgentType.ComfyUI, AgentType.valueOf("ComfyUI"))
+        assertEquals(AgentType.OpenWebUI, AgentType.valueOf("OpenWebUI"))
     }
 
     @Test
@@ -46,5 +48,12 @@ class AgentTypeTest {
         assertEquals("OpenAI Compatible", AgentType.OpenAI.displayName)
         assertEquals("Xiaomi MiMo", AgentType.XiaomiMiMo.displayName)
         assertEquals("Local Model", AgentType.LocalModel.displayName)
+        assertEquals("ComfyUI", AgentType.ComfyUI.displayName)
+        assertEquals("OpenWebUI", AgentType.OpenWebUI.displayName)
+    }
+
+    @Test
+    fun `enum has exactly eight types`() {
+        assertEquals(8, AgentType.entries.size)
     }
 }
