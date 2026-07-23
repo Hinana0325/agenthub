@@ -1,0 +1,30 @@
+name: Version Sync Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - version.properties
+      - ios/project.yml
+      - android/app/build.gradle
+      - scripts/check-version-sync.sh
+      - .github/workflows/check-version.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - version.properties
+      - ios/project.yml
+      - android/app/build.gradle
+      - scripts/check-version-sync.sh
+      - .github/workflows/check-version.yml
+
+jobs:
+  version-sync:
+    name: Version Sync Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run version sync check
+        run: bash scripts/check-version-sync.sh

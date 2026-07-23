@@ -1,6 +1,6 @@
 {
   "name": "agent-control-center",
-  "version": "4.6.2",
+  "version": "4.8.0",
   "description": "Multi-Agent mobile controller for AI agents (Hermes / OpenAI-compatible / Local Models) — Android (Kotlin + Jetpack Compose)",
   "scripts": {
     "build:apk": "cd android && ./gradlew assembleDebug",

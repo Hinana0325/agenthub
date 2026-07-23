@@ -1,4 +1,4 @@
-# Agent Control Center v4.6.2
+# Agent Control Center v4.8.0
 
 **双原生多 Agent 移动端控制中心** —— Android（Kotlin + Jetpack Compose）与 iOS（Swift + SwiftUI）双原生实现，共享永久统一协议层，连接并远程操控多种 AI Agent（Hermes / OpenCode / OpenAI 兼容 / 本地模型）。
 

@@ -3,7 +3,10 @@ name: Build & Test (iOS)
 on:
   push:
     branches: [main]
-    tags: ['ios-v*']
+    # 统一使用 v* 标签方案，与 Android (build-apk.yml) 共用同一 GitHub Release。
+    # 一个 v4.8.0 标签会同时触发 Android (APK) 和 iOS (IPA) 工作流，两者都把产物
+    # 上传到同名 Release (v4.8.0)，便于用户在同一个发布页同时获取双端产物。
+    tags: ['v*']
     paths:
       - 'ios/**'
       - 'protocol/**'
@@ -135,3 +138,172 @@ jobs:
             ios/build.log
             ios/test.log
           if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Release (IPA) — 仅在 v* 标签推送时运行。
+  # 与 build-apk.yml 的 release 任务共用同一个 GitHub Release (v* tag)：
+  #   - 若 Release 已存在（通常由 Android 工作流先创建），仅当 IPA 资源不存在时上传；
+  #   - 若 Release 不存在，则在此创建并附带 IPA。
+  # 这样 APK 和 IPA 会落在同一个 Release 页面上。
+  #
+  # 已知限制（KNOWN LIMITATION）：
+  #   由于尚未配置 iOS 代码签名密钥（DEVELOPMENT_TEAM 为空，无 signing secrets），
+  #   这里使用 CODE_SIGNING_ALLOWED=NO 产出 *未签名* 的 .xcarchive，并通过
+  #   `generic/platform=iOS Simulator` 产出 *模拟器架构* 的二进制。
+  #   导出的 IPA 是模拟器二进制，无法直接安装到真机。
+  #   该任务目前仅用于：
+  #     (a) 在 CI 中验证 Release configuration 的 archive 流程能跑通；
+  #     (b) 产出 artifact 供人工排查。
+  #   要产出可被 TestFlight / 真机 sideload 的 IPA，需要后续：
+  #     1. 在 ios/project.yml 填入 DEVELOPMENT_TEAM；
+  #     2. 配置签名 secrets（证书 + Provisioning Profile）；
+  #     3. 将 destination 改为 `generic/platform=iOS`（真机），
+  #        并启用 CODE_SIGNING_ALLOWED=YES + 指定签名身份 / Profile。
+  # ──────────────────────────────────────────────────────────────────────────
+  release:
+    name: Release (iOS)
+    runs-on: macos-15
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    permissions:
+      contents: write
+    timeout-minutes: 45
+    env:
+      XCODE_VERSION: "16.4"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # 与 build 任务一致的 Xcode 选择逻辑：
+          # 优先使用 XCODE_VERSION 指定版本，缺失时降级到最新 16.x。
+          echo "Available Xcode versions:"
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          TARGET="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          if [ -d "$TARGET" ]; then
+            sudo xcode-select -s "$TARGET"
+          else
+            LATEST=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+            if [ -n "$LATEST" ]; then
+              echo "Xcode_${XCODE_VERSION} not found, falling back to $LATEST"
+              sudo xcode-select -s "$LATEST/Contents/Developer"
+            else
+              echo "::error::No suitable Xcode 16.x found on runner"
+              exit 1
+            fi
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Cache Swift Package Manager
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/.build
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Create ExportOptions.plist
+        # 最小化 ExportOptions：signingStyle=manual + method=development。
+        # 由于 archive 阶段已 CODE_SIGNING_ALLOWED=NO，导出会产出 *未签名* IPA，
+        # 仅供能 sideload 的 beta 测试者使用；真机/TestFlight 安装需要后续配置签名 secrets。
+        working-directory: ios
+        run: |
+          cat > ExportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string></string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Archive (Release, unsigned)
+        # KNOWN LIMITATION: 使用 generic/platform=iOS Simulator 产出模拟器架构 archive，
+        # 因为尚未配置 iOS 签名 secrets。导出的 IPA 为模拟器二进制，无法直接装真机。
+        # 要产出真机可装的 IPA，需配置签名 secrets 并改用 generic/platform=iOS。
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project AgentControlCenter.xcodeproj \
+            -scheme AgentControlCenter \
+            -configuration Release \
+            -destination "generic/platform=iOS Simulator" \
+            -archivePath build/AgentControlCenter.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SENTRY_DSN="" | tee archive.log | xcpretty --color
+
+      - name: Export IPA (unsigned)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/AgentControlCenter.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ipa
+          path: ios/build/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Create or update GitHub Release
+        # 幂等逻辑与 build-apk.yml 的 release 任务一致：
+        #   - Release 已存在 → 仅当 IPA 资源不存在时上传；
+        #   - Release 不存在 → 创建并附带 IPA。
+        # APK 与 IPA 会落在同一 Release (v* tag) 下。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ios
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "Publishing iOS release ${VERSION}..."
+          IPA=$(find build/ipa -name "*.ipa" 2>/dev/null | head -1)
+          if [ -z "$IPA" ]; then
+            echo "No IPA found in build/ipa!"
+            find build/ipa -type f 2>/dev/null
+            exit 1
+          fi
+          echo "Found IPA: $IPA"
+          IPA_NAME=$(basename "${IPA}")
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            echo "Release ${VERSION} already exists."
+            if gh release view "${VERSION}" --json assets -q ".assets[].name" 2>/dev/null | grep -qx "${IPA_NAME}"; then
+              echo "Asset ${IPA_NAME} already exists on release ${VERSION}, skipping upload."
+            else
+              echo "Uploading ${IPA_NAME} to existing release ${VERSION}..."
+              gh release upload "${VERSION}" "${IPA}"
+            fi
+          else
+            # Android 工作流可能先创建了 Release；若没有，则在此创建。
+            gh release create "${VERSION}" \
+              --title "Agent Control Center ${VERSION}" \
+              --notes "For release notes see [CHANGELOG](https://github.com/Hinana0325/Agent-Control-Center/blob/main/CHANGELOG.md)" \
+              "${IPA}"
+          fi
