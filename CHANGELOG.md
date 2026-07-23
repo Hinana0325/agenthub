@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.0] - 2026-07-23
+
+### Added — ComfyUI / OpenWebUI 双新 Agent 类型接入与功能融合
+
+承接 v4.7.1 的双新 Agent 类型（Transport 路由 + AgentType 枚举 + ComfyUITransport/OpenWebUITransport 实现），本次完成 UI 层融合、模板市场、工作流模板与代码清理，让两种新类型在端到端流程中真正可用。
+
+#### ComfyUI / OpenWebUI 适配（传输层）
+
+- **Transport 路由**：`TransportFactory` 按 `AgentType` 创建 `ComfyUITransport` / `OpenWebUITransport`，与既有 WebSocket/OpenAI 兼容传输并列。
+- **ComfyUI 双模式自动切换**：纯文本 prompt → 默认文生图工作流（CheckpointLoader → CLIPTextEncode → KSampler → VAEDecode → SaveImage）；`{` 开头的 JSON → 直接提交原生 ComfyUI 工作流。字段语义复用：`model`→checkpoint 文件名、`temperature`→cfg scale、`maxTokens`→steps、`systemPrompt`→negative prompt。
+- **OpenWebUI 端点修复**：`/api/v1` 前缀统一处理，兼容 OpenAI API 格式接入任意本地大模型。
+- **AgentConfigValidator apiKey 豁免**：LocalModel 和 ComfyUI 本地部署通常无认证，apiKey 标记可选。
+
+#### UI 友好性（Android + iOS 双端同步）
+
+- **AgentTypeUi/AgentTypeUI 辅助**：新建集中管理按 AgentType 区分的 UI 展示信息（图标、字段标签、占位提示、默认配置预填），避免在各 UI 文件分散 `when(type)` 分支。
+- **字段标签动态化**：ComfyUI 时显示 Checkpoint / CFG Scale / Steps / Negative Prompt，其他类型显示通用标签。
+- **切换类型预填默认值**：`AgentTypeUi.withDefaults()` 仅在用户尚未填写时填充合理默认端点（ComfyUI `127.0.0.1:8188`、OpenWebUI `127.0.0.1:3000/api/v1` 等），避免覆盖已输入内容。
+- **按类型图标**：AgentCard / MarketplaceCard / ChatOverlays 卡片图标从硬编码统一改为按 AgentType（ComfyUI=Image、OpenWebUI=Public 等）。
+- **SetupWizard 联动**：首启向导切换类型时同样预填默认配置，apiKey 可选提示。
+
+#### Marketplace 模板
+
+- **本地端点模板**：`MarketplaceClient.fetchLocalTemplates()` 在 `fetchAll` 顶部置入 ComfyUI 与 OpenWebUI 本地端点模板（`127.0.0.1`），用户随时可一键连接本地部署服务，且不受搜索词过滤。
+
+#### Workflow 模板
+
+- **ComfyUI 文生图工作流**：`WorkflowTemplates.imageGeneration()` 新增 INPUT → AGENT(ComfyUI) → OUTPUT 三节点模板，加入 `allTemplates()` 列表。
+
+#### 测试与代码清理
+
+- **E2E 判断改用 protocolType**：`ChatViewModel` / `AgentConnectionService` 的 E2E 加密判断从硬编码枚举列表（`setOf(Hermes, OpenClaw, OpenCode)`）改为 `config.protocolType == AgentProtocol.WebSocket`，未来新增 WebSocket 类型无需改这里。
+- **widget_status 去硬编码**：4 个 locale（default/zh/ja/ko）的 `widget_status` 去除硬编码的 Hermes 类型名，改为通用 "Connected · Agent"。
+- **AgentTypeTest 补齐**：新增 ComfyUI/OpenWebUI `valueOf` 解析断言、displayName 断言、枚举数量测试（8 种类型）。
+
+#### Fixed
+
+- **AgentTypeUi 图标引用修复**：`Icons.Default.Cpu` 在 material-icons-extended 中不存在导致 `compileDebugKotlin` 失败；OpenAI 改用 `Memory`、XiaomiMiMo 改用 `DeveloperBoard`。
+
 ## [4.7.1] - 2026-07-22
 
 ### Hotfix — 修复 v4.7.0 发布失败
