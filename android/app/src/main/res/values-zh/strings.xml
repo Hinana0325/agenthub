@@ -482,4 +482,17 @@
 
     <!-- ChatScreen -->
     <string name="cd_retry_send">重试发送</string>
+
+    <!-- P0 IA: More Tab + MoreScreen 入口字符串（阶段 1 信息架构重组） -->
+    <string name="tab_more">更多</string>
+    <string name="more_screen_title">更多</string>
+    <string name="more_entry_settings_subtitle">主题、关于、更新</string>
+    <string name="more_entry_activity_subtitle">Agent 运行记录与事件</string>
+    <string name="more_entry_marketplace_subtitle">发现并安装社区 Agent</string>
+    <string name="more_entry_workflow_subtitle">可视化工作流编排</string>
+    <string name="more_entry_insights_subtitle">使用统计与模式</string>
+    <string name="more_entry_plugins_subtitle">管理已安装插件</string>
+    <string name="more_entry_mcp_subtitle">MCP 服务器连接</string>
+    <string name="more_entry_compare_subtitle">并排对比模型响应</string>
+    <string name="more_entry_devicesync_subtitle">在多设备间同步数据</string>
 </resources>

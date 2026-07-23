@@ -10,8 +10,8 @@ import SwiftUI
 ///   `AppTheme.statusColors[agent.status]` / `AppTheme.taskStatusColors[task.status]`。
 /// - `timeAgo` 入参仍为毫秒级时间戳（与 `Session.updatedAt`、`Task.createdAt`、
 ///   `Message.timestamp` 等数据模型保持一致，均由 `Date().timeIntervalSince1970 * 1000` 生成）。
-/// - `ThemePreference` 的 rawValue 与 `SettingsView` 中既有的 `AppThemePreference`
-///   保持一致（"light" / "dark" / "system"），共用同一个 `@AppStorage("theme")` 键。
+/// - `ThemePreference` 为全仓唯一的外观主题枚举（"light" / "dark" / "system"），
+///   `SettingsView` 与 `ContentView` 共用同一个 `@AppStorage("theme")` 键。
 enum AppTheme {
 
     // MARK: - 间距 (Spacing)
@@ -44,6 +44,31 @@ enum AppTheme {
         static let light = (color: Color.black.opacity(0.05), radius: CGFloat(4), x: CGFloat(0), y: CGFloat(2))
         static let medium = (color: Color.black.opacity(0.1), radius: CGFloat(8), x: CGFloat(0), y: CGFloat(4))
         static let heavy = (color: Color.black.opacity(0.15), radius: CGFloat(16), x: CGFloat(0), y: CGFloat(8))
+    }
+
+    // MARK: - 字体 (Typography)
+
+    /// 字体令牌：基于 SwiftUI 语义文本层级，自动响应系统 Dynamic Type。
+    ///
+    /// 所有视图应优先使用此处的语义档位（`AppTheme.Typography.body` 等），
+    /// 避免散落 `.font(.title)` 字面量或 `.font(.system(size:))` 魔法数字。
+    /// 等宽字体（`mono` / `monoCaption`）用于代码与数字展示。
+    enum Typography {
+        // 动态字体：基于 .system(.style, design:)，自动响应 Dynamic Type
+        static let largeTitle = Font.system(.largeTitle, design: .default)
+        static let title = Font.system(.title, design: .default)
+        static let title2 = Font.system(.title2, design: .default)
+        static let title3 = Font.system(.title3, design: .default)
+        static let headline = Font.system(.headline, design: .default)
+        static let body = Font.system(.body, design: .default)
+        static let callout = Font.system(.callout, design: .default)
+        static let subheadline = Font.system(.subheadline, design: .default)
+        static let footnote = Font.system(.footnote, design: .default)
+        static let caption = Font.system(.caption, design: .default)
+        static let caption2 = Font.system(.caption2, design: .default)
+        // 等宽字体（代码/数字）
+        static let mono = Font.system(.body, design: .monospaced)
+        static let monoCaption = Font.system(.caption, design: .monospaced)
     }
 
     // MARK: - 品牌色
@@ -143,11 +168,10 @@ enum AppTheme {
 
     // MARK: - 主题偏好
 
-    /// 外观主题偏好
+    /// 外观主题偏好（全仓唯一枚举）
     ///
-    /// rawValue 与 `SettingsView` 中既有的 `AppThemePreference` 完全一致
-    /// （"light" / "dark" / "system"），二者共用同一个 `@AppStorage("theme")` 键，
-    /// 保证根视图 `ContentView` 与设置页之间的主题切换互通。
+    /// rawValue（"light" / "dark" / "system"）由 `SettingsView` 与 `ContentView`
+    /// 共用同一个 `@AppStorage("theme")` 键，保证根视图与设置页之间的主题切换互通。
     /// 中文展示名通过 `displayName` 提供，避免将本地化字符串作为 rawValue。
     enum ThemePreference: String, CaseIterable {
         case light = "light"

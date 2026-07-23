@@ -64,6 +64,8 @@
 "task.empty.title" = "No Tasks";
 "task.empty.description" = "Tasks will appear here automatically";
 "task.create" = "Create Task";
+"task.create.title" = "New Task";
+"task.create.button" = "Create";
 "task.title" = "Title";
 "task.type" = "Type";
 "task.agent" = "Agent";
@@ -193,3 +195,142 @@
 "error.backup.parse" = "Failed to parse backup: %@";
 "error.restore.failed" = "Restore failed: %@";
 "error.encrypted.export" = "Encrypted export failed: %@";
+
+/* Sidebar additions (v5.0 P2 iPad adaptation + localization) */
+"tab.marketplace" = "Marketplace";
+"tab.voiceChat" = "Voice Messages";
+"tab.deviceSync" = "Device Sync";
+"tab.more" = "More";
+"sidebar.select_page" = "Select a Page";
+"sidebar.select_page.description" = "Select content to view from the sidebar";
+"sidebar.section.main" = "Main";
+"sidebar.section.tools" = "Tools";
+"sidebar.section.data" = "Data";
+"sidebar.section.system" = "System";
+
+/* Common additions (v5.0 P2) */
+"common.load_failed" = "Load Failed";
+"common.close" = "Close";
+"common.refresh" = "Refresh";
+
+/* Sessions additions (v5.0 P2) */
+"sessions.search.placeholder" = "Search Sessions";
+"sessions.search.empty.title" = "No Matching Sessions";
+"sessions.search.empty.description" = "Try a different keyword";
+"session.empty.description_alt" = "Tap + in the top right to create a new session";
+"session.pin" = "Pin";
+"session.unpin" = "Unpin";
+"session.rename" = "Rename";
+"session.rename.title" = "Rename";
+"session.rename.placeholder" = "Session Name";
+
+/* Chat additions (v5.0 P2) */
+"chat.help.title" = "Help";
+"chat.stop_generate" = "Stop Generating";
+"chat.attachment.selected" = "Image Selected";
+"chat.attachment.clear" = "Clear Selected Image";
+"chat.empty.configure.cta" = "Configure Agent";
+"chat.empty.no_agent_description" = "Please configure and enable an Agent on the \"Agents\" page to start chatting.";
+"chat.no_reply" = "(No reply)";
+"chat.reply.user" = "Reply to you";
+"chat.reply.assistant" = "Reply to assistant";
+"chat.reply.system" = "Reply to system";
+"chat.reply.tool" = "Reply to tool";
+
+/* Agents additions (v5.0 P2) */
+"agent.set_active" = "Set Active";
+"agent.empty.description_alt" = "Tap + in the top right to add a new Agent, or import a config via the menu";
+"agent.export_all" = "Export All";
+"agent.delete.confirm.title" = "Confirm Deletion";
+"agent.delete.confirm.message" = "Are you sure you want to delete \"%@\"? This action cannot be undone.";
+"agent.export.empty" = "No Agent configurations to export.";
+"agent.import.access_error" = "Unable to access the selected file.";
+"agent.import.invalid_json" = "The file is not a valid JSON array.";
+"agent.import.empty" = "No valid Agent configurations in the file.";
+"agent.import.all_failed" = "Import failed: all %d configurations could not be parsed.";
+"agent.import.partial" = "Successfully imported %d Agent configurations, %d failed to parse and were skipped.";
+"agent.import.success" = "Successfully imported %d Agent configurations.";
+"agent.import.read_error" = "Failed to read file: %@";
+"agent.type.unknown" = "Unknown";
+"agent.status.online" = "Online";
+"agent.status.offline" = "Offline";
+"agent.status.connecting" = "Connecting";
+"agent.status.error" = "Error";
+"agent.capability.chat" = "Chat";
+"agent.capability.task" = "Task";
+"agent.capability.workflow" = "Workflow";
+"agent.capability.mcp" = "MCP";
+"agent.capability.filesystem" = "Filesystem";
+"agent.capability.terminal" = "Terminal";
+"agent.capability.voice" = "Voice";
+"agent.capability.imageGen" = "Image Generation";
+"agent.capability.codeExecution" = "Code Execution";
+"agent.form.section.basic" = "Basic Info";
+"agent.form.section.connection" = "Connection";
+"agent.form.section.advanced" = "Advanced";
+"agent.form.server.placeholder" = "Server URL";
+"agent.form.local.no_apikey" = "Local deployments usually don't need an API Key";
+"agent.form.local.exempt" = "LocalModel type is exempt from server URL and API Key; uses LocalModelManager";
+"agent.form.security.note" = "The API Key will be automatically encrypted when saved.";
+"agent.form.save_failed" = "Cannot Save";
+"agent.form.validation_failed" = "Configuration validation failed";
+"agent.export.success" = "Export Successful";
+"agent.export.summary" = "Exported %d Agent configurations as a JSON file";
+"agent.export.share" = "Share File";
+"agent.export.title" = "Export Agent Configurations";
+
+/* Tasks additions (v5.0 P2) */
+"task.filter.title" = "Filter";
+"task.empty.description_alt" = "Task records executed by Agents will appear here";
+"task.filter.empty.title" = "No tasks match the current filter";
+"task.filter.empty.description" = "Try switching filters to view tasks in other states";
+"task.no_content" = "(No content)";
+"task.no_agent" = "No Agents available";
+"task.no_agent.specify" = "None";
+"task.type.chat" = "Chat";
+"task.type.code" = "Code";
+"task.type.workflow" = "Workflow";
+"task.type.toolCall" = "Tool Call";
+"task.type.fileOperation" = "File Operation";
+"task.status.pending" = "Pending";
+"task.status.running" = "Running";
+"task.status.completed" = "Completed";
+"task.status.failed" = "Failed";
+"task.status.cancelled" = "Cancelled";
+"task.create.section.content" = "Task Content";
+"task.create.section.type" = "Task Type";
+"task.create.section.agent" = "Target Agent";
+"task.input.placeholder" = "Enter task description";
+
+/* Compare additions (v5.0 P2 compact TabView) */
+"compare.tab.a" = "A";
+"compare.tab.b" = "B";
+
+/* Accessibility labels (v5.0 P2) */
+"accessibility.send_button" = "Send";
+"accessibility.stop_generate" = "Stop Generating";
+"accessibility.voice_input" = "Voice Input";
+"accessibility.voice_input_stop" = "Stop Voice Input";
+"accessibility.cancel_reply" = "Cancel Reply";
+"accessibility.clear_image" = "Clear Selected Image";
+"accessibility.more_actions" = "More Actions";
+"accessibility.add_agent" = "Add Agent";
+"accessibility.new_session" = "New Session";
+"accessibility.create_task" = "Create Task";
+"accessibility.refresh" = "Refresh";
+"accessibility.clear_search" = "Clear Search";
+"accessibility.favorite_add" = "Favorite";
+"accessibility.favorite_remove" = "Remove Favorite";
+"accessibility.add_mcp_server" = "Add MCP Server";
+"accessibility.add_plugin" = "Add Plugin";
+"accessibility.start_compare" = "Start Compare";
+"accessibility.stop_compare" = "Stop Compare";
+"accessibility.start_recording" = "Start Recording";
+"accessibility.stop_recording" = "Stop Recording";
+"accessibility.status_dot" = "Status Indicator";
+"accessibility.agent_type_icon" = "Agent Type Icon";
+"accessibility.task_type_icon" = "Task Type Icon";
+"accessibility.connection_status" = "Connection Status";
+"accessibility.clear_all" = "Clear All";
+"accessibility.connect" = "Connect";
+"accessibility.disconnect" = "Disconnect";

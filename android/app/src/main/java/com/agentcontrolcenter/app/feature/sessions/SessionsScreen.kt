@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -170,7 +172,7 @@ private fun SessionsDualPaneLayout(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = ShapeS12,
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
@@ -208,12 +210,13 @@ private fun SessionsDualPaneLayout(
                                 contentPadding = PaddingValues(vertical = 4.dp)
                             ) {
                                 items(filteredSessions, key = { it.id }) { session ->
-                                    SwipeableSessionListItem(
+                                    SwipeableSessionItem(
                                         session = session,
                                         isSelected = session.id == currentSessionId,
                                         onSelect = { HapticFeedback.light(context); chatViewModel.switchToSession(session.id) },
                                         onDelete = { HapticFeedback.medium(context); chatViewModel.deleteSession(session.id) },
-                                        onTogglePin = { HapticFeedback.light(context); chatViewModel.toggleSessionPin(session.id, !session.isPinned) }
+                                        onTogglePin = { HapticFeedback.light(context); chatViewModel.toggleSessionPin(session.id, !session.isPinned) },
+                                        compact = true
                                     )
                                 }
                             }
@@ -451,7 +454,7 @@ private fun SessionsSinglePaneLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
@@ -492,12 +495,13 @@ private fun SessionsSinglePaneLayout(
                             contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
                             items(filteredSessions, key = { it.id }) { session ->
-                                SwipeableSessionCard(
+                                SwipeableSessionItem(
                                     session = session,
                                     isSelected = session.id == currentSessionId,
                                     onSelect = { HapticFeedback.light(context); chatViewModel?.switchToSession(session.id) },
                                     onDelete = { HapticFeedback.medium(context); chatViewModel?.deleteSession(session.id) },
-                                    onTogglePin = { HapticFeedback.light(context); chatViewModel?.toggleSessionPin(session.id, !session.isPinned) }
+                                    onTogglePin = { HapticFeedback.light(context); chatViewModel?.toggleSessionPin(session.id, !session.isPinned) },
+                                    compact = false
                                 )
                             }
                         }
@@ -510,17 +514,22 @@ private fun SessionsSinglePaneLayout(
 }
 
 /**
- * Swipeable session list item for the dual-pane sidebar.
- * Left swipe = delete (red), Right swipe = toggle pin (blue).
+ * P2: 合并后的可滑动会话项，统一服务双栏侧边栏（compact）与单栏卡片两种布局。
+ *
+ * - compact = true：双栏侧边栏列表项，使用 [SessionListItem] + [ShapeS8]。
+ * - compact = false：单栏布局卡片，使用 [SessionCard] + [ShapeS12]。
+ *
+ * 左滑 = 删除（红色），右滑 = 切换置顶（蓝色）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SwipeableSessionListItem(
+private fun SwipeableSessionItem(
     session: Session,
     isSelected: Boolean,
     onSelect: () -> Unit,
     onDelete: () -> Unit,
-    onTogglePin: () -> Unit
+    onTogglePin: () -> Unit,
+    compact: Boolean
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
@@ -540,6 +549,7 @@ private fun SwipeableSessionListItem(
 
     val untitled = stringResource(R.string.untitled_session)
     val sessionContentDescription = stringResource(R.string.cd_session_item, session.title.ifEmpty { untitled }, session.messageCount)
+    val clipShape = if (compact) ShapeS8 else ShapeS12
 
     SwipeToDismissBox(
         state = dismissState,
@@ -572,7 +582,7 @@ private fun SwipeableSessionListItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(clipShape)
                     .background(color)
                     .padding(horizontal = 20.dp),
                 contentAlignment = alignment
@@ -588,102 +598,23 @@ private fun SwipeableSessionListItem(
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true
     ) {
-        SessionListItem(
-            session = session,
-            isSelected = isSelected,
-            onSelect = onSelect,
-            onDelete = onDelete,
-            onTogglePin = onTogglePin
-        )
-    }
-}
-
-/**
- * Swipeable session card for single-pane layout.
- * Left swipe = delete (red), Right swipe = toggle pin (blue).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SwipeableSessionCard(
-    session: Session,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onDelete: () -> Unit,
-    onTogglePin: () -> Unit
-) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { dismissValue ->
-            when (dismissValue) {
-                SwipeToDismissBoxValue.EndToStart -> {
-                    onDelete()
-                    true
-                }
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    onTogglePin()
-                    false // Don't dismiss, just toggle pin
-                }
-                SwipeToDismissBoxValue.Settled -> false
-            }
-        }
-    )
-
-    val untitled = stringResource(R.string.untitled_session)
-    val sessionContentDescription = stringResource(R.string.cd_session_item, session.title.ifEmpty { untitled }, session.messageCount)
-
-    SwipeToDismissBox(
-        state = dismissState,
-        modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = sessionContentDescription
-        },
-        backgroundContent = {
-            val direction = dismissState.dismissDirection
-
-            val color by animateColorAsState(
-                when (direction) {
-                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
-                    SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary
-                    else -> Color.Transparent
-                },
-                label = "swipe-card-bg-color"
+        if (compact) {
+            SessionListItem(
+                session = session,
+                isSelected = isSelected,
+                onSelect = onSelect,
+                onDelete = onDelete,
+                onTogglePin = onTogglePin
             )
-
-            val icon = when (direction) {
-                SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
-                SwipeToDismissBoxValue.StartToEnd -> Icons.Default.PushPin
-                else -> Icons.Default.Delete
-            }
-
-            val alignment = when (direction) {
-                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
-                else -> Alignment.CenterStart
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = alignment
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        },
-        enableDismissFromStartToEnd = true,
-        enableDismissFromEndToStart = true
-    ) {
-        SessionCard(
-            session = session,
-            isSelected = isSelected,
-            onSelect = onSelect,
-            onDelete = onDelete,
-            onTogglePin = onTogglePin
-        )
+        } else {
+            SessionCard(
+                session = session,
+                isSelected = isSelected,
+                onSelect = onSelect,
+                onDelete = onDelete,
+                onTogglePin = onTogglePin
+            )
+        }
     }
 }
 
@@ -782,7 +713,7 @@ private fun SessionCard(
                 contentDescription = "Session: ${session.title.ifEmpty { "untitled" }}, ${session.messageCount} messages"
             }
             .clickable(onClick = onSelect),
-        shape = RoundedCornerShape(12.dp)
+        shape = ShapeS12
     ) {
         Row(
             modifier = Modifier

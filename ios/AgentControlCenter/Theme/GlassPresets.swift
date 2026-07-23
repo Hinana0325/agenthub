@@ -19,41 +19,6 @@ import SwiftUI
 /// 在 Xcode 16.4 上直接走 `#else` 回退分支（ultraThinMaterial）。
 extension View {
 
-    /// 浮动药丸玻璃 —— 用于状态条 / 录制药丸 / 快捷动作
-    ///
-    /// 使用 `GlassTokens.interactiveVariant`（带按压反馈）+ `Capsule` 形状。
-    /// - Returns: 应用了液态玻璃效果的视图
-    @ViewBuilder
-    func glassPill() -> some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26, *) {
-            self.glassEffect(GlassTokens.interactiveVariant, in: GlassTokens.pillShape)
-        } else {
-            self.background(.ultraThinMaterial, in: GlassTokens.pillShape)
-        }
-        #else
-        // Xcode 16 构建 — Glass API 不可用，使用 ultraThinMaterial 回退
-        self.background(.ultraThinMaterial, in: GlassTokens.pillShape)
-        #endif
-    }
-
-    /// 圆形浮动按钮玻璃 —— 用于 FAB / 录音按钮 / 发送按钮
-    ///
-    /// 使用 `GlassTokens.interactiveVariant` + `Circle` 形状。
-    /// - Returns: 应用了液态玻璃效果的视图
-    @ViewBuilder
-    func glassFloating() -> some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26, *) {
-            self.glassEffect(GlassTokens.interactiveVariant, in: GlassTokens.circleShape)
-        } else {
-            self.background(.ultraThinMaterial, in: GlassTokens.circleShape)
-        }
-        #else
-        self.background(.ultraThinMaterial, in: GlassTokens.circleShape)
-        #endif
-    }
-
     /// 通用交互式玻璃 —— 用于 CommandPalette / 自定义悬浮控件
     ///
     /// 使用 `GlassTokens.interactiveVariant` + 自定义 `Shape`。
@@ -64,25 +29,6 @@ extension View {
         #if compiler(>=6.2)
         if #available(iOS 26, *) {
             self.glassEffect(GlassTokens.interactiveVariant, in: shape)
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-        }
-        #else
-        self.background(.ultraThinMaterial, in: shape)
-        #endif
-    }
-
-    /// 非交互式玻璃 —— 用于纯展示型浮动元素（无按压反馈）
-    ///
-    /// 使用 `GlassTokens.regularVariant` + 自定义 `Shape`。
-    /// 适用场景：不可点击的状态徽章、信息浮层。
-    /// - Parameter shape: 玻璃裁剪形状
-    /// - Returns: 应用了液态玻璃效果的视图
-    @ViewBuilder
-    func glassStatic<S: Shape>(in shape: S) -> some View {
-        #if compiler(>=6.2)
-        if #available(iOS 26, *) {
-            self.glassEffect(GlassTokens.regularVariant, in: shape)
         } else {
             self.background(.ultraThinMaterial, in: shape)
         }

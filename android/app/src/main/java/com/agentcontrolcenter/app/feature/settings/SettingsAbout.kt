@@ -1,6 +1,5 @@
 package com.agentcontrolcenter.app.feature.settings
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +15,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,14 +24,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.update.UpdateManager
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
+import kotlinx.coroutines.launch
 
 /**
  * 关于 / 更新相关设置：版本号展示（含 5 次点击彩蛋）、应用内更新检查结果对话框，
@@ -116,9 +118,11 @@ internal fun UpdateCheckDialog(
  */
 @Composable
 internal fun VersionSettingsItem() {
-    val context = LocalContext.current
     var tapCount by remember { mutableIntStateOf(0) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
+    // P2: 复用根 Scaffold 提供的全局 SnackbarHostState，替代 Toast。
+    val snackbarHostState = LocalSnackbarHost.current
+    val scope = rememberCoroutineScope()
 
     Surface(
         modifier = Modifier
@@ -132,11 +136,12 @@ internal fun VersionSettingsItem() {
                 tapCount++
                 if (tapCount >= 5) {
                     tapCount = 0
-                    Toast.makeText(
-                        context,
-                        "\uD83D\uDD27 Agent Control Center v2.0.0\nDeveloped with \u2764\uFE0F by Agent Control Center Team\nBuilt with Kotlin + Jetpack Compose",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            "\uD83D\uDD27 Agent Control Center v2.0.0\nDeveloped with \u2764\uFE0F by Agent Control Center Team\nBuilt with Kotlin + Jetpack Compose",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
                 }
             },
         color = MaterialTheme.colorScheme.surface

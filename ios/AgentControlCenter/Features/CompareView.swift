@@ -6,6 +6,7 @@ import SwiftUI
 /// 支持选择两个 Agent 并行发送相同消息，对比回复效果。
 struct CompareView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     // MARK: - Agent 选择
 
@@ -36,6 +37,12 @@ struct CompareView: View {
     /// Agent B 的错误信息
     @State private var errorB: String? = nil
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染骨架占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     /// 对比任务引用（用于取消）
     @State private var compareTask: Task<Void, Never>?
 
@@ -48,26 +55,51 @@ struct CompareView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: Agent 选择区
-            agentPickerSection
-
-            Divider()
-
-            // MARK: 输入区域
-            inputSection
-
-            Divider()
-
-            // MARK: 响应对比区
-            if isComparing || !responseA.isEmpty || !responseB.isEmpty || errorA != nil || errorB != nil {
-                comparisonSection
+            if isLoading {
+                // v5.0 P0: 首屏骨架屏占位
+                ScrollView {
+                    SkeletonList(repeat: 4) { ListRowSkeleton() }
+                        .padding(16)
+                }
             } else {
-                Spacer()
-                emptyHint
-                Spacer()
+                // MARK: Agent 选择区
+                agentPickerSection
+
+                Divider()
+
+                // MARK: 输入区域
+                inputSection
+
+                Divider()
+
+                // MARK: 响应对比区
+                if isComparing || !responseA.isEmpty || !responseB.isEmpty || errorA != nil || errorB != nil {
+                    comparisonSection
+                } else {
+                    Spacer()
+                    emptyHint
+                    Spacer()
+                }
             }
         }
         .navigationTitle("Agent 对比")
+        // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+        .overlay {
+            if let errorMessage {
+                ErrorStateView(
+                    icon: "arrow.left.arrow.right",
+                    title: "加载失败",
+                    message: errorMessage,
+                    onRetry: { reloadCompare() }
+                )
+                .background(AppTheme.backgroundColor)
+            }
+        }
+        .task {
+            if isLoading {
+                await loadCompareInitial()
+            }
+        }
         // 视图销毁时取消未完成的对比任务，避免后台继续等待响应 / 占用 Transport 资源
         .onDisappear {
             cancelComparison()
@@ -127,7 +159,7 @@ struct CompareView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(8)
-        .background(color, in: RoundedRectangle(cornerRadius: 8))
+        .background(color, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
     }
 
     // MARK: - 输入区域
@@ -188,36 +220,60 @@ struct CompareView: View {
 
     // MARK: - 响应对比区
 
-    /// 左右两列并行响应展示
+    /// 响应对比区：regular（iPad / 横屏）保持左右双列，compact（iPhone 竖屏）
+    /// 切换为 TabView 上下排列，避免每列仅 ~180pt 导致 MarkdownText 无法阅读。
+    @ViewBuilder
     private var comparisonSection: some View {
-        HStack(alignment: .top, spacing: 0) {
-            // 左列：Agent A
-            responseColumn(
-                response: responseA,
-                agentName: agentName(for: agentAId),
-                isFinished: isAFinished,
-                error: errorA,
-                color: .blue.opacity(0.06),
-                borderColor: .blue.opacity(0.3)
-            )
+        if sizeClass == .regular {
+            // iPad / 横屏：左右双列
+            HStack(alignment: .top, spacing: 0) {
+                leftColumn
 
-            // 分隔线
-            Rectangle()
-                .fill(Color(.separator))
-                .frame(width: 1)
-                .padding(.vertical, 8)
+                // 分隔线
+                Rectangle()
+                    .fill(Color(.separator))
+                    .frame(width: 1)
+                    .padding(.vertical, 8)
 
-            // 右列：Agent B
-            responseColumn(
-                response: responseB,
-                agentName: agentName(for: agentBId),
-                isFinished: isBFinished,
-                error: errorB,
-                color: .orange.opacity(0.06),
-                borderColor: .orange.opacity(0.3)
-            )
+                rightColumn
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // iPhone 竖屏：TabView 上下排列切换，便于对比阅读
+            TabView {
+                leftColumn
+                    .tabItem { Label(String(localized: "compare.tab.a"), systemImage: "1.circle") }
+                rightColumn
+                    .tabItem { Label(String(localized: "compare.tab.b"), systemImage: "2.circle") }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// 左列（Agent A 响应）— 在 regular / compact 两种布局中复用
+    @ViewBuilder
+    private var leftColumn: some View {
+        responseColumn(
+            response: responseA,
+            agentName: agentName(for: agentAId),
+            isFinished: isAFinished,
+            error: errorA,
+            color: .blue.opacity(0.06),
+            borderColor: .blue.opacity(0.3)
+        )
+    }
+
+    /// 右列（Agent B 响应）— 在 regular / compact 两种布局中复用
+    @ViewBuilder
+    private var rightColumn: some View {
+        responseColumn(
+            response: responseB,
+            agentName: agentName(for: agentBId),
+            isFinished: isBFinished,
+            error: errorB,
+            color: .orange.opacity(0.06),
+            borderColor: .orange.opacity(0.3)
+        )
     }
 
     /// 单列响应展示
@@ -329,6 +385,24 @@ struct CompareView: View {
     /// 根据 Agent ID 获取名称
     private func agentName(for id: String) -> String {
         appState.agentManager.getAgent(id)?.name ?? "未知 Agent"
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后准备对比环境。
+    /// 可用 Agent 列表为同步可读的 @Observable 状态，无抛错路径；保留 errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadCompareInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadCompare() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadCompareInitial() }
     }
 
     // MARK: - 取消对比

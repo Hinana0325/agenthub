@@ -17,6 +17,7 @@ import SwiftUI
 /// 市场视图 — 浏览、搜索、安装市场 Agent
 struct MarketplaceView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// 搜索关键字
     @State private var searchQuery: String = ""
@@ -41,11 +42,17 @@ struct MarketplaceView: View {
     /// 对齐 Android `AgentMarketScreen` 的 `favoritesOnly` 状态。
     @State private var favoritesOnly: Bool = false
 
-    /// 网格列定义：两列自适应
-    private let columns: [GridItem] = [
-        GridItem(.flexible(), spacing: AppTheme.Spacing.md),
-        GridItem(.flexible(), spacing: AppTheme.Spacing.md)
-    ]
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 MarketplaceCardSkeletonRow 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
+    /// 网格列定义：随 sizeClass 动态列数（iPad regular 3 列，iPhone compact 2 列）
+    private var gridColumns: [GridItem] {
+        let columns = sizeClass == .regular ? 3 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.md), count: columns)
+    }
 
     var body: some View {
         NavigationStack {
@@ -61,7 +68,10 @@ struct MarketplaceView: View {
                     resultCount
 
                     // Agent 网格
-                    if appState.marketplaceClient.isLoading {
+                    if isLoading {
+                        // v5.0 P0: 首屏骨架屏占位
+                        skeletonGrid
+                    } else if appState.marketplaceClient.isLoading {
                         loadingView
                     } else if filteredAgents.isEmpty {
                         emptyView
@@ -73,6 +83,18 @@ struct MarketplaceView: View {
                 .padding(.vertical, AppTheme.Spacing.md)
             }
             .background(AppTheme.backgroundColor)
+            // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+            .overlay {
+                if let errorMessage {
+                    ErrorStateView(
+                        icon: "storefront",
+                        title: "加载失败",
+                        message: errorMessage,
+                        onRetry: { reloadMarketplace() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                }
+            }
             .navigationTitle("市场")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -99,9 +121,8 @@ struct MarketplaceView: View {
             }
         }
         .task {
-            // 首次进入若未加载过则加载
-            if appState.marketplaceClient.agents.isEmpty {
-                await appState.marketplaceClient.loadAgents()
+            if isLoading {
+                await loadMarketplaceInitial()
             }
             // 同步已安装状态：扫描本地 AgentConfig
             syncInstalledState()
@@ -174,15 +195,15 @@ struct MarketplaceView: View {
     private var resultCount: some View {
         HStack {
             Text("共 \(filteredAgents.count) 个结果")
-                .font(.caption)
+                .font(AppTheme.Typography.caption)
                 .foregroundStyle(.secondary)
             Spacer()
         }
     }
 
-    /// Agent 网格（两列）
+    /// Agent 网格（动态列数）
     private var agentGrid: some View {
-        LazyVGrid(columns: columns, spacing: AppTheme.Spacing.md) {
+        LazyVGrid(columns: gridColumns, spacing: AppTheme.Spacing.md) {
             ForEach(filteredAgents) { agent in
                 MarketplaceAgentCard(
                     agent: agent,
@@ -197,12 +218,19 @@ struct MarketplaceView: View {
         }
     }
 
+    /// v5.0 P0: 首屏骨架屏网格（对齐 agentGrid 的动态列数卡片布局）
+    private var skeletonGrid: some View {
+        LazyVGrid(columns: gridColumns, spacing: AppTheme.Spacing.md) {
+            SkeletonList(repeat: 4) { MarketplaceCardSkeletonRow() }
+        }
+    }
+
     /// 加载中视图
     private var loadingView: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             ProgressView()
             Text("正在加载市场…")
-                .font(.subheadline)
+                .font(AppTheme.Typography.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -219,10 +247,10 @@ struct MarketplaceView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.tertiary)
             Text(favoritesOnly ? "暂无收藏的 Agent" : "暂无匹配的 Agent")
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
                 .foregroundStyle(.secondary)
             Text(favoritesOnly ? "点击卡片上的书签图标即可收藏" : "尝试更换关键字或切换分类")
-                .font(.subheadline)
+                .font(AppTheme.Typography.subheadline)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
@@ -262,6 +290,26 @@ struct MarketplaceView: View {
     /// 重新加载市场数据
     private func reload() async {
         await appState.marketplaceClient.loadAgents()
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从 marketplaceClient 拉取市场数据。
+    /// `loadAgents` 当前为非抛错 async API；保留 errorMessage 框架便于
+    /// 未来切换为可失败加载时无缝接入。
+    private func loadMarketplaceInitial() async {
+        // 首次进入若未加载过则加载
+        if appState.marketplaceClient.agents.isEmpty {
+            await appState.marketplaceClient.loadAgents()
+        }
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadMarketplace() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadMarketplaceInitial() }
     }
 
     /// 同步已安装状态：扫描本地 AgentConfig，标记已存在的 ID
@@ -338,9 +386,9 @@ private struct FilterChip: View {
         Button(action: action) {
             HStack(spacing: AppTheme.Spacing.xs) {
                 Image(systemName: systemImage)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                 Text(title)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
             }
             .padding(.horizontal, AppTheme.Spacing.md)
             .padding(.vertical, AppTheme.Spacing.sm)
@@ -391,7 +439,7 @@ private struct MarketplaceAgentCard: View {
                     Button(action: onToggleFavorite) {
                         Image(systemName: isFavorite ? "bookmark.fill" : "bookmark")
                             .foregroundStyle(isFavorite ? AppTheme.primaryColor : .secondary)
-                            .font(.system(size: 18, weight: .medium))
+                            .font(AppTheme.Typography.body.weight(.medium))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(isFavorite ? "取消收藏" : "收藏")
@@ -399,13 +447,13 @@ private struct MarketplaceAgentCard: View {
 
                 // 名称
                 Text(agent.name)
-                    .font(.headline)
+                    .font(AppTheme.Typography.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 // 作者
                 Text(agent.author)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
@@ -413,11 +461,11 @@ private struct MarketplaceAgentCard: View {
                 HStack(spacing: AppTheme.Spacing.sm) {
                     Label(String(format: "%.1f", agent.rating), systemImage: "star.fill")
                         .labelStyle(.titleAndIcon)
-                        .font(.caption2)
+                        .font(AppTheme.Typography.caption2)
                         .foregroundStyle(.orange)
                     Label(formattedDownloads, systemImage: "arrow.down.circle")
                         .labelStyle(.titleAndIcon)
-                        .font(.caption2)
+                        .font(AppTheme.Typography.caption2)
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -447,7 +495,7 @@ private struct MarketplaceAgentCard: View {
                 .frame(width: 40, height: 40)
             Image(systemName: "cpu")
                 .foregroundStyle(.white)
-                .font(.system(size: 20, weight: .semibold))
+                .font(AppTheme.Typography.title3.weight(.semibold))
         }
     }
 
@@ -457,7 +505,7 @@ private struct MarketplaceAgentCard: View {
         if isInstalled {
             Label("已安装", systemImage: "checkmark")
                 .labelStyle(.titleAndIcon)
-                .font(.caption)
+                .font(AppTheme.Typography.caption)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AppTheme.Spacing.xs)
                 .background(AppTheme.tertiaryBackground)
@@ -468,7 +516,7 @@ private struct MarketplaceAgentCard: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("安装中…")
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.xs)
@@ -479,7 +527,7 @@ private struct MarketplaceAgentCard: View {
             Button(action: onInstall) {
                 Label("安装", systemImage: "arrow.down.circle")
                     .labelStyle(.titleAndIcon)
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, AppTheme.Spacing.xs)
                     .background(AppTheme.primaryColor)
@@ -560,19 +608,19 @@ private struct MarketplaceAgentDetailSheet: View {
                     .frame(width: 64, height: 64)
                 Image(systemName: "cpu")
                     .foregroundStyle(.white)
-                    .font(.system(size: 32, weight: .semibold))
+                    .font(AppTheme.Typography.largeTitle.weight(.semibold))
             }
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
                 HStack(spacing: AppTheme.Spacing.xs) {
                     Text(agent.name)
-                        .font(.title3.bold())
+                        .font(AppTheme.Typography.title3.bold())
                     if agent.isOfficial {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundStyle(AppTheme.primaryColor)
                     }
                 }
                 Text(agent.author)
-                    .font(.subheadline)
+                    .font(AppTheme.Typography.subheadline)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -597,12 +645,12 @@ private struct MarketplaceAgentDetailSheet: View {
         VStack(spacing: AppTheme.Spacing.xs) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .font(.title3)
+                .font(AppTheme.Typography.title3)
             Text(value)
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
                 .monospacedDigit()
             Text(label)
-                .font(.caption2)
+                .font(AppTheme.Typography.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -612,9 +660,9 @@ private struct MarketplaceAgentDetailSheet: View {
     private var descriptionView: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("描述")
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
             Text(agent.description)
-                .font(.body)
+                .font(AppTheme.Typography.body)
                 .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -627,11 +675,11 @@ private struct MarketplaceAgentDetailSheet: View {
     private var capabilitiesView: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("能力")
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
             FlowLayout(spacing: AppTheme.Spacing.xs) {
                 ForEach(agent.capabilities, id: \.self) { cap in
                     Text(cap)
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .padding(.horizontal, AppTheme.Spacing.sm)
                         .padding(.vertical, AppTheme.Spacing.xs)
                         .background(AppTheme.primaryColor.opacity(0.15))
@@ -650,7 +698,7 @@ private struct MarketplaceAgentDetailSheet: View {
     private var metaInfoView: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("元信息")
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
             metaRow(label: "服务器", value: agent.serverUrl)
             metaRow(label: "分类", value: categoryDisplayName)
             metaRow(label: "ID", value: agent.id)
@@ -665,11 +713,11 @@ private struct MarketplaceAgentDetailSheet: View {
     private func metaRow(label: String, value: String) -> some View {
         HStack(alignment: .top) {
             Text(label)
-                .font(.subheadline)
+                .font(AppTheme.Typography.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(width: 60, alignment: .leading)
             Text(value)
-                .font(.subheadline)
+                .font(AppTheme.Typography.subheadline)
                 .foregroundStyle(.primary)
                 .textSelection(.enabled)
         }
@@ -686,7 +734,7 @@ private struct MarketplaceAgentDetailSheet: View {
         if isInstalled {
             Label("已安装", systemImage: "checkmark.circle.fill")
                 .labelStyle(.titleAndIcon)
-                .font(.headline)
+                .font(AppTheme.Typography.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AppTheme.Spacing.md)
                 .background(AppTheme.tertiaryBackground)
@@ -696,7 +744,7 @@ private struct MarketplaceAgentDetailSheet: View {
             HStack(spacing: AppTheme.Spacing.sm) {
                 ProgressView()
                 Text("正在安装…")
-                    .font(.headline)
+                    .font(AppTheme.Typography.headline)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AppTheme.Spacing.md)
@@ -707,7 +755,7 @@ private struct MarketplaceAgentDetailSheet: View {
             Button(action: onInstall) {
                 Label("安装此 Agent", systemImage: "arrow.down.circle.fill")
                     .labelStyle(.titleAndIcon)
-                    .font(.headline)
+                    .font(AppTheme.Typography.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, AppTheme.Spacing.md)
                     .background(AppTheme.primaryColor)

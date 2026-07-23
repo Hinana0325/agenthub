@@ -76,36 +76,64 @@ struct DeviceSyncView: View {
     /// 错误提示
     @State private var errorMessage: String?
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染骨架占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var loadErrorMessage: String? = nil
+
     // MARK: - Body
 
     var body: some View {
         ScrollView {
             VStack(spacing: AppTheme.Spacing.lg) {
-                // 0. Development banner
-                devFeatureBanner
+                if isLoading {
+                    // v5.0 P0: 首屏骨架屏占位
+                    SkeletonList(repeat: 4) {
+                        ListRowSkeleton()
+                            .padding(AppTheme.Spacing.md)
+                            .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    }
+                } else {
+                    // 0. Development banner
+                    devFeatureBanner
 
-                // 1. 当前设备信息
-                currentDeviceSection
+                    // 1. 当前设备信息
+                    currentDeviceSection
 
-                // 2. 同步状态与控制
-                syncControlSection
+                    // 2. 同步状态与控制
+                    syncControlSection
 
-                // 3. 已连接设备列表
-                connectedDevicesSection
+                    // 3. 已连接设备列表
+                    connectedDevicesSection
 
-                // 4. 同步历史
-                syncHistorySection
+                    // 4. 同步历史
+                    syncHistorySection
 
-                // 5. 设备配对二维码
-                qrCodeSection
+                    // 5. 设备配对二维码
+                    qrCodeSection
+                }
             }
             .padding(AppTheme.Spacing.lg)
         }
         .navigationTitle("设备同步")
+        // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+        .overlay {
+            if let loadErrorMessage {
+                ErrorStateView(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "加载失败",
+                    message: loadErrorMessage,
+                    onRetry: { reloadDeviceSync() }
+                )
+                .background(AppTheme.backgroundColor)
+            }
+        }
         // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
         .task {
-            loadSyncHistory()
-            loadLastSyncTime()
+            if isLoading {
+                await loadDeviceSyncInitial()
+            }
         }
         .alert("同步错误",
                isPresented: Binding(
@@ -642,6 +670,26 @@ struct DeviceSyncView: View {
         if let time = lastSyncTime {
             UserDefaults.standard.set(time.timeIntervalSince1970, forKey: "deviceSyncLastSyncTime")
         }
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从 UserDefaults 拉取同步历史与最后同步时间。
+    /// 数据源为同步可读的 UserDefaults，无抛错路径；保留 loadErrorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadDeviceSyncInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        loadSyncHistory()
+        loadLastSyncTime()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadDeviceSync() {
+        isLoading = true
+        loadErrorMessage = nil
+        Task { await loadDeviceSyncInitial() }
     }
 
     // MARK: - 日期格式化

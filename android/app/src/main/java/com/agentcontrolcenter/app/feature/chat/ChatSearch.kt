@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -22,7 +22,6 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.model.Message
 import com.agentcontrolcenter.app.data.model.MessageRole
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
-import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 
 /**
  * Search overlay with results list.
@@ -36,10 +35,9 @@ internal fun SearchOverlay(
     onResultClick: (Message) -> Unit,
     onClose: () -> Unit
 ) {
-    val isGlassSearch = LocalIsGlass.current
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = if (isGlassSearch) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AppTopAppBar(
@@ -50,7 +48,7 @@ internal fun SearchOverlay(
                         placeholder = { Text(stringResource(R.string.search_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                         )
@@ -103,7 +101,7 @@ private fun SearchResultItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         tonalElevation = 1.dp
     ) {

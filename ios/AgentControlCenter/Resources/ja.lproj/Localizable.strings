@@ -64,6 +64,8 @@
 "task.empty.title" = "タスクなし";
 "task.empty.description" = "タスクは自動的にここに表示されます";
 "task.create" = "タスクを作成";
+"task.create.title" = "新規タスク";
+"task.create.button" = "作成";
 "task.title" = "タイトル";
 "task.type" = "タイプ";
 "task.agent" = "エージェント";
@@ -193,3 +195,142 @@
 "error.backup.parse" = "バックアップの解析に失敗しました: %@";
 "error.restore.failed" = "復元失敗: %@";
 "error.encrypted.export" = "暗号化エクスポート失敗: %@";
+
+/* サイドバー追補（v5.0 P2 iPad 適応 + ローカライズ） */
+"tab.marketplace" = "マーケット";
+"tab.voiceChat" = "音声メッセージ";
+"tab.deviceSync" = "デバイス同期";
+"tab.more" = "その他";
+"sidebar.select_page" = "ページを選択";
+"sidebar.select_page.description" = "サイドバーから表示する内容を選択してください";
+"sidebar.section.main" = "メイン";
+"sidebar.section.tools" = "ツール";
+"sidebar.section.data" = "データ";
+"sidebar.section.system" = "システム";
+
+/* 共通追補（v5.0 P2） */
+"common.load_failed" = "読み込み失敗";
+"common.close" = "閉じる";
+"common.refresh" = "更新";
+
+/* セッション追補（v5.0 P2） */
+"sessions.search.placeholder" = "セッションを検索";
+"sessions.search.empty.title" = "一致するセッションなし";
+"sessions.search.empty.description" = "別のキーワードを試してください";
+"session.empty.description_alt" = "右上の + をタップして新規セッションを作成";
+"session.pin" = "ピン留め";
+"session.unpin" = "ピン留め解除";
+"session.rename" = "名前を変更";
+"session.rename.title" = "名前を変更";
+"session.rename.placeholder" = "セッション名";
+
+/* チャット追補（v5.0 P2） */
+"chat.help.title" = "ヘルプ";
+"chat.stop_generate" = "生成を停止";
+"chat.attachment.selected" = "画像を選択済み";
+"chat.attachment.clear" = "選択した画像をクリア";
+"chat.empty.configure.cta" = "エージェントを設定";
+"chat.empty.no_agent_description" = "「エージェント」ページでエージェントを設定・有効化してから会話を開始してください。";
+"chat.no_reply" = "(返信なし)";
+"chat.reply.user" = "あなたへの返信";
+"chat.reply.assistant" = "アシスタントへの返信";
+"chat.reply.system" = "システムへの返信";
+"chat.reply.tool" = "ツールへの返信";
+
+/* エージェント追補（v5.0 P2） */
+"agent.set_active" = "アクティブに設定";
+"agent.empty.description_alt" = "右上の + をタップして新規エージェントを追加するか、メニューから設定をインポート";
+"agent.export_all" = "すべて書き出す";
+"agent.delete.confirm.title" = "削除の確認";
+"agent.delete.confirm.message" = "「%@」を削除しますか？この操作は取り消せません。";
+"agent.export.empty" = "書き出すエージェント設定がありません。";
+"agent.import.access_error" = "選択したファイルにアクセスできません。";
+"agent.import.invalid_json" = "ファイルが有効な JSON 配列ではありません。";
+"agent.import.empty" = "ファイルに有効なエージェント設定がありません。";
+"agent.import.all_failed" = "インポート失敗: %d 件すべての設定を解析できませんでした。";
+"agent.import.partial" = "%d 件のエージェント設定をインポートしました（%d 件は解析失敗でスキップ）。";
+"agent.import.success" = "%d 件のエージェント設定をインポートしました。";
+"agent.import.read_error" = "ファイルの読み込みに失敗しました: %@";
+"agent.type.unknown" = "不明";
+"agent.status.online" = "オンライン";
+"agent.status.offline" = "オフライン";
+"agent.status.connecting" = "接続中";
+"agent.status.error" = "エラー";
+"agent.capability.chat" = "チャット";
+"agent.capability.task" = "タスク";
+"agent.capability.workflow" = "ワークフロー";
+"agent.capability.mcp" = "MCP";
+"agent.capability.filesystem" = "ファイルシステム";
+"agent.capability.terminal" = "ターミナル";
+"agent.capability.voice" = "音声";
+"agent.capability.imageGen" = "画像生成";
+"agent.capability.codeExecution" = "コード実行";
+"agent.form.section.basic" = "基本情報";
+"agent.form.section.connection" = "接続";
+"agent.form.section.advanced" = "詳細設定";
+"agent.form.server.placeholder" = "サーバーアドレス";
+"agent.form.local.no_apikey" = "ローカルデプロイでは通常 API Key は不要です";
+"agent.form.local.exempt" = "LocalModel タイプはサーバーアドレスと API Key を免除し、LocalModelManager を使用します";
+"agent.form.security.note" = "API Key は保存時に自動的に暗号化されます。";
+"agent.form.save_failed" = "保存できません";
+"agent.form.validation_failed" = "設定の検証に失敗しました";
+"agent.export.success" = "書き出し成功";
+"agent.export.summary" = "%d 件のエージェント設定を JSON ファイルに書き出しました";
+"agent.export.share" = "ファイルを共有";
+"agent.export.title" = "エージェント設定を書き出し";
+
+/* タスク追補（v5.0 P2） */
+"task.filter.title" = "フィルター";
+"task.empty.description_alt" = "エージェントが実行したタスク記録がここに表示されます";
+"task.filter.empty.title" = "現在のフィルター条件に一致するタスクがありません";
+"task.filter.empty.description" = "フィルターを切り替えて他の状態のタスクを表示してみてください";
+"task.no_content" = "(内容なし)";
+"task.no_agent" = "利用可能なエージェントがありません";
+"task.no_agent.specify" = "指定しない";
+"task.type.chat" = "チャット";
+"task.type.code" = "コード";
+"task.type.workflow" = "ワークフロー";
+"task.type.toolCall" = "ツール呼び出し";
+"task.type.fileOperation" = "ファイル操作";
+"task.status.pending" = "待機中";
+"task.status.running" = "実行中";
+"task.status.completed" = "完了";
+"task.status.failed" = "失敗";
+"task.status.cancelled" = "キャンセル済み";
+"task.create.section.content" = "タスク内容";
+"task.create.section.type" = "タスクタイプ";
+"task.create.section.agent" = "対象エージェント";
+"task.input.placeholder" = "タスクの説明を入力";
+
+/* 比較追補（v5.0 P2 compact TabView） */
+"compare.tab.a" = "A";
+"compare.tab.b" = "B";
+
+/* アクセシビリティラベル（v5.0 P2） */
+"accessibility.send_button" = "送信";
+"accessibility.stop_generate" = "生成を停止";
+"accessibility.voice_input" = "音声入力";
+"accessibility.voice_input_stop" = "音声入力を停止";
+"accessibility.cancel_reply" = "返信をキャンセル";
+"accessibility.clear_image" = "選択した画像をクリア";
+"accessibility.more_actions" = "その他の操作";
+"accessibility.add_agent" = "エージェントを追加";
+"accessibility.new_session" = "新規セッション";
+"accessibility.create_task" = "タスクを作成";
+"accessibility.refresh" = "更新";
+"accessibility.clear_search" = "検索をクリア";
+"accessibility.favorite_add" = "お気に入りに追加";
+"accessibility.favorite_remove" = "お気に入りを解除";
+"accessibility.add_mcp_server" = "MCP サーバーを追加";
+"accessibility.add_plugin" = "プラグインを追加";
+"accessibility.start_compare" = "比較を開始";
+"accessibility.stop_compare" = "比較を停止";
+"accessibility.start_recording" = "録音を開始";
+"accessibility.stop_recording" = "録音を停止";
+"accessibility.status_dot" = "ステータスインジケーター";
+"accessibility.agent_type_icon" = "エージェントタイプアイコン";
+"accessibility.task_type_icon" = "タスクタイプアイコン";
+"accessibility.connection_status" = "接続状態";
+"accessibility.clear_all" = "すべて消去";
+"accessibility.connect" = "接続";
+"accessibility.disconnect" = "切断";

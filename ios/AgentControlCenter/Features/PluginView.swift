@@ -16,15 +16,39 @@ struct PluginView: View {
     /// 是否显示添加插件 Sheet
     @State private var showAddSheet: Bool = false
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 ListRowSkeleton 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     var body: some View {
         Group {
-            if plugins.isEmpty {
+            if isLoading {
+                // v5.0 P0: 首屏骨架屏占位
+                List {
+                    SkeletonList(repeat: 4) { ListRowSkeleton() }
+                }
+                .listStyle(.insetGrouped)
+            } else if plugins.isEmpty {
                 emptyView
             } else {
                 pluginList
             }
         }
         .navigationTitle("插件")
+        // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+        .overlay {
+            if let errorMessage {
+                ErrorStateView(
+                    icon: "puzzlepiece",
+                    title: "加载失败",
+                    message: errorMessage,
+                    onRetry: { reloadPlugins() }
+                )
+                .background(AppTheme.backgroundColor)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -41,7 +65,9 @@ struct PluginView: View {
         // SW-M2: 使用 .task 替代 .onAppear — 由 SwiftUI 管理任务生命周期，
         // 视图销毁时自动取消，避免页面快速切换时的孤儿任务
         .task {
-            loadPlugins()
+            if isLoading {
+                await loadPluginsInitial()
+            }
         }
     }
 
@@ -92,7 +118,7 @@ struct PluginView: View {
                 .font(.title3)
                 .foregroundStyle(AppTheme.primaryColor)
                 .frame(width: 40, height: 40)
-                .background(AppTheme.primaryColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                .background(AppTheme.primaryColor.opacity(0.1), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
 
             // 插件信息
             VStack(alignment: .leading, spacing: 4) {
@@ -196,6 +222,25 @@ struct PluginView: View {
         if let data = try? JSONEncoder().encode(plugins) {
             UserDefaults.standard.set(data, forKey: Self.storageKey)
         }
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从 UserDefaults 拉取插件列表。
+    /// `loadPlugins` 是同步 API，不会抛错；保留 isLoading/errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadPluginsInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        loadPlugins()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadPlugins() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadPluginsInitial() }
     }
 }
 

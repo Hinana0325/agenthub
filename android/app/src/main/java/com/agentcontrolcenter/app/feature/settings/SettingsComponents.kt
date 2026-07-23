@@ -3,6 +3,7 @@ package com.agentcontrolcenter.app.feature.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
@@ -36,7 +37,7 @@ internal fun CategoryItem(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         else

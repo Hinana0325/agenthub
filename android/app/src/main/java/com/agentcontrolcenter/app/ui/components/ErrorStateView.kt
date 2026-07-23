@@ -2,6 +2,7 @@ package com.agentcontrolcenter.app.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.*
@@ -54,7 +55,7 @@ fun ErrorStateView(
             Spacer(Modifier.height(24.dp))
             Button(
                 onClick = onRetry,
-                shape = RoundedCornerShape(12.dp)
+                shape = ShapeS12
             ) {
                 Text(stringResource(R.string.btn_retry))
             }

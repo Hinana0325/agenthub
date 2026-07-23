@@ -16,12 +16,27 @@ struct TasksView: View {
     // 本地缓存的任务列表（从 DataController 加载）
     @State private var tasks: [AgentTask] = []
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 ListRowSkeleton 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     /// 任务过滤枚举: 全部 / 进行中 / 已完成
     enum TaskFilter: String, CaseIterable, Identifiable {
-        case all = "全部"
-        case active = "进行中"
-        case completed = "已完成"
+        case all
+        case active
+        case completed
         var id: String { rawValue }
+
+        /// 本地化显示名
+        var displayName: String {
+            switch self {
+            case .all: return String(localized: "task.filter.all")
+            case .active: return String(localized: "task.filter.active")
+            case .completed: return String(localized: "task.filter.completed")
+            }
+        }
     }
 
     // MARK: - Body
@@ -30,9 +45,9 @@ struct TasksView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // 顶部状态过滤分段控件
-                Picker("过滤", selection: $filter) {
+                Picker(String(localized: "task.filter.title"), selection: $filter) {
                     ForEach(TaskFilter.allCases) { f in
-                        Text(f.rawValue).tag(f)
+                        Text(f.displayName).tag(f)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -41,27 +56,32 @@ struct TasksView: View {
 
                 // 任务列表
                 List {
-                    ForEach(filteredTasks) { task in
-                        TaskRow(task: task)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if task.status == .pending || task.status == .running {
-                                    // 进行中的任务: 滑动取消（同时更新内存+持久化）
-                                    Button(role: .destructive) {
-                                        cancelTask(task)
-                                    } label: {
-                                        Label("取消", systemImage: "stop.circle")
-                                    }
-                                    .tint(.orange)
-                                } else {
-                                    // 已结束的任务: 滑动删除（同时从内存+持久化删除）
-                                    Button(role: .destructive) {
-                                        deleteTask(task)
-                                    } label: {
-                                        Label("删除", systemImage: "trash")
+                    if isLoading {
+                        // v5.0 P0: 首屏骨架屏占位
+                        SkeletonList(repeat: 6) { ListRowSkeleton() }
+                    } else {
+                        ForEach(filteredTasks) { task in
+                            TaskRow(task: task)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    if task.status == .pending || task.status == .running {
+                                        // 进行中的任务: 滑动取消（同时更新内存+持久化）
+                                        Button(role: .destructive) {
+                                            cancelTask(task)
+                                        } label: {
+                                            Label(String(localized: "common.cancel"), systemImage: "stop.circle")
+                                        }
+                                        .tint(.orange)
+                                    } else {
+                                        // 已结束的任务: 滑动删除（同时从内存+持久化删除）
+                                        Button(role: .destructive) {
+                                            deleteTask(task)
+                                        } label: {
+                                            Label(String(localized: "common.delete"), systemImage: "trash")
+                                        }
                                     }
                                 }
-                            }
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                                .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -71,7 +91,7 @@ struct TasksView: View {
                     await refreshTasks()
                 }
             }
-            .navigationTitle("任务")
+            .navigationTitle(String(localized: "tab.tasks"))
             // 工具栏创建按钮
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -80,7 +100,7 @@ struct TasksView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("创建任务")
+                    .accessibilityLabel(String(localized: "accessibility.create_task"))
                 }
             }
             // 空状态占位
@@ -88,18 +108,27 @@ struct TasksView: View {
             // 对用户有误导（切换到 .completed 过滤但所有任务都是 running 时显示"暂无任务"）。
             // 改为区分两种情况。
             .overlay {
-                if filteredTasks.isEmpty {
+                if let errorMessage {
+                    // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+                    ErrorStateView(
+                        icon: "checklist",
+                        title: String(localized: "common.load_failed"),
+                        message: errorMessage,
+                        onRetry: { reloadTasksFromRetry() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                } else if !isLoading && filteredTasks.isEmpty {
                     if tasks.isEmpty {
                         ContentUnavailableView(
-                            "暂无任务",
+                            String(localized: "task.empty.title"),
                             systemImage: "checklist",
-                            description: Text("这里将展示 Agent 执行的任务记录")
+                            description: Text(String(localized: "task.empty.description_alt"))
                         )
                     } else {
                         ContentUnavailableView(
-                            "当前过滤条件下无任务",
+                            String(localized: "task.filter.empty.title"),
                             systemImage: "line.3.horizontal.decrease.circle",
-                            description: Text("尝试切换筛选条件查看其他状态的任务")
+                            description: Text(String(localized: "task.filter.empty.description"))
                         )
                     }
                 }
@@ -121,7 +150,9 @@ struct TasksView: View {
             }
             // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
             .task {
-                reloadTasks()
+                if isLoading {
+                    await loadTasksInitial()
+                }
             }
         }
     }
@@ -175,6 +206,25 @@ struct TasksView: View {
         tasks = appState.dataController.fetchTasks()
     }
 
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从 DataController 拉取任务列表。
+    /// `fetchTasks` 是同步 API，不会抛错；保留 isLoading/errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadTasksInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        reloadTasks()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadTasksFromRetry() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadTasksInitial() }
+    }
+
     /// 下拉刷新专用(P1-13):异步包装 reloadTasks,让 .refreshable 有正常动画
     private func refreshTasks() async {
         // 让出当前任务,使下拉刷新动画能正常展示
@@ -205,22 +255,22 @@ private struct TaskRow: View {
     /// 任务类型显示名
     var typeDisplayName: String {
         switch task.type {
-        case .chat: return "聊天"
-        case .code: return "代码"
-        case .workflow: return "工作流"
-        case .toolCall: return "工具调用"
-        case .fileOperation: return "文件操作"
+        case .chat: return String(localized: "task.type.chat")
+        case .code: return String(localized: "task.type.code")
+        case .workflow: return String(localized: "task.type.workflow")
+        case .toolCall: return String(localized: "task.type.toolCall")
+        case .fileOperation: return String(localized: "task.type.fileOperation")
         }
     }
 
     /// 状态显示名
     var statusDisplayName: String {
         switch task.status {
-        case .pending: return "等待中"
-        case .running: return "运行中"
-        case .completed: return "已完成"
-        case .failed: return "失败"
-        case .cancelled: return "已取消"
+        case .pending: return String(localized: "task.status.pending")
+        case .running: return String(localized: "task.status.running")
+        case .completed: return String(localized: "task.status.completed")
+        case .failed: return String(localized: "task.status.failed")
+        case .cancelled: return String(localized: "task.status.cancelled")
         }
     }
 
@@ -232,10 +282,11 @@ private struct TaskRow: View {
                     .font(.title3)
                     .foregroundStyle(AppTheme.taskStatusColors[task.status] ?? .gray)
                     .frame(width: 32)
+                    .accessibilityLabel(String(localized: "accessibility.task_type_icon"))
 
                 VStack(alignment: .leading, spacing: 4) {
                     // 输入内容作为标题（最多两行）
-                    Text(task.input.isEmpty ? "(无内容)" : task.input)
+                    Text(task.input.isEmpty ? String(localized: "task.no_content") : task.input)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .lineLimit(2)
@@ -309,14 +360,14 @@ private struct CreateTaskSheet: View {
         NavigationStack {
             Form {
                 // 任务输入
-                Section("任务内容") {
-                    TextField("输入任务描述", text: $taskInput, axis: .vertical)
+                Section(String(localized: "task.create.section.content")) {
+                    TextField(String(localized: "task.input.placeholder"), text: $taskInput, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
                 // 任务类型
-                Section("任务类型") {
-                    Picker("类型", selection: $selectedType) {
+                Section(String(localized: "task.create.section.type")) {
+                    Picker(String(localized: "task.type"), selection: $selectedType) {
                         ForEach(TaskType.allCases, id: \.self) { type in
                             Text(taskTypeDisplayName(type)).tag(type)
                         }
@@ -324,13 +375,13 @@ private struct CreateTaskSheet: View {
                 }
 
                 // Agent 选择
-                Section("目标 Agent") {
+                Section(String(localized: "task.create.section.agent")) {
                     if availableAgents.isEmpty {
-                        Text("暂无可用 Agent")
+                        Text(String(localized: "task.no_agent"))
                             .foregroundStyle(.secondary)
                     } else {
-                        Picker("Agent", selection: $selectedAgentId) {
-                            Text("不指定").tag("")
+                        Picker(String(localized: "task.agent"), selection: $selectedAgentId) {
+                            Text(String(localized: "task.no_agent.specify")).tag("")
                             ForEach(availableAgents) { agent in
                                 Text(agent.name).tag(agent.id)
                             }
@@ -338,14 +389,14 @@ private struct CreateTaskSheet: View {
                     }
                 }
             }
-            .navigationTitle("新建任务")
+            .navigationTitle(String(localized: "task.create.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "common.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("创建") {
+                    Button(String(localized: "task.create.button")) {
                         let task = AgentTask(
                             id: "task_\(UUID().uuidString)",
                             agentId: selectedAgentId.isEmpty ? "" : selectedAgentId,
@@ -365,11 +416,11 @@ private struct CreateTaskSheet: View {
     /// 任务类型显示名
     private func taskTypeDisplayName(_ type: TaskType) -> String {
         switch type {
-        case .chat: return "聊天"
-        case .code: return "代码"
-        case .workflow: return "工作流"
-        case .toolCall: return "工具调用"
-        case .fileOperation: return "文件操作"
+        case .chat: return String(localized: "task.type.chat")
+        case .code: return String(localized: "task.type.code")
+        case .workflow: return String(localized: "task.type.workflow")
+        case .toolCall: return String(localized: "task.type.toolCall")
+        case .fileOperation: return String(localized: "task.type.fileOperation")
         }
     }
 }

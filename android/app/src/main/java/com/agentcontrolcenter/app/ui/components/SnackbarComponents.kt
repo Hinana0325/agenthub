@@ -2,6 +2,7 @@ package com.agentcontrolcenter.app.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -10,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.agentcontrolcenter.app.ui.theme.LocalSuccessColor
 
 /**
  * Error-styled Snackbar with red background, icon, and optional retry button.
@@ -23,7 +25,7 @@ fun ErrorSnackbar(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = MaterialTheme.colorScheme.error,
         shadowElevation = 6.dp
     ) {
@@ -75,11 +77,11 @@ fun SuccessSnackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val successColor = Color(0xFF2E7D32) // Dark green
+    val successColor = LocalSuccessColor.current
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = successColor,
         shadowElevation = 6.dp
     ) {

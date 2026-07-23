@@ -17,7 +17,7 @@ struct ContentView: View {
     /// 是否显示首次启动引导
     @AppStorage("onboarding_completed") private var onboardingCompleted = false
 
-    /// 主题偏好（rawValue 与 `SettingsView.AppThemePreference` 一致）
+    /// 主题偏好（rawValue 与 `AppTheme.ThemePreference` 一致）
     @AppStorage("theme") private var themeRaw = AppTheme.ThemePreference.system.rawValue
 
     /// regular 模式下选中的侧边栏项（nil 表示未选中）
@@ -25,6 +25,10 @@ struct ContentView: View {
 
     /// compact 模式下选中的底部 Tab
     @State private var selectedCompactTab: CompactTab = .sessions
+
+    /// compact 模式「更多」Tab 内 NavigationStack 的路径。
+    /// 路径栈顶即为当前展示的「更多」页面，切到 regular 时据此同步 selectedTab。
+    @State private var moreNavigationPath: [SidebarTab] = []
 
     /// 命令面板管理器（共享实例，便于注册运行时命令）
     private var commandPaletteManager: CommandPaletteManager {
@@ -42,19 +46,19 @@ struct ContentView: View {
         /// 中文显示名
         var displayName: String {
             switch self {
-            case .sessions:   "会话"
-            case .agents:     "Agent"
-            case .tasks:      "任务"
-            case .marketplace:"市场"
-            case .workflow:   "工作流"
-            case .plugins:    "插件"
-            case .compare:    "对比"
-            case .mcp:        "MCP"
-            case .voiceChat:  "语音消息"
-            case .activity:   "活动"
-            case .insights:   "洞察"
-            case .deviceSync: "设备同步"
-            case .settings:   "设置"
+            case .sessions:   String(localized: "tab.sessions")
+            case .agents:     String(localized: "tab.agents")
+            case .tasks:      String(localized: "tab.tasks")
+            case .marketplace:String(localized: "tab.marketplace")
+            case .workflow:   String(localized: "tab.workflow")
+            case .plugins:    String(localized: "tab.plugins")
+            case .compare:    String(localized: "tab.compare")
+            case .mcp:        String(localized: "tab.mcp")
+            case .voiceChat:  String(localized: "tab.voiceChat")
+            case .activity:   String(localized: "tab.activity")
+            case .insights:   String(localized: "tab.insights")
+            case .deviceSync: String(localized: "tab.deviceSync")
+            case .settings:   String(localized: "tab.settings")
             }
         }
 
@@ -90,9 +94,12 @@ struct ContentView: View {
 
     // MARK: - 紧凑模式 Tab
 
-    /// compact 模式下底部 Tab（仅 4 个主要入口，其余通过设置页进入）
+    /// compact 模式下底部 Tab。
+    /// v5.0 P0：新增 `.more` Tab，承载 Marketplace / Workflow / Plugins / MCP /
+    /// Compare / VoiceChat / Activity / Insights / DeviceSync 共 9 个页面，
+    /// 解决 iPhone 既无 Tab 也无 Settings 入口的可达性问题。
     enum CompactTab: String, CaseIterable, Identifiable {
-        case sessions, agents, tasks, settings
+        case sessions, agents, tasks, settings, more
 
         var id: String { rawValue }
     }
@@ -105,6 +112,16 @@ struct ContentView: View {
         case tools = "工具"
         case data = "数据"
         case system = "系统"
+
+        /// 本地化分组标题（rawValue 保留为内部标识，UI 展示统一走本地化）
+        var displayName: String {
+            switch self {
+            case .main:   String(localized: "sidebar.section.main")
+            case .tools:  String(localized: "sidebar.section.tools")
+            case .data:   String(localized: "sidebar.section.data")
+            case .system: String(localized: "sidebar.section.system")
+            }
+        }
     }
 
     // MARK: - 主题映射
@@ -170,6 +187,30 @@ struct ContentView: View {
         .task {
             if let destination = appState.pendingShortcutDestination {
                 handleShortcutDestination(destination)
+            }
+        }
+        // v5.0 P0: regular → compact 状态同步。
+        // iPad sidebar 选中「更多」9 页之一时（selectedTab 已变化但 compact 状态未跟上），
+        // 同步切换 compact 底部 Tab 到 .more 并把路径推到对应页，保证切到 iPhone 后保持选中。
+        // 反向（compact → regular）由 moreMenuView 的 onChange(of: moreNavigationPath)
+        // 和 compactView 的 onChange(of: selectedCompactTab) 已覆盖。
+        .onChange(of: selectedTab) { _, newTab in
+            guard let tab = newTab else { return }
+            switch tab {
+            case .sessions, .agents, .tasks, .settings:
+                // 4 个主 Tab：若 compact 当前不在该 Tab，则切过去（保证 size class 切换后选中一致）
+                if let compact = CompactTab(rawValue: tab.rawValue),
+                   compact != .more, selectedCompactTab != compact {
+                    selectedCompactTab = compact
+                }
+            default:
+                // 9 个「更多」页面：切到 .more Tab 并把路径推到该页（若尚未在该页）
+                if selectedCompactTab != .more {
+                    selectedCompactTab = .more
+                }
+                if moreNavigationPath.last != tab {
+                    moreNavigationPath = [tab]
+                }
             }
         }
     }
@@ -259,13 +300,19 @@ struct ContentView: View {
     /// - Parameter tab: 目标侧边栏项
     private func navigate(to tab: SidebarTab) {
         selectedTab = tab
-        // 若 compact 模式有对应 Tab，则同步切换
+        // compact 模式：sessions/agents/tasks/settings 直接切到底部 Tab；
+        // 其余 9 个「更多」页面切到 .more Tab 并 push 到对应 Detail。
         switch tab {
         case .sessions: selectedCompactTab = .sessions
         case .agents:   selectedCompactTab = .agents
         case .tasks:    selectedCompactTab = .tasks
         case .settings: selectedCompactTab = .settings
-        default: break
+        default:
+            selectedCompactTab = .more
+            // 替换路径栈，避免重复 push 同一页面
+            if moreNavigationPath.last != tab {
+                moreNavigationPath = [tab]
+            }
         }
     }
 
@@ -351,24 +398,91 @@ struct ContentView: View {
 
     // MARK: - iPhone 紧凑视图
 
-    /// compact 尺寸：底部 TabView
+    /// compact 尺寸：底部 TabView，5 个 Tab（会话 / Agent / 任务 / 设置 / 更多）。
+    /// 「更多」Tab 内 NavigationStack 列表承载 Marketplace / Workflow / Plugins /
+    /// MCP / Compare / VoiceChat / Activity / Insights / DeviceSync 共 9 个页面。
     private var compactView: some View {
         TabView(selection: $selectedCompactTab) {
             SessionsView()
-                .tabItem { Label("会话", systemImage: "bubble.left.and.bubble.right") }
+                .tabItem { Label(String(localized: "tab.sessions"), systemImage: "bubble.left.and.bubble.right") }
                 .tag(CompactTab.sessions)
 
             AgentsView()
-                .tabItem { Label("Agent", systemImage: "cpu") }
+                .tabItem { Label(String(localized: "tab.agents"), systemImage: "cpu") }
                 .tag(CompactTab.agents)
 
             TasksView()
-                .tabItem { Label("任务", systemImage: "checklist") }
+                .tabItem { Label(String(localized: "tab.tasks"), systemImage: "checklist") }
                 .tag(CompactTab.tasks)
 
             SettingsView()
-                .tabItem { Label("设置", systemImage: "gear") }
+                .tabItem { Label(String(localized: "tab.settings"), systemImage: "gear") }
                 .tag(CompactTab.settings)
+
+            moreMenuView
+                .tabItem { Label(String(localized: "tab.more"), systemImage: "ellipsis.circle") }
+                .tag(CompactTab.more)
+        }
+        // compact ↔ regular 状态同步：切到非 .more Tab 时同步 selectedTab；
+        // 切到 .more 时不主动改 selectedTab，由 moreNavigationPath 变化驱动同步。
+        .onChange(of: selectedCompactTab) { _, newTab in
+            switch newTab {
+            case .sessions: selectedTab = .sessions
+            case .agents:   selectedTab = .agents
+            case .tasks:    selectedTab = .tasks
+            case .settings: selectedTab = .settings
+            case .more:     break
+            }
+        }
+    }
+
+    /// 「更多」Tab 内的菜单视图：按 Section 分组列出 9 个二级页面，
+    /// NavigationLink push 到 `detailView(for:)`。
+    /// 路径变化时同步 `selectedTab`，便于切回 iPad 时保持选中。
+    private var moreMenuView: some View {
+        NavigationStack(path: $moreNavigationPath) {
+            List {
+                ForEach(SidebarSection.allCases, id: \.self) { section in
+                    let tabsInSection = moreTabs.filter { $0.section == section }
+                    if !tabsInSection.isEmpty {
+                        Section(section.displayName) {
+                            ForEach(tabsInSection) { tab in
+                                NavigationLink(value: tab) {
+                                    Label(tab.displayName, systemImage: tab.systemImage)
+                                }
+                                .tint(AppTheme.primaryColor)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(String(localized: "tab.more"))
+            .navigationDestination(for: SidebarTab.self) { tab in
+                detailView(for: tab)
+                    .navigationTitle(tab.displayName)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        // 路径栈顶变化 → 同步 selectedTab（用于切回 iPad 时保持选中页）
+        // 回到更多菜单根（路径空）时保持原 selectedTab，避免切回 iPad 时 sidebar
+        // 显示「选择一个页面」占位
+        .onChange(of: moreNavigationPath) { _, newPath in
+            if let top = newPath.last {
+                selectedTab = top
+            }
+        }
+    }
+
+    /// compact 模式「更多」Tab 中展示的 9 个页面（排除已有独立 Tab 的 sessions /
+    /// agents / tasks / settings）。
+    private var moreTabs: [SidebarTab] {
+        SidebarTab.allCases.filter { tab in
+            switch tab {
+            case .sessions, .agents, .tasks, .settings:
+                return false
+            default:
+                return true
+            }
         }
     }
 
@@ -378,7 +492,7 @@ struct ContentView: View {
     private var sidebar: some View {
         List(selection: $selectedTab) {
             ForEach(SidebarSection.allCases, id: \.self) { section in
-                Section(section.rawValue) {
+                Section(section.displayName) {
                     ForEach(SidebarTab.allCases.filter { $0.section == section }) { tab in
                         Label(tab.displayName, systemImage: tab.systemImage)
                             .tag(tab as SidebarTab?)
@@ -411,9 +525,9 @@ struct ContentView: View {
         case .settings:    SettingsView()
         case .none:
             ContentUnavailableView(
-                "选择一个页面",
+                String(localized: "sidebar.select_page"),
                 systemImage: "sidebar.left",
-                description: Text("从侧边栏选择要查看的内容")
+                description: Text(String(localized: "sidebar.select_page.description"))
             )
         }
     }

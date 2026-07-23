@@ -1,11 +1,13 @@
 package com.agentcontrolcenter.app.feature.insights
 
-import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeM16
+import com.agentcontrolcenter.app.ui.theme.ShapeXs2
+import com.agentcontrolcenter.app.ui.theme.ShapeXs4
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -27,8 +29,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.insights.DataInsightsManager
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
 import com.agentcontrolcenter.app.ui.theme.AppCard
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
+import com.agentcontrolcenter.app.ui.theme.LocalDangerColor
+import com.agentcontrolcenter.app.ui.theme.LocalInfoColor
+import com.agentcontrolcenter.app.ui.theme.LocalSuccessColor
+import com.agentcontrolcenter.app.ui.theme.LocalWarningColor
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,21 +47,20 @@ fun InsightsScreen(
     val insights by viewModel.insights.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // P2: 复用根 Scaffold 提供的全局 SnackbarHostState，替代 Toast。
+    val snackbarHostState = LocalSnackbarHost.current
 
-    // Phase 3.5: 消费 ViewModel 发射的 ExportEvent，在 Composable 层展示 Toast
+    // Phase 3.5: 消费 ViewModel 发射的 ExportEvent，在 Composable 层展示 Snackbar
     LaunchedEffect(Unit) {
         viewModel.exportEvent.collect { event ->
             when (event) {
-                is ExportEvent.Success -> Toast.makeText(
-                    context,
+                is ExportEvent.Success -> snackbarHostState.showSnackbar(
                     context.getString(R.string.insights_export_success, event.filePath),
-                    Toast.LENGTH_LONG
-                ).show()
-                is ExportEvent.Failure -> Toast.makeText(
-                    context,
-                    context.getString(R.string.insights_export_failed, event.message),
-                    Toast.LENGTH_SHORT
-                ).show()
+                    duration = SnackbarDuration.Long
+                )
+                is ExportEvent.Failure -> snackbarHostState.showSnackbar(
+                    context.getString(R.string.insights_export_failed, event.message)
+                )
             }
         }
     }
@@ -139,7 +145,7 @@ fun InsightsScreen(
                             label = stringResource(R.string.insights_streak),
                             value = "${insights.longestStreak} ${stringResource(R.string.insights_days)}",
                             icon = Icons.Default.LocalFireDepartment,
-                            color = Color(0xFFFF6B35)
+                            color = LocalDangerColor.current
                         )
                     }
                 }
@@ -153,14 +159,14 @@ fun InsightsScreen(
                             label = stringResource(R.string.insights_avg_length),
                             value = "${insights.avgMessageLength} ${stringResource(R.string.insights_chars)}",
                             icon = Icons.Default.TextFields,
-                            color = Color(0xFF10B981)
+                            color = LocalSuccessColor.current
                         )
                         StatCard(
                             modifier = Modifier.weight(1f),
                             label = stringResource(R.string.insights_active_hour),
                             value = "${insights.mostActiveHour}:00",
                             icon = Icons.Default.Schedule,
-                            color = Color(0xFFF59E0B)
+                            color = LocalWarningColor.current
                         )
                     }
                 }
@@ -177,7 +183,7 @@ fun InsightsScreen(
                 item {
                     AppCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = ShapeM16,
                     ) {
                         if (insights.messagesByDay.isNotEmpty()) {
                             BarChart(
@@ -212,7 +218,7 @@ fun InsightsScreen(
                 item {
                     AppCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = ShapeM16,
                     ) {
                         HourlyHeatmap(
                             data = insights.messagesByHour,
@@ -234,7 +240,7 @@ fun InsightsScreen(
                     item {
                         AppCard(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = ShapeM16,
                         ) {
                             SimplePieChart(
                                 data = insights.messagesByAgent,
@@ -263,7 +269,7 @@ private fun StatCard(
 ) {
     AppCard(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeM16,
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -361,7 +367,7 @@ private fun HourlyHeatmap(
                             .padding(2.dp)
                             .background(
                                 color = primaryColor.copy(alpha = 0.1f + intensity * 0.8f),
-                                shape = RoundedCornerShape(4.dp)
+                                shape = ShapeXs4
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -392,7 +398,7 @@ private fun HourlyHeatmap(
                             .size(12.dp)
                             .background(
                                 color = primaryColor.copy(alpha = 0.1f + (i / 5f) * 0.8f),
-                                shape = RoundedCornerShape(2.dp)
+                                shape = ShapeXs2
                             )
                     )
                 }
@@ -415,9 +421,9 @@ private fun SimplePieChart(
     if (total == 0f) return
 
     val colors = listOf(
-        Color(0xFF3B82F6),
-        Color(0xFF10B981),
-        Color(0xFFF59E0B),
+        LocalInfoColor.current,
+        LocalSuccessColor.current,
+        LocalWarningColor.current,
         Color(0xFFEF4444),
         Color(0xFF8B5CF6),
         Color(0xFFEC4899),
@@ -457,7 +463,7 @@ private fun SimplePieChart(
                     Box(
                         modifier = Modifier
                             .size(10.dp)
-                            .background(colors[index % colors.size], RoundedCornerShape(2.dp))
+                            .background(colors[index % colors.size], ShapeXs2)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(

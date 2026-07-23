@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeM16
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -149,7 +151,7 @@ private fun SyncToggleCard(
 ) {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeM16,
     ) {
         Row(
             modifier = Modifier
@@ -213,7 +215,7 @@ private fun SyncToggleCard(
 private fun SyncStatusCard(syncState: DeviceSyncManager.SyncState) {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
@@ -275,7 +277,7 @@ private fun PairedDeviceCard(
 
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
@@ -362,7 +364,7 @@ private fun PairedDeviceCard(
 private fun EmptyDevicesCard() {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Column(
             modifier = Modifier
@@ -395,7 +397,7 @@ private fun EmptyDevicesCard() {
 private fun DevFeatureBanner() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = MaterialTheme.colorScheme.tertiaryContainer
     ) {
         Row(

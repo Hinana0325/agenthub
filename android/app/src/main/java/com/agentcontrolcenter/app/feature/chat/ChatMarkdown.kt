@@ -3,6 +3,9 @@ package com.agentcontrolcenter.app.feature.chat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
+import com.agentcontrolcenter.app.ui.theme.ShapeXs2
+import com.agentcontrolcenter.app.ui.theme.ShapeXs4
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,7 +83,7 @@ private fun MarkdownBlockView(
 
         is MarkdownBlock.CodeBlock -> {
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = ShapeS8,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                 tonalElevation = 1.dp
             ) {
@@ -112,7 +115,7 @@ private fun MarkdownBlockView(
                         .width(3.dp)
                         .fillMaxHeight(),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(2.dp)
+                    shape = ShapeXs2
                 ) {}
                 Spacer(modifier = Modifier.width(8.dp))
                 val linkColor2 = MaterialTheme.colorScheme.primary
@@ -120,7 +123,7 @@ private fun MarkdownBlockView(
                     buildSpanAnnotatedString(block.spans, baseColor, linkColor2)
                 }
                 Surface(
-                    shape = RoundedCornerShape(4.dp),
+                    shape = ShapeXs4,
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 ) {
                     Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -176,7 +179,7 @@ private fun MarkdownBlockView(
 
         is MarkdownBlock.Table -> {
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = ShapeS8,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {

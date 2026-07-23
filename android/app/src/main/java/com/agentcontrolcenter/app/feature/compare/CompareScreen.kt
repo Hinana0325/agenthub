@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -208,7 +210,7 @@ private fun AgentLabel(
         modifier = modifier.semantics {
             contentDescription = "$name" + if (isComplete) ", completed" else ""
         },
-        shape = RoundedCornerShape(8.dp),
+        shape = ShapeS8,
         color = if (isComplete)
             MaterialTheme.colorScheme.primaryContainer
         else
@@ -246,7 +248,7 @@ private fun ResponsePanel(
         modifier = modifier.semantics {
             contentDescription = "Response: ${response.take(100)}"
         },
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp
     ) {
@@ -284,7 +286,7 @@ private fun ComparePreview(
 
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 2.dp
     ) {

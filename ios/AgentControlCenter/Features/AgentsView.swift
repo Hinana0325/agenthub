@@ -47,70 +47,83 @@ struct AgentsView: View {
     /// 本次导出的配置数量
     @State private var exportCount: Int = 0
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 AgentCardSkeletonRow×4 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
             List {
-                // MARK: 当前活跃 Agent
-                if let active = appState.agentManager.activeAgent {
-                    Section("当前活跃 Agent") {
-                        AgentRow(agent: active, isActive: true)
+                if isLoading {
+                    // v5.0 P0: 首屏骨架屏占位
+                    Section {
+                        SkeletonList(repeat: 4) { AgentCardSkeletonRow() }
                     }
-                }
-
-                // MARK: 所有 Agent
-                Section("所有 Agent") {
-                    ForEach(appState.agentManager.agents) { agent in
-                        // HIG：交互行应使用 Button 而非 onTapGesture，
-                        // 这样 VoiceOver / 大字体 / 系统滑动手势才能正确处理
-                        Button {
-                            HapticFeedback.medium()
-                            appState.agentManager.setActive(agentId: agent.id)
-                        } label: {
-                            AgentRow(
-                                agent: agent,
-                                isActive: agent.id == appState.agentManager.activeAgent?.id
-                            )
+                } else {
+                    // MARK: 当前活跃 Agent
+                    if let active = appState.agentManager.activeAgent {
+                        Section(String(localized: "agent.active")) {
+                            AgentRow(agent: active, isActive: true)
                         }
-                        .buttonStyle(.plain)
-                        // 长按上下文菜单：编辑 / 删除
-                        .contextMenu {
-                            Button {
-                                editAgent(agent)
-                            } label: {
-                                Label("编辑", systemImage: "pencil")
-                            }
+                    }
 
-                            Divider()
-
-                            Button(role: .destructive) {
-                                agentToDelete = agent
-                                showingDeleteAlert = true
-                            } label: {
-                                Label("删除", systemImage: "trash")
-                            }
-                        }
-                        // 左滑：设为活跃
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    // MARK: 所有 Agent
+                    Section(String(localized: "agent.all")) {
+                        ForEach(appState.agentManager.agents) { agent in
+                            // HIG：交互行应使用 Button 而非 onTapGesture，
+                            // 这样 VoiceOver / 大字体 / 系统滑动手势才能正确处理
                             Button {
                                 HapticFeedback.medium()
                                 appState.agentManager.setActive(agentId: agent.id)
                             } label: {
-                                Label("设为活跃", systemImage: "star.fill")
+                                AgentRow(
+                                    agent: agent,
+                                    isActive: agent.id == appState.agentManager.activeAgent?.id
+                                )
                             }
-                            .tint(.orange)
-                        }
-                        // 右滑：删除（需二次确认）
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                agentToDelete = agent
-                                showingDeleteAlert = true
-                            } label: {
-                                Label("删除", systemImage: "trash")
+                            .buttonStyle(.plain)
+                            // 长按上下文菜单：编辑 / 删除
+                            .contextMenu {
+                                Button {
+                                    editAgent(agent)
+                                } label: {
+                                    Label(String(localized: "agent.edit"), systemImage: "pencil")
+                                }
+
+                                Divider()
+
+                                Button(role: .destructive) {
+                                    agentToDelete = agent
+                                    showingDeleteAlert = true
+                                } label: {
+                                    Label(String(localized: "agent.delete"), systemImage: "trash")
+                                }
                             }
+                            // 左滑：设为活跃
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    HapticFeedback.medium()
+                                    appState.agentManager.setActive(agentId: agent.id)
+                                } label: {
+                                    Label(String(localized: "agent.set_active"), systemImage: "star.fill")
+                                }
+                                .tint(.orange)
+                            }
+                            // 右滑：删除（需二次确认）
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    agentToDelete = agent
+                                    showingDeleteAlert = true
+                                } label: {
+                                    Label(String(localized: "agent.delete"), systemImage: "trash")
+                                }
+                            }
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
             }
@@ -119,11 +132,20 @@ struct AgentsView: View {
             .navigationTitle("Agent")
             // 空状态占位视图
             .overlay {
-                if appState.agentManager.agents.isEmpty {
+                if let errorMessage {
+                    // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+                    ErrorStateView(
+                        icon: "cpu",
+                        title: String(localized: "common.load_failed"),
+                        message: errorMessage,
+                        onRetry: { reloadAgents() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                } else if !isLoading && appState.agentManager.agents.isEmpty {
                     ContentUnavailableView(
-                        "暂无 Agent",
+                        String(localized: "agent.empty.title"),
                         systemImage: "cpu",
-                        description: Text("点击右上角 + 添加新 Agent，或通过菜单导入配置")
+                        description: Text(String(localized: "agent.empty.description_alt"))
                     )
                 }
             }
@@ -136,16 +158,16 @@ struct AgentsView: View {
                         Button {
                             showingImporter = true
                         } label: {
-                            Label("导入", systemImage: "square.and.arrow.down")
+                            Label(String(localized: "agent.form.import"), systemImage: "square.and.arrow.down")
                         }
                         Button {
                             exportConfigs()
                         } label: {
-                            Label("导出所有", systemImage: "square.and.arrow.up")
+                            Label(String(localized: "agent.export_all"), systemImage: "square.and.arrow.up")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .accessibilityLabel("更多操作")
+                            .accessibilityLabel(String(localized: "accessibility.more_actions"))
                     }
                 }
 
@@ -158,7 +180,7 @@ struct AgentsView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("添加 Agent")
+                    .accessibilityLabel(String(localized: "accessibility.add_agent"))
                 }
             }
             // MARK: Sheet: 添加/编辑表单
@@ -183,11 +205,11 @@ struct AgentsView: View {
                 handleImportResult(result)
             }
             // MARK: Alert: 删除二次确认
-            .alert("确认删除", isPresented: $showingDeleteAlert) {
-                Button("取消", role: .cancel) {
+            .alert(String(localized: "agent.delete.confirm.title"), isPresented: $showingDeleteAlert) {
+                Button(String(localized: "common.cancel"), role: .cancel) {
                     agentToDelete = nil
                 }
-                Button("删除", role: .destructive) {
+                Button(String(localized: "common.delete"), role: .destructive) {
                     if let agent = agentToDelete {
                         deleteAgent(agent)
                     }
@@ -195,16 +217,42 @@ struct AgentsView: View {
                 }
             } message: {
                 if let agent = agentToDelete {
-                    Text("确定要删除「\(agent.name)」吗？此操作不可撤销。")
+                    Text(String(format: String(localized: "agent.delete.confirm.message"), agent.name))
                 }
             }
             // MARK: Alert: 操作结果提示
-            .alert("提示", isPresented: $showingResultAlert) {
-                Button("确定", role: .cancel) {}
+            .alert(String(localized: "common.notice"), isPresented: $showingResultAlert) {
+                Button(String(localized: "common.ok"), role: .cancel) {}
             } message: {
                 Text(resultMessage)
             }
+            // v5.0 P0: 首屏加载骨架屏入口
+            .task {
+                if isLoading {
+                    await loadAgents()
+                }
+            }
         }
+    }
+
+    // MARK: - 加载(v5.0 P0)
+
+    /// 加载 Agent 列表。
+    /// Agent 数据由 `appState.agentManager` 持有（已在 App 启动时从 SwiftData 加载），
+    /// 此处仅做骨架屏过渡 + 错误兜底。
+    private func loadAgents() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        // 当前数据源是同步可读的 @Observable 状态，无抛错路径；
+        // 若未来切换为远程 API，在此处 do/catch 并设置 errorMessage
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadAgents() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadAgents() }
     }
 
     // MARK: - 编辑 Agent
@@ -234,7 +282,7 @@ struct AgentsView: View {
         let configs = appState.dataController.fetchAgentConfigs()
 
         guard !configs.isEmpty else {
-            resultMessage = "没有可导出的 Agent 配置。"
+            resultMessage = String(localized: "agent.export.empty")
             showingResultAlert = true
             return
         }
@@ -255,7 +303,7 @@ struct AgentsView: View {
             exportFileUrl = fileUrl
             showingExportSheet = true
         } catch {
-            resultMessage = "导出失败：\(error.localizedDescription)"
+            resultMessage = String(format: String(localized: "error.export.failed"), error.localizedDescription)
             showingResultAlert = true
         }
     }
@@ -268,7 +316,7 @@ struct AgentsView: View {
         case .success(let urls):
             guard let url = urls.first else { return }
             guard url.startAccessingSecurityScopedResource() else {
-                resultMessage = "无法访问所选文件。"
+                resultMessage = String(localized: "agent.import.access_error")
                 showingResultAlert = true
                 return
             }
@@ -281,13 +329,13 @@ struct AgentsView: View {
                 // 改为逐条解码：先用 JSONSerialization 拆成元素数组，再对每个元素
                 // 独立 decode，单条失败只跳过该条，不影响其余配置导入。
                 guard let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-                    resultMessage = "文件格式不是有效的 JSON 数组。"
+                    resultMessage = String(localized: "agent.import.invalid_json")
                     showingResultAlert = true
                     return
                 }
 
                 guard !jsonArray.isEmpty else {
-                    resultMessage = "文件中没有有效的 Agent 配置。"
+                    resultMessage = String(localized: "agent.import.empty")
                     showingResultAlert = true
                     return
                 }
@@ -313,19 +361,19 @@ struct AgentsView: View {
                 }
 
                 if importedCount == 0 {
-                    resultMessage = "导入失败：\(failedCount) 条配置均无法解析。"
+                    resultMessage = String(format: String(localized: "agent.import.all_failed"), failedCount)
                 } else if failedCount > 0 {
-                    resultMessage = "成功导入 \(importedCount) 个 Agent 配置，\(failedCount) 条解析失败已跳过。"
+                    resultMessage = String(format: String(localized: "agent.import.partial"), importedCount, failedCount)
                 } else {
-                    resultMessage = "成功导入 \(importedCount) 个 Agent 配置。"
+                    resultMessage = String(format: String(localized: "agent.import.success"), importedCount)
                 }
             } catch {
-                resultMessage = "导入失败：\(error.localizedDescription)"
+                resultMessage = String(format: String(localized: "error.import.failed"), error.localizedDescription)
             }
             showingResultAlert = true
 
         case .failure(let error):
-            resultMessage = "文件读取失败：\(error.localizedDescription)"
+            resultMessage = String(format: String(localized: "agent.import.read_error"), error.localizedDescription)
             showingResultAlert = true
         }
     }
@@ -334,13 +382,13 @@ struct AgentsView: View {
 // MARK: - AgentStatus 显示名称扩展
 
 private extension AgentStatus {
-    /// 状态的中文显示名称（用于 UI 展示）
+    /// 状态的本地化显示名称（用于 UI 展示）
     var displayText: String {
         switch self {
-        case .online: return "在线"
-        case .offline: return "离线"
-        case .connecting: return "连接中"
-        case .error: return "错误"
+        case .online: return String(localized: "agent.status.online")
+        case .offline: return String(localized: "agent.status.offline")
+        case .connecting: return String(localized: "agent.status.connecting")
+        case .error: return String(localized: "agent.status.error")
         }
     }
 }
@@ -348,18 +396,18 @@ private extension AgentStatus {
 // MARK: - AgentCapability 显示名称扩展
 
 private extension AgentCapability {
-    /// 能力的简短中文显示名称（用于标签展示）
+    /// 能力的简短本地化显示名称（用于标签展示）
     var displayText: String {
         switch self {
-        case .chat: return "对话"
-        case .task: return "任务"
-        case .workflow: return "工作流"
-        case .mcp: return "MCP"
-        case .filesystem: return "文件系统"
-        case .terminal: return "终端"
-        case .voice: return "语音"
-        case .imageGen: return "图像生成"
-        case .codeExecution: return "代码执行"
+        case .chat: return String(localized: "agent.capability.chat")
+        case .task: return String(localized: "agent.capability.task")
+        case .workflow: return String(localized: "agent.capability.workflow")
+        case .mcp: return String(localized: "agent.capability.mcp")
+        case .filesystem: return String(localized: "agent.capability.filesystem")
+        case .terminal: return String(localized: "agent.capability.terminal")
+        case .voice: return String(localized: "agent.capability.voice")
+        case .imageGen: return String(localized: "agent.capability.imageGen")
+        case .codeExecution: return String(localized: "agent.capability.codeExecution")
         }
     }
 }
@@ -379,6 +427,7 @@ private struct AgentRow: View {
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .frame(width: 28)
+                .accessibilityLabel(String(localized: "accessibility.agent_type_icon"))
 
             // 在线/离线/连接中/错误 状态圆点
             Circle()
@@ -393,6 +442,7 @@ private struct AgentRow: View {
                             .opacity(0.4)
                     }
                 }
+                .accessibilityLabel(String(localized: "accessibility.status_dot"))
 
             VStack(alignment: .leading, spacing: 4) {
                 // 名称 + 活跃勾选标识
@@ -409,7 +459,7 @@ private struct AgentRow: View {
 
                 // 类型标签 + 状态文本
                 HStack(spacing: 8) {
-                    Text(agent.config?.type.displayName ?? "未知")
+                    Text(agent.config?.type.displayName ?? String(localized: "agent.type.unknown"))
                         .font(.caption)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -507,19 +557,19 @@ private struct AgentFormSheet: View {
     /// serverUrl 占位提示：优先使用 AgentTypeUI 的类型专属提示，为空时回退通用文案
     private var serverUrlFieldPlaceholder: String {
         let placeholder = AgentTypeUI.serverUrlPlaceholder(for: type)
-        return placeholder.isEmpty ? "服务器地址" : placeholder
+        return placeholder.isEmpty ? String(localized: "agent.form.server.placeholder") : placeholder
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 // MARK: 基本信息
-                Section("基本信息") {
-                    TextField("名称", text: $name)
+                Section(String(localized: "agent.form.section.basic")) {
+                    TextField(String(localized: "agent.form.name"), text: $name)
                         .textContentType(.name)
                     inlineErrorView(for: AgentConfigValidator.Field.name)
 
-                    Picker("类型", selection: $type) {
+                    Picker(String(localized: "agent.form.type"), selection: $type) {
                         ForEach(AgentType.allCases, id: \.self) { t in
                             Text(t.displayName).tag(t)
                         }
@@ -548,7 +598,7 @@ private struct AgentFormSheet: View {
                 // MARK: 连接配置
                 // 当 type == .localModel 时，serverUrl / apiKey 字段不展示（豁免校验），
                 // 仅保留 model 字段。LocalModel 走 LocalModelManager，无需远程地址。
-                Section("连接") {
+                Section(String(localized: "agent.form.section.connection")) {
                     if type != .localModel {
                         TextField(serverUrlFieldPlaceholder, text: $serverUrl)
                             .keyboardType(.URL)
@@ -556,19 +606,19 @@ private struct AgentFormSheet: View {
                             .textInputAutocapitalization(.never)
                         inlineErrorView(for: AgentConfigValidator.Field.serverUrl)
 
-                        SecureField("API Key", text: $apiKey)
+                        SecureField(String(localized: "agent.form.apiKey"), text: $apiKey)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                         inlineErrorView(for: AgentConfigValidator.Field.apiKey)
                         // 本地部署类型（ComfyUI）通常无需 API Key，给出可选提示
                         if AgentTypeUI.apiKeyOptional(for: type) {
-                            Label("本地部署通常无需 API Key", systemImage: "info.circle")
+                            Label(String(localized: "agent.form.local.no_apikey"), systemImage: "info.circle")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     } else {
                         // LocalModel 豁免提示（参考 SetupWizardView 文案风格）
-                        Label("LocalModel 类型豁免服务器地址与 API Key，将走 LocalModelManager", systemImage: "info.circle")
+                        Label(String(localized: "agent.form.local.exempt"), systemImage: "info.circle")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -586,7 +636,7 @@ private struct AgentFormSheet: View {
                 }
 
                 // MARK: 高级配置
-                Section("高级配置") {
+                Section(String(localized: "agent.form.section.advanced")) {
                     // System Prompt 多行输入（3~8 行）
                     TextField(AgentTypeUI.systemPromptLabel(for: type), text: $systemPrompt, axis: .vertical)
                         .lineLimit(3...8)
@@ -617,19 +667,19 @@ private struct AgentFormSheet: View {
 
                 // MARK: 安全说明
                 Section {
-                    Text("API Key 在保存时将自动加密存储。")
+                    Text(String(localized: "agent.form.security.note"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(isEditing ? "编辑 Agent" : "添加 Agent")
+            .navigationTitle(isEditing ? String(localized: "agent.edit") : String(localized: "agent.add"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(String(localized: "agent.form.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
+                    Button(String(localized: "agent.form.save")) { save() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
@@ -662,8 +712,8 @@ private struct AgentFormSheet: View {
                 validationErrors = nil
             }
             // 校验失败兜底提示：展示首条错误消息，字段级错误已在各字段下方行内显示
-            .alert("无法保存", isPresented: $showingValidationAlert) {
-                Button("确定", role: .cancel) {}
+            .alert(String(localized: "agent.form.save_failed"), isPresented: $showingValidationAlert) {
+                Button(String(localized: "common.ok"), role: .cancel) {}
             } message: {
                 Text(validationErrorMessage)
             }
@@ -706,7 +756,7 @@ private struct AgentFormSheet: View {
         guard validationResult.isValid else {
             appState.lastValidationError = validationResult
             validationErrors = validationResult
-            validationErrorMessage = validationResult.errors.first?.message ?? "配置校验失败"
+            validationErrorMessage = validationResult.errors.first?.message ?? String(localized: "agent.form.validation_failed")
             showingValidationAlert = true
             return
         }
@@ -758,16 +808,16 @@ private struct ExportShareSheet: View {
                     .foregroundStyle(.blue)
 
                 // 导出结果描述
-                Text("导出成功")
+                Text(String(localized: "agent.export.success"))
                     .font(.title2.bold())
 
-                Text("已导出 \(count) 个 Agent 配置为 JSON 文件")
+                Text(String(format: String(localized: "agent.export.summary"), count))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
                 // 系统分享按钮
                 ShareLink(item: url) {
-                    Label("分享文件", systemImage: "share")
+                    Label(String(localized: "agent.export.share"), systemImage: "share")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -776,11 +826,11 @@ private struct ExportShareSheet: View {
 
                 Spacer()
             }
-            .navigationTitle("导出 Agent 配置")
+            .navigationTitle(String(localized: "agent.export.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+                    Button(String(localized: "common.done")) { dismiss() }
                 }
             }
         }

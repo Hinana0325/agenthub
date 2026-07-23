@@ -6,6 +6,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeL24
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -14,7 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -25,9 +26,7 @@ import com.agentcontrolcenter.app.core.ui.HapticFeedback
 import com.agentcontrolcenter.app.ui.adaptive.AdaptiveConfig
 import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
 import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
-import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
 import com.agentcontrolcenter.app.ui.theme.ShapePill
-import com.agentcontrolcenter.app.ui.theme.glassBackground
 
 @Composable
 fun ChatInputBar(
@@ -64,19 +63,10 @@ fun ChatInputBar(
         label = "pulse-scale"
     )
 
-    val isGlassBar = LocalIsGlass.current
     Surface(
-        tonalElevation = if (isGlassBar) 0.dp else 3.dp,
-        shadowElevation = if (isGlassBar) 0.dp else 8.dp,
-        color = if (isGlassBar) Color.Transparent else MaterialTheme.colorScheme.surface,
-        modifier = if (isGlassBar) Modifier.glassBackground(
-            shape = RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = 24.dp,
-                bottomStart = 0.dp,
-                bottomEnd = 0.dp
-            )
-        ) else Modifier
+        tonalElevation = 3.dp,
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Column {
             // Editing indicator
@@ -85,7 +75,7 @@ fun ChatInputBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = ShapeS8,
                     color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                 ) {
                     Row(
@@ -125,7 +115,7 @@ fun ChatInputBar(
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = ShapeS8
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -163,7 +153,7 @@ fun ChatInputBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = ShapeS8,
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                 ) {
                     Row(
@@ -280,7 +270,7 @@ fun ChatInputBar(
                                 else stringResource(R.string.hint_type_message)
                             )
                         },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = ShapeL24,
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                         ),

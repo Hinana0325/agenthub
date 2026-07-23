@@ -68,15 +68,41 @@ struct ActivityView: View {
     /// 当前筛选的活动类型（nil 表示全部）
     @State private var filterType: ActivityType? = nil
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 ListRowSkeleton 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     var body: some View {
         Group {
-            if filteredActivities.isEmpty {
+            if isLoading {
+                // v5.0 P0: 首屏骨架屏占位
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        SkeletonList(repeat: 6) { ListRowSkeleton() }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            } else if filteredActivities.isEmpty {
                 emptyView
             } else {
                 activityList
             }
         }
         .navigationTitle("活动日志")
+        // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+        .overlay {
+            if let errorMessage {
+                ErrorStateView(
+                    icon: "clock",
+                    title: "加载失败",
+                    message: errorMessage,
+                    onRetry: { reloadActivities() }
+                )
+                .background(AppTheme.backgroundColor)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -104,7 +130,9 @@ struct ActivityView: View {
         }
         // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
         .task {
-            generateSampleActivities()
+            if isLoading {
+                await loadActivitiesInitial()
+            }
         }
     }
 
@@ -285,5 +313,24 @@ struct ActivityView: View {
 
         // 按时间降序排列
         activities = items.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从应用状态生成活动记录。
+    /// `generateSampleActivities` 是同步 API，不会抛错；保留 isLoading/errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadActivitiesInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        generateSampleActivities()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadActivities() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadActivitiesInitial() }
     }
 }

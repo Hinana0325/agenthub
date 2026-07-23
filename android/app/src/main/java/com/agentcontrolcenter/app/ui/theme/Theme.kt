@@ -10,7 +10,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
@@ -24,6 +26,15 @@ import androidx.core.view.WindowInsetsControllerCompat
  * 实体 surface 替代透明/玻璃效果。
  */
 enum class ThemeMode { Light, Dark, System }
+
+// ── v5.0: 语义色 CompositionLocal ──
+// M3 colorScheme 没有内置 success / warning / info / danger slot，
+// 这里通过 CompositionLocal 在 AppTheme 中根据 isDark 提供 light/dark 变体，
+// 避免在每个使用点写 if (isSystemInDarkTheme()) 分支。
+val LocalSuccessColor = staticCompositionLocalOf { Color(0xFF10B981) }
+val LocalWarningColor = staticCompositionLocalOf { Color(0xFFF59E0B) }
+val LocalInfoColor = staticCompositionLocalOf { Color(0xFF3B82F6) }
+val LocalDangerColor = staticCompositionLocalOf { Color(0xFFFF6B35) }
 
 /**
  * 构建浅色 ColorScheme，包含 M3 Expressive 扩展 token。
@@ -161,13 +172,26 @@ fun AgentControlCenterTheme(
         }
     }
 
+    // v5.0: 语义色根据 isDark 切换 light/dark 变体
+    val successColor = if (isDark) SuccessDark else SuccessLight
+    val warningColor = if (isDark) WarningDark else WarningLight
+    val infoColor = if (isDark) InfoDark else InfoLight
+    val dangerColor = if (isDark) DangerDark else DangerLight
+
     // Material 3 Theme with Expressive extensions
     // 使用扩展 surfaceContainer 系列替代透明 surface，
     // 形状系统通过 AppShapes 配置，Spring Motion 通过 NavHost 转场实现
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-        shapes = AppShapes,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalSuccessColor provides successColor,
+        LocalWarningColor provides warningColor,
+        LocalInfoColor provides infoColor,
+        LocalDangerColor provides dangerColor
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }

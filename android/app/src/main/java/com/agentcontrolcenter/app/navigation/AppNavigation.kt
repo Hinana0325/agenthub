@@ -22,6 +22,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import com.agentcontrolcenter.app.ui.theme.AppNavigationBar
 import com.agentcontrolcenter.app.ui.theme.AppNavigationRail
@@ -29,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,6 +49,7 @@ import com.agentcontrolcenter.app.ui.adaptive.shouldShowRail
 import com.agentcontrolcenter.app.ui.components.PredictiveBackWrapper
 import com.agentcontrolcenter.app.ui.components.LocalNavAnimatedVisibilityScope
 import com.agentcontrolcenter.app.ui.components.LocalSharedTransitionScope
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
 import com.agentcontrolcenter.app.feature.agents.AgentsScreen
 import com.agentcontrolcenter.app.feature.chat.ChatScreen
 import com.agentcontrolcenter.app.feature.sessions.SessionsScreen
@@ -58,6 +62,8 @@ import com.agentcontrolcenter.app.feature.plugin.PluginScreen
 import com.agentcontrolcenter.app.feature.insights.InsightsScreen
 import com.agentcontrolcenter.app.feature.task.TasksScreen
 import com.agentcontrolcenter.app.feature.mcp.McpScreen
+import com.agentcontrolcenter.app.feature.more.MoreScreen
+import com.agentcontrolcenter.app.feature.workflow.WorkflowScreen
 import com.agentcontrolcenter.app.data.model.MarketplaceAgent
 import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
@@ -71,6 +77,10 @@ fun AppNavigation() {
     val currentDestination = navBackStackEntry?.destination
     val adaptive = currentAdaptiveConfig()
     val chatViewModel: com.agentcontrolcenter.app.feature.chat.ChatViewModel = hiltViewModel()
+
+    // P2: 全局 SnackbarHostState。在根 Scaffold 上挂载 SnackbarHost，
+    // 通过 LocalSnackbarHost 向下提供给所有 Composable，替代散落各处的 Toast。
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // P3-5: 观察 Launcher 快捷方式请求，导航到对应目的地后消费
     val pendingShortcutAction by ShortcutRouter.pendingAction.collectAsStateWithLifecycle()
@@ -101,70 +111,21 @@ fun AppNavigation() {
         enabled = navController.previousBackStackEntry != null,
         onBack = { navController.popBackStack() }
     ) {
-        if (adaptive.shouldShowRail) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                AppNavigationRail(
-                    header = { Spacer(modifier = Modifier.height(24.dp)) }
-                ) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Screen.getTabs().forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any {
-                            it.route == screen.route
-                        } == true
-                        NavigationRailItem(
-                            selected = selected,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
-                            label = { Text(text = stringResource(screen.stringResId)) },
-                            colors = NavigationRailItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                    }
-                }
-
-                // I1: 折叠屏铰链避让。
-                // book mode 下铰链竖向分隔屏幕，Rail 在左、内容在右，
-                // 中间用 hingeWidth 宽度的 Spacer 避开铰链区域，
-                // 防止内容被铰链遮挡或落在不可点击区域。
-                // 非折叠屏 / 全开时 hingeWidth = 0.dp，Spacer 退化为无宽度。
-                if (adaptive.isBookMode && adaptive.hingeWidth > 0.dp) {
-                    Spacer(modifier = Modifier.width(adaptive.hingeWidth))
-                }
-
-                Scaffold(
-                    modifier = Modifier.weight(1f),
-                    contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top)
-                ) { paddingValues ->
-                    AppNavHost(
-                        navController = navController,
-                        chatViewModel = chatViewModel,
-                        modifier = Modifier.padding(paddingValues).navigationBarsPadding()
-                    )
-                }
-            }
-        } else {
-            Scaffold(
-                contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
-                bottomBar = {
-                    AppNavigationBar {
+        // P2: 把全局 snackbarHostState 提供给整个子树（含两个 Scaffold 分支），
+        // 子 Composable 通过 LocalSnackbarHost.current.showSnackbar() 即可在
+        // 当前生效的根 Scaffold 上展示消息。
+        CompositionLocalProvider(LocalSnackbarHost provides snackbarHostState) {
+            if (adaptive.shouldShowRail) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    AppNavigationRail(
+                        header = { Spacer(modifier = Modifier.height(24.dp)) }
+                    ) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Screen.getTabs().forEach { screen ->
                             val selected = currentDestination?.hierarchy?.any {
                                 it.route == screen.route
                             } == true
-                            NavigationBarItem(
+                            NavigationRailItem(
                                 selected = selected,
                                 onClick = {
                                     navController.navigate(screen.route) {
@@ -176,8 +137,8 @@ fun AppNavigation() {
                                     }
                                 },
                                 icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
-                                label = { Text(text = stringResource(screen.stringResId), style = MaterialTheme.typography.labelSmall) },
-                                colors = NavigationBarItemDefaults.colors(
+                                label = { Text(text = stringResource(screen.stringResId)) },
+                                colors = NavigationRailItemDefaults.colors(
                                     selectedIconColor = MaterialTheme.colorScheme.primary,
                                     selectedTextColor = MaterialTheme.colorScheme.primary,
                                     indicatorColor = MaterialTheme.colorScheme.primaryContainer,
@@ -187,13 +148,69 @@ fun AppNavigation() {
                             )
                         }
                     }
+
+                    // I1: 折叠屏铰链避让。
+                    // book mode 下铰链竖向分隔屏幕，Rail 在左、内容在右，
+                    // 中间用 hingeWidth 宽度的 Spacer 避开铰链区域，
+                    // 防止内容被铰链遮挡或落在不可点击区域。
+                    // 非折叠屏 / 全开时 hingeWidth = 0.dp，Spacer 退化为无宽度。
+                    if (adaptive.isBookMode && adaptive.hingeWidth > 0.dp) {
+                        Spacer(modifier = Modifier.width(adaptive.hingeWidth))
+                    }
+
+                    Scaffold(
+                        modifier = Modifier.weight(1f),
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
+                        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top)
+                    ) { paddingValues ->
+                        AppNavHost(
+                            navController = navController,
+                            chatViewModel = chatViewModel,
+                            modifier = Modifier.padding(paddingValues).navigationBarsPadding()
+                        )
+                    }
                 }
-            ) { paddingValues ->
-                AppNavHost(
-                    navController = navController,
-                    chatViewModel = chatViewModel,
-                    modifier = Modifier.padding(paddingValues)
-                )
+            } else {
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Bottom),
+                    bottomBar = {
+                        AppNavigationBar {
+                            Screen.getTabs().forEach { screen ->
+                                val selected = currentDestination?.hierarchy?.any {
+                                    it.route == screen.route
+                                } == true
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(imageVector = screen.icon, contentDescription = stringResource(screen.stringResId)) },
+                                    label = { Text(text = stringResource(screen.stringResId), style = MaterialTheme.typography.labelSmall) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                )
+                            }
+                        }
+                    }
+                ) { paddingValues ->
+                    AppNavHost(
+                        navController = navController,
+                        chatViewModel = chatViewModel,
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                }
             }
         }
     }
@@ -344,6 +361,24 @@ private fun AppNavHost(
                     CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
                         val compareViewModel: CompareViewModel = hiltViewModel()
                         CompareScreen(viewModel = compareViewModel, onBack = { navController.popBackStack() })
+                    }
+                }
+                // P0 IA 重组：More 主 Tab — 次级入口收敛页。
+                // 点击入口项后由 MoreScreen 回调 onNavigate(route)，此处统一执行
+                // navController.navigate(route)，不破坏目标 Screen 自身的参数传递与回退栈。
+                // SharedTransition 与预测性返回通过 LocalNavAnimatedVisibilityScope 保持一致。
+                composable(Screen.More.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        MoreScreen(
+                            onNavigate = { route -> navController.navigate(route) }
+                        )
+                    }
+                }
+                // P0 IA 重组：补注册此前缺失的 Workflow 路由（Screen 已定义但未在
+                // NavHost 注册），More → Workflow 跳转才能生效。
+                composable(Screen.Workflow.route) {
+                    CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+                        WorkflowScreen(onBack = { navController.popBackStack() })
                     }
                 }
             }

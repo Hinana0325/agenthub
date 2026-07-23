@@ -64,6 +64,8 @@
 "task.empty.title" = "暂无任务";
 "task.empty.description" = "任务会自动出现在这里";
 "task.create" = "创建任务";
+"task.create.title" = "新建任务";
+"task.create.button" = "创建";
 "task.title" = "标题";
 "task.type" = "类型";
 "task.agent" = "Agent";
@@ -193,3 +195,142 @@
 "error.backup.parse" = "解析备份失败: %@";
 "error.restore.failed" = "恢复失败: %@";
 "error.encrypted.export" = "加密导出失败: %@";
+
+/* 侧边栏补充（v5.0 P2 iPad 适配 + 本地化） */
+"tab.marketplace" = "市场";
+"tab.voiceChat" = "语音消息";
+"tab.deviceSync" = "设备同步";
+"tab.more" = "更多";
+"sidebar.select_page" = "选择一个页面";
+"sidebar.select_page.description" = "从侧边栏选择要查看的内容";
+"sidebar.section.main" = "主功能";
+"sidebar.section.tools" = "工具";
+"sidebar.section.data" = "数据";
+"sidebar.section.system" = "系统";
+
+/* 通用补充（v5.0 P2） */
+"common.load_failed" = "加载失败";
+"common.close" = "关闭";
+"common.refresh" = "刷新";
+
+/* 会话补充（v5.0 P2） */
+"sessions.search.placeholder" = "搜索会话";
+"sessions.search.empty.title" = "无匹配会话";
+"sessions.search.empty.description" = "尝试更换关键字";
+"session.empty.description_alt" = "点击右上角加号创建新会话";
+"session.pin" = "置顶";
+"session.unpin" = "取消置顶";
+"session.rename" = "重命名";
+"session.rename.title" = "重命名";
+"session.rename.placeholder" = "会话名称";
+
+/* 聊天补充（v5.0 P2） */
+"chat.help.title" = "帮助";
+"chat.stop_generate" = "停止生成";
+"chat.attachment.selected" = "已选择图片";
+"chat.attachment.clear" = "清除已选图片";
+"chat.empty.configure.cta" = "前往配置 Agent";
+"chat.empty.no_agent_description" = "请先在「Agent」页面配置并启用一个 Agent，即可开始对话。";
+"chat.no_reply" = "(无回复)";
+"chat.reply.user" = "回复你";
+"chat.reply.assistant" = "回复助手";
+"chat.reply.system" = "回复系统";
+"chat.reply.tool" = "回复工具";
+
+/* Agent 补充（v5.0 P2） */
+"agent.set_active" = "设为活跃";
+"agent.empty.description_alt" = "点击右上角 + 添加新 Agent，或通过菜单导入配置";
+"agent.export_all" = "导出所有";
+"agent.delete.confirm.title" = "确认删除";
+"agent.delete.confirm.message" = "确定要删除「%@」吗？此操作不可撤销。";
+"agent.export.empty" = "没有可导出的 Agent 配置。";
+"agent.import.access_error" = "无法访问所选文件。";
+"agent.import.invalid_json" = "文件格式不是有效的 JSON 数组。";
+"agent.import.empty" = "文件中没有有效的 Agent 配置。";
+"agent.import.all_failed" = "导入失败：%d 条配置均无法解析。";
+"agent.import.partial" = "成功导入 %d 个 Agent 配置，%d 条解析失败已跳过。";
+"agent.import.success" = "成功导入 %d 个 Agent 配置。";
+"agent.import.read_error" = "文件读取失败：%@";
+"agent.type.unknown" = "未知";
+"agent.status.online" = "在线";
+"agent.status.offline" = "离线";
+"agent.status.connecting" = "连接中";
+"agent.status.error" = "错误";
+"agent.capability.chat" = "对话";
+"agent.capability.task" = "任务";
+"agent.capability.workflow" = "工作流";
+"agent.capability.mcp" = "MCP";
+"agent.capability.filesystem" = "文件系统";
+"agent.capability.terminal" = "终端";
+"agent.capability.voice" = "语音";
+"agent.capability.imageGen" = "图像生成";
+"agent.capability.codeExecution" = "代码执行";
+"agent.form.section.basic" = "基本信息";
+"agent.form.section.connection" = "连接";
+"agent.form.section.advanced" = "高级配置";
+"agent.form.server.placeholder" = "服务器地址";
+"agent.form.local.no_apikey" = "本地部署通常无需 API Key";
+"agent.form.local.exempt" = "LocalModel 类型豁免服务器地址与 API Key，将走 LocalModelManager";
+"agent.form.security.note" = "API Key 在保存时将自动加密存储。";
+"agent.form.save_failed" = "无法保存";
+"agent.form.validation_failed" = "配置校验失败";
+"agent.export.success" = "导出成功";
+"agent.export.summary" = "已导出 %d 个 Agent 配置为 JSON 文件";
+"agent.export.share" = "分享文件";
+"agent.export.title" = "导出 Agent 配置";
+
+/* 任务补充（v5.0 P2） */
+"task.filter.title" = "过滤";
+"task.empty.description_alt" = "这里将展示 Agent 执行的任务记录";
+"task.filter.empty.title" = "当前过滤条件下无任务";
+"task.filter.empty.description" = "尝试切换筛选条件查看其他状态的任务";
+"task.no_content" = "(无内容)";
+"task.no_agent" = "暂无可用 Agent";
+"task.no_agent.specify" = "不指定";
+"task.type.chat" = "聊天";
+"task.type.code" = "代码";
+"task.type.workflow" = "工作流";
+"task.type.toolCall" = "工具调用";
+"task.type.fileOperation" = "文件操作";
+"task.status.pending" = "等待中";
+"task.status.running" = "运行中";
+"task.status.completed" = "已完成";
+"task.status.failed" = "失败";
+"task.status.cancelled" = "已取消";
+"task.create.section.content" = "任务内容";
+"task.create.section.type" = "任务类型";
+"task.create.section.agent" = "目标 Agent";
+"task.input.placeholder" = "输入任务描述";
+
+/* 对比补充（v5.0 P2 compact TabView） */
+"compare.tab.a" = "A";
+"compare.tab.b" = "B";
+
+/* 无障碍标签（v5.0 P2） */
+"accessibility.send_button" = "发送";
+"accessibility.stop_generate" = "停止生成";
+"accessibility.voice_input" = "语音输入";
+"accessibility.voice_input_stop" = "停止语音输入";
+"accessibility.cancel_reply" = "取消回复";
+"accessibility.clear_image" = "清除已选图片";
+"accessibility.more_actions" = "更多操作";
+"accessibility.add_agent" = "添加 Agent";
+"accessibility.new_session" = "新建会话";
+"accessibility.create_task" = "创建任务";
+"accessibility.refresh" = "刷新";
+"accessibility.clear_search" = "清除搜索";
+"accessibility.favorite_add" = "收藏";
+"accessibility.favorite_remove" = "取消收藏";
+"accessibility.add_mcp_server" = "添加 MCP 服务器";
+"accessibility.add_plugin" = "添加插件";
+"accessibility.start_compare" = "开始对比";
+"accessibility.stop_compare" = "停止对比";
+"accessibility.start_recording" = "开始录音";
+"accessibility.stop_recording" = "停止录音";
+"accessibility.status_dot" = "状态指示器";
+"accessibility.agent_type_icon" = "Agent 类型图标";
+"accessibility.task_type_icon" = "任务类型图标";
+"accessibility.connection_status" = "连接状态";
+"accessibility.clear_all" = "清空";
+"accessibility.connect" = "连接";
+"accessibility.disconnect" = "断开";

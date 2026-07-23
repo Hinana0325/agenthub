@@ -28,7 +28,7 @@ struct SettingsView: View {
     @State private var fontSize: FontSize = FontSize.loadFromUserDefaults()
 
     // ============ 外观主题 ============
-    @AppStorage("theme") private var theme: AppThemePreference = .system
+    @AppStorage("theme") private var theme: AppTheme.ThemePreference = .system
 
     // ============ 端到端加密 ============
     @AppStorage("encryptionEnabled") private var encryptionEnabled: Bool = false
@@ -254,9 +254,9 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         Section("外观") {
             Picker("主题", selection: $theme) {
-                Text("浅色").tag(AppThemePreference.light)
-                Text("深色").tag(AppThemePreference.dark)
-                Text("跟随系统").tag(AppThemePreference.system)
+                Text("浅色").tag(AppTheme.ThemePreference.light)
+                Text("深色").tag(AppTheme.ThemePreference.dark)
+                Text("跟随系统").tag(AppTheme.ThemePreference.system)
             }
 
             // 当前生效方案指示
@@ -820,17 +820,6 @@ enum FontSize: String, CaseIterable, Identifiable {
         UserDefaults.standard.set(rawValue, forKey: Self.userDefaultsKey)
         NotificationCenter.default.post(name: Self.didChangeNotification, object: rawValue)
     }
-}
-
-// MARK: - 主题偏好枚举
-
-/// 外观主题偏好
-enum AppThemePreference: String, CaseIterable, Identifiable {
-    case light = "light"
-    case dark = "dark"
-    case system = "system"
-
-    var id: String { rawValue }
 }
 
 // MARK: - Toast 提示视图

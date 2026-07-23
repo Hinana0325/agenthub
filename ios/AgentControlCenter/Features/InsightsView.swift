@@ -6,6 +6,7 @@ import SwiftUI
 /// 从 sessionManager 和 dataController 实时计算统计指标，展示使用情况概览。
 struct InsightsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     // 修复 PERF: 原实现 allMessages / agentUsageFrequency / fetchTasks 都是计算属性，
     // 每次 body 重绘（任何 @Observable 状态变化都触发）都会全量 fetch。
@@ -13,12 +14,18 @@ struct InsightsView: View {
     // 改为 .task 中预计算到 @State 缓存，仅在视图出现时计算一次。
     @State private var allMessages: [Message] = []
     @State private var allTasks: [AgentTask] = []
-    @State private var hasLoaded: Bool = false
+
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染骨架占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         Group {
-            if !hasLoaded {
-                ProgressView("加载中…")
+            if isLoading {
+                // v5.0 P0: 首屏骨架屏占位
+                loadingSkeleton
             } else if appState.sessionManager.sessions.isEmpty && allTasks.isEmpty {
                 emptyView
             } else {
@@ -41,13 +48,22 @@ struct InsightsView: View {
             }
         }
         .navigationTitle("数据洞察")
-        .task {
-            // 预计算所有指标到 @State 缓存，避免计算属性每次 body 重绘都全量 fetch
-            allMessages = appState.sessionManager.sessions.flatMap { session in
-                appState.dataController.fetchMessages(sessionId: session.id)
+        // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+        .overlay {
+            if let errorMessage {
+                ErrorStateView(
+                    icon: "chart.bar",
+                    title: "加载失败",
+                    message: errorMessage,
+                    onRetry: { reloadInsights() }
+                )
+                .background(AppTheme.backgroundColor)
             }
-            allTasks = appState.dataController.fetchTasks()
-            hasLoaded = true
+        }
+        .task {
+            if isLoading {
+                await loadInsightsInitial()
+            }
         }
     }
 
@@ -60,6 +76,67 @@ struct InsightsView: View {
         } description: {
             Text("开始与 Agent 对话后，这里将展示使用统计与数据洞察。")
         }
+    }
+
+    // MARK: - 网格列（随 sizeClass 动态）
+
+    /// 概览卡片网格列定义：iPad regular 4 列，iPhone compact 2 列。
+    /// 采用 4 列而非 3 列以充分利用 iPad 大屏横向空间展示概览统计。
+    private var overviewGridColumns: [GridItem] {
+        let columns = sizeClass == .regular ? 4 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: columns)
+    }
+
+    /// 骨架屏网格列定义（与 overviewGridColumns 保持一致，避免首屏 → 内容切换时跳动）
+    private var skeletonGridColumns: [GridItem] {
+        overviewGridColumns
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏骨架屏（对齐 overviewGrid 的动态列数统计卡片布局 + 下方区块占位）
+    private var loadingSkeleton: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                LazyVGrid(columns: skeletonGridColumns, spacing: 12) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        VStack(alignment: .leading, spacing: 8) {
+                            SkeletonBox(cornerRadius: AppTheme.CornerRadius.sm)
+                                .frame(width: 28, height: 28)
+                            SkeletonBox()
+                                .frame(width: 60, height: 28)
+                            SkeletonBox()
+                                .frame(width: 80, height: 14)
+                        }
+                        .padding(16)
+                        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
+                    }
+                }
+                SkeletonList(repeat: 3) { ListRowSkeleton() }
+            }
+            .padding(16)
+        }
+    }
+
+    /// 首屏加载：展示骨架屏后从 sessionManager / dataController 预计算统计指标。
+    /// 数据源为同步可读的 @Observable 状态，无抛错路径；保留 errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadInsightsInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        // 预计算所有指标到 @State 缓存，避免计算属性每次 body 重绘都全量 fetch
+        allMessages = appState.sessionManager.sessions.flatMap { session in
+            appState.dataController.fetchMessages(sessionId: session.id)
+        }
+        allTasks = appState.dataController.fetchTasks()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadInsights() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadInsightsInitial() }
     }
 
     // MARK: - 计算属性（基于 @State 缓存，不再触发 fetch）
@@ -148,10 +225,7 @@ struct InsightsView: View {
 
     /// 顶部四格概览卡片
     private var overviewGrid: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible(), spacing: 12),
-            GridItem(.flexible(), spacing: 12)
-        ], spacing: 12) {
+        LazyVGrid(columns: overviewGridColumns, spacing: 12) {
             statCard(
                 title: "总会话数",
                 value: "\(totalSessions)",
@@ -185,21 +259,21 @@ struct InsightsView: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundStyle(color)
-                    .font(.title3)
+                    .font(AppTheme.Typography.title3)
                 Spacer()
             }
 
             Text(value)
-                .font(.title)
+                .font(AppTheme.Typography.title)
                 .fontWeight(.bold)
                 .foregroundStyle(.primary)
 
             Text(title)
-                .font(.caption)
+                .font(AppTheme.Typography.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(16)
-        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - 消息分布
@@ -224,7 +298,7 @@ struct InsightsView: View {
                 HStack(spacing: 12) {
                     // 角色名称
                     Text(name)
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 72, alignment: .leading)
 
@@ -239,7 +313,7 @@ struct InsightsView: View {
 
                     // 数量
                     Text("\(count)")
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
                         .frame(width: 36, alignment: .trailing)
@@ -247,7 +321,7 @@ struct InsightsView: View {
             }
         }
         .padding(16)
-        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - Agent 使用频率
@@ -259,7 +333,7 @@ struct InsightsView: View {
 
             if agentUsageFrequency.isEmpty {
                 Text("暂无任务数据")
-                    .font(.caption)
+                    .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
             } else {
                 let maxUsage = agentUsageFrequency.first?.count ?? 1
@@ -268,10 +342,10 @@ struct InsightsView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.name)
-                                .font(.subheadline)
+                                .font(AppTheme.Typography.subheadline)
                                 .fontWeight(.medium)
                             Text("\(item.count) 次调用")
-                                .font(.caption)
+                                .font(AppTheme.Typography.caption)
                                 .foregroundStyle(.secondary)
                         }
 
@@ -295,7 +369,7 @@ struct InsightsView: View {
             }
         }
         .padding(16)
-        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - 活跃时段
@@ -307,29 +381,29 @@ struct InsightsView: View {
 
             HStack {
                 Image(systemName: "sun.max.fill")
-                    .font(.title2)
+                    .font(AppTheme.Typography.title2)
                     .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("最活跃时段")
-                        .font(.caption)
+                        .font(AppTheme.Typography.caption)
                         .foregroundStyle(.secondary)
                     Text(peakHourRange)
-                        .font(.title3)
+                        .font(AppTheme.Typography.title3)
                         .fontWeight(.semibold)
                 }
 
                 Spacer()
 
                 Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.title3)
+                    .font(AppTheme.Typography.title3)
                     .foregroundStyle(.secondary)
             }
             .padding(16)
-            .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
         }
         .padding(16)
-        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
     }
 
     // MARK: - 通用组件
@@ -337,7 +411,7 @@ struct InsightsView: View {
     /// 区块标题
     private func sectionHeader(_ title: String, icon: String) -> some View {
         Label(title, systemImage: icon)
-            .font(.headline)
+            .font(AppTheme.Typography.headline)
             .foregroundStyle(.primary)
     }
 }

@@ -18,6 +18,12 @@ struct SessionsView: View {
     /// 搜索关键字(用于按标题过滤会话列表)
     @State private var searchText: String = ""
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 SessionSkeletonRow 占位行
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     /// 根据搜索关键字过滤后的会话列表(置顶优先,再按更新时间降序)
     private var filteredSessions: [Session] {
         let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -32,61 +38,66 @@ struct SessionsView: View {
     var body: some View {
         NavigationStack {
             // 会话列表(已排序:置顶在前,再按更新时间降序)
+            // v5.0 P0: isLoading 时渲染 SessionSkeletonRow×5 骨架屏
             List {
-                ForEach(filteredSessions) { session in
-                    NavigationLink {
-                        // 点击行进入对应会话的聊天视图
-                        ChatView(sessionId: session.id)
-                    } label: {
-                        SessionRow(session: session)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        // 滑动:删除会话
-                        Button(role: .destructive) {
-                            HapticFeedback.medium()
-                            // 先更新内存状态(SessionManager)
-                            appState.sessionManager.deleteSession(session.id)
-                            // 同步删除持久化层的消息记录与会话本体,避免 App 重启后数据残留
-                            appState.dataController.deleteMessages(sessionId: session.id)
-                            appState.dataController.deleteSession(session.id)
+                if isLoading {
+                    SkeletonList(repeat: 5) { SessionSkeletonRow() }
+                } else {
+                    ForEach(filteredSessions) { session in
+                        NavigationLink {
+                            // 点击行进入对应会话的聊天视图
+                            ChatView(sessionId: session.id)
                         } label: {
-                            Label("删除", systemImage: "trash")
+                            SessionRow(session: session)
                         }
-
-                        // 滑动:切换置顶状态
-                        Button {
-                            HapticFeedback.selection()
-                            // 更新内存状态(SessionManager)
-                            appState.sessionManager.togglePin(session.id)
-                            // 持久化置顶状态:从 sessionManager 取回最新 session 对象后整体 upsert
-                            if let updated = appState.sessionManager.sessions.first(where: { $0.id == session.id }) {
-                                appState.dataController.saveSession(updated)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            // 滑动:删除会话
+                            Button(role: .destructive) {
+                                HapticFeedback.medium()
+                                // 先更新内存状态(SessionManager)
+                                appState.sessionManager.deleteSession(session.id)
+                                // 同步删除持久化层的消息记录与会话本体,避免 App 重启后数据残留
+                                appState.dataController.deleteMessages(sessionId: session.id)
+                                appState.dataController.deleteSession(session.id)
+                            } label: {
+                                Label(String(localized: "common.delete"), systemImage: "trash")
                             }
-                        } label: {
-                            Label(
-                                session.isPinned ? "取消置顶" : "置顶",
-                                systemImage: session.isPinned ? "pin.slash" : "pin"
-                            )
-                        }
-                        .tint(.yellow)
 
-                        // 滑动:重命名会话(P1-10)
-                        Button {
-                            renameText = session.title
-                            sessionToRename = session
-                        } label: {
-                            Label("重命名", systemImage: "pencil")
+                            // 滑动:切换置顶状态
+                            Button {
+                                HapticFeedback.selection()
+                                // 更新内存状态(SessionManager)
+                                appState.sessionManager.togglePin(session.id)
+                                // 持久化置顶状态:从 sessionManager 取回最新 session 对象后整体 upsert
+                                if let updated = appState.sessionManager.sessions.first(where: { $0.id == session.id }) {
+                                    appState.dataController.saveSession(updated)
+                                }
+                            } label: {
+                                Label(
+                                    session.isPinned ? String(localized: "session.unpin") : String(localized: "session.pin"),
+                                    systemImage: session.isPinned ? "pin.slash" : "pin"
+                                )
+                            }
+                            .tint(.yellow)
+
+                            // 滑动:重命名会话(P1-10)
+                            Button {
+                                renameText = session.title
+                                sessionToRename = session
+                            } label: {
+                                Label(String(localized: "session.rename"), systemImage: "pencil")
+                            }
+                            .tint(.blue)
                         }
-                        .tint(.blue)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .listStyle(.insetGrouped)
             .animation(.easeInOut(duration: 0.25), value: filteredSessions.count)
-            .navigationTitle("会话")
+            .navigationTitle(String(localized: "tab.sessions"))
             // 会话列表搜索(P2-5):按标题/摘要过滤
-            .searchable(text: $searchText, prompt: "搜索会话")
+            .searchable(text: $searchText, prompt: String(localized: "sessions.search.placeholder"))
             .toolbar {
                 // 工具栏:新建会话(使用默认标题 "新对话")
                 ToolbarItem(placement: .primaryAction) {
@@ -99,25 +110,34 @@ struct SessionsView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("新建会话")
+                    .accessibilityLabel(Text(String(localized: "accessibility.new_session")))
                 }
             }
             // 空状态占位(iOS 17 ContentUnavailableView)
             .overlay {
-                if filteredSessions.isEmpty {
+                if let errorMessage {
+                    // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+                    ErrorStateView(
+                        icon: "bubble.left.and.bubble.right",
+                        title: String(localized: "common.load_failed"),
+                        message: errorMessage,
+                        onRetry: { reloadSessions() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                } else if !isLoading && filteredSessions.isEmpty {
                     if !searchText.isEmpty {
                         // 有搜索关键字但无结果:提示无匹配会话
                         ContentUnavailableView(
-                            "无匹配会话",
+                            String(localized: "sessions.search.empty.title"),
                             systemImage: "magnifyingglass",
-                            description: Text("尝试更换关键字")
+                            description: Text(String(localized: "sessions.search.empty.description"))
                         )
                     } else {
                         // 无会话:引导新建
                         ContentUnavailableView(
-                            "暂无会话",
+                            String(localized: "session.empty.title"),
                             systemImage: "bubble.left.and.bubble.right",
-                            description: Text("点击右上角加号创建新会话")
+                            description: Text(String(localized: "session.empty.description_alt"))
                         )
                     }
                 }
@@ -128,7 +148,33 @@ struct SessionsView: View {
             .sheet(item: $sessionToRename) { session in
                 renameSheet(for: session)
             }
+            // v5.0 P0: 首屏加载骨架屏入口
+            .task {
+                if isLoading {
+                    await loadSessions()
+                }
+            }
         }
+    }
+
+    // MARK: - 加载(v5.0 P0)
+
+    /// 加载会话列表。
+    /// 会话数据由 `appState.sessionManager` 持有（已在 App 启动时从 SwiftData 加载），
+    /// 此处仅做骨架屏过渡 + 错误兜底：保留 try/catch 是为了未来切换异步数据源时不破坏 UI。
+    private func loadSessions() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」（数据本身瞬间可得）
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        // 当前数据源是同步可读的 @Observable 状态，无抛错路径；
+        // 若未来切换为远程 API，在此处 do/catch 并设置 errorMessage
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadSessions() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadSessions() }
     }
 
     // MARK: - 重命名 Sheet(P1-10)
@@ -137,19 +183,19 @@ struct SessionsView: View {
     private func renameSheet(for session: Session) -> some View {
         NavigationStack {
             Form {
-                TextField("会话名称", text: $renameText)
+                TextField(String(localized: "session.rename.placeholder"), text: $renameText)
                     .autocorrectionDisabled()
             }
-            .navigationTitle("重命名")
+            .navigationTitle(String(localized: "session.rename.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button(String(localized: "common.cancel")) {
                         sessionToRename = nil
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button(String(localized: "common.save")) {
                         let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !trimmed.isEmpty else { return }
                         // 更新内存标题

@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeXs2
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -156,7 +158,7 @@ fun VoiceChatOverlay(
                 if (state.partialText.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ) {
                         Text(
@@ -174,7 +176,7 @@ fun VoiceChatOverlay(
                 if (lastUserText.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -198,7 +200,7 @@ fun VoiceChatOverlay(
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -336,7 +338,7 @@ private fun VoiceWaveform(modifier: Modifier = Modifier) {
                     .padding(horizontal = 2.dp)
                     .width(4.dp)
                     .fillMaxHeight(height)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(ShapeXs2)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
             )
         }

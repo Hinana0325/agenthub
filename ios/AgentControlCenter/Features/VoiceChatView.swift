@@ -40,6 +40,12 @@ struct VoiceChatView: View {
     /// 错误提示
     @State private var errorMessage: String?
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时在消息列表区渲染骨架占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var loadErrorMessage: String? = nil
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -59,6 +65,18 @@ struct VoiceChatView: View {
                 messagesList
             }
             .background(AppTheme.backgroundColor)
+            // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+            .overlay {
+                if let loadErrorMessage {
+                    ErrorStateView(
+                        icon: "waveform",
+                        title: "加载失败",
+                        message: loadErrorMessage,
+                        onRetry: { reloadVoiceChat() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                }
+            }
             .navigationTitle("语音消息")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -67,7 +85,7 @@ struct VoiceChatView: View {
                         clearAllMessages()
                     } label: {
                         Image(systemName: "trash")
-                            .accessibilityLabel("清空")
+                            .accessibilityLabel(String(localized: "accessibility.clear_all"))
                     }
                     .disabled(messages.isEmpty)
                 }
@@ -83,6 +101,11 @@ struct VoiceChatView: View {
             .onDisappear {
                 durationTask?.cancel()
                 appState.voiceChatManager.stopAll()
+            }
+            .task {
+                if isLoading {
+                    await loadVoiceChatInitial()
+                }
             }
         }
     }
@@ -196,7 +219,7 @@ struct VoiceChatView: View {
             .frame(width: 120, height: 120)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(appState.voiceChatManager.isRecording ? "停止录音" : "开始录音")
+        .accessibilityLabel(appState.voiceChatManager.isRecording ? String(localized: "accessibility.stop_recording") : String(localized: "accessibility.start_recording"))
     }
 
     /// 操作按钮：取消 / 发送
@@ -254,7 +277,10 @@ struct VoiceChatView: View {
     private var messagesList: some View {
         ScrollView {
             LazyVStack(spacing: AppTheme.Spacing.sm) {
-                if messages.isEmpty {
+                if isLoading {
+                    // v5.0 P0: 首屏骨架屏占位
+                    SkeletonList(repeat: 4) { ListRowSkeleton() }
+                } else if messages.isEmpty {
                     VStack(spacing: AppTheme.Spacing.sm) {
                         Image(systemName: "waveform.circle")
                             .font(.system(size: 48))
@@ -392,6 +418,24 @@ struct VoiceChatView: View {
         } else {
             return AppTheme.tertiaryTextColor
         }
+    }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后准备语音消息列表。
+    /// 录音消息为本地内存状态，无抛错路径；保留 loadErrorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadVoiceChatInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadVoiceChat() {
+        isLoading = true
+        loadErrorMessage = nil
+        Task { await loadVoiceChatInitial() }
     }
 }
 

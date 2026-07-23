@@ -589,4 +589,17 @@
 
     <!-- ChatScreen -->
     <string name="cd_retry_send">Retry send</string>
+
+    <!-- P0 IA: More Tab + MoreScreen entries (Stage 1 information architecture) -->
+    <string name="tab_more">More</string>
+    <string name="more_screen_title">More</string>
+    <string name="more_entry_settings_subtitle">Theme, about, updates</string>
+    <string name="more_entry_activity_subtitle">Agent runs and events</string>
+    <string name="more_entry_marketplace_subtitle">Discover and install community agents</string>
+    <string name="more_entry_workflow_subtitle">Visual workflow orchestration</string>
+    <string name="more_entry_insights_subtitle">Usage statistics and patterns</string>
+    <string name="more_entry_plugins_subtitle">Manage installed plugins</string>
+    <string name="more_entry_mcp_subtitle">MCP server connections</string>
+    <string name="more_entry_compare_subtitle">Compare model responses side-by-side</string>
+    <string name="more_entry_devicesync_subtitle">Sync data across devices</string>
 </resources>

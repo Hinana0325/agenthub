@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeM16
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -145,7 +147,7 @@ private fun WorkflowCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeM16,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         tonalElevation = 1.dp
     ) {
@@ -156,7 +158,7 @@ private fun WorkflowCard(
             // Icon
             Surface(
                 modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = ShapeS12,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -440,7 +442,7 @@ private fun WorkflowCanvas(
                         x = with(density) { (node.positionX * density.density).toDp() },
                         y = with(density) { (node.positionY * density.density).toDp() }
                     )
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(ShapeS12)
                     .background(
                         when {
                             isCurrent -> MaterialTheme.colorScheme.primaryContainer

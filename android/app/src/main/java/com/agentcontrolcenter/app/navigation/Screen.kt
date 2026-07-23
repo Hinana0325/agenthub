@@ -2,6 +2,7 @@ package com.agentcontrolcenter.app.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
@@ -36,9 +37,24 @@ sealed class Screen(
     data object Plugins : Screen("plugins", R.string.plugin_title, Icons.Default.Extension)
     data object Tasks : Screen("tasks", R.string.nav_tasks, Icons.Default.TaskAlt)
     data object Mcp : Screen("mcp", R.string.nav_mcp, Icons.Default.Dns)
+    /**
+     * P0 IA 重组：新增 More 主 Tab，承载次级入口（Activity/Marketplace/Workflow/
+     * Insights/Plugins/Mcp/Compare/DeviceSync/Settings）。
+     * 路由 "more" 不与任何已有 Screen 冲突。
+     */
+    data object More : Screen("more", R.string.tab_more, Icons.Default.Apps)
 
     companion object {
-        /** Returns the list of primary tab screens shown in the bottom bar / navigation rail. */
-        fun getTabs(): List<Screen> = listOf(Chat, Sessions, Activity, Settings)
+        /**
+         * Returns the list of primary tab screens shown in the bottom bar / navigation rail.
+         *
+         * P0 信息架构重组（阶段 1）：
+         * - 改造前：Chat / Sessions / Activity / Settings（4 个，9 个 Screen 埋在子页）
+         * - 改造后：Chat / Sessions / Agents / Tasks / More（5 个 + 次级入口收敛）
+         *
+         * Activity 与 Settings 从主 Tab 移除，下沉为 More 次级入口；
+         * Agents 与 Tasks 从 Settings 子页上提为主 Tab。
+         */
+        fun getTabs(): List<Screen> = listOf(Chat, Sessions, Agents, Tasks, More)
     }
 }

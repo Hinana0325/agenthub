@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS10
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,7 +42,7 @@ import com.agentcontrolcenter.app.agent.model.AgentConfig
 import com.agentcontrolcenter.app.agent.model.AgentType
 import com.agentcontrolcenter.app.agent.model.AgentTypeUi
 import com.agentcontrolcenter.app.core.config.AgentConfigValidator
-import com.agentcontrolcenter.app.ui.adaptive.WindowSize
+import com.agentcontrolcenter.app.ui.adaptive.WindowWidthClass
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.components.AgentCardSkeletonItem
@@ -57,7 +59,7 @@ fun AgentsScreen(
 ) {
     val uiState by agentsViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
-    val useGrid = adaptive.windowSize == WindowSize.Expanded
+    val useGrid = adaptive.widthClass == WindowWidthClass.Expanded
     val context = LocalContext.current
     var showFabMenu by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -259,7 +261,7 @@ private fun AgentGridCard(
                 showContextMenu = true
             }
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp)
@@ -269,7 +271,7 @@ private fun AgentGridCard(
             ) {
                 Surface(
                     modifier = Modifier.size(40.dp),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = ShapeS10,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -386,7 +388,7 @@ private fun AgentCard(
                 showContextMenu = true
             }
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -394,7 +396,7 @@ private fun AgentCard(
         ) {
             Surface(
                 modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(10.dp),
+                shape = ShapeS10,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {

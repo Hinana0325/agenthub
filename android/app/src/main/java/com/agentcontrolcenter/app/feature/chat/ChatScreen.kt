@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeXs6
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -66,13 +67,10 @@ import com.agentcontrolcenter.app.ui.adaptive.shouldShowSidebar
 import com.agentcontrolcenter.app.ui.components.ErrorSnackbar
 import kotlinx.coroutines.launch
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
-import com.agentcontrolcenter.app.ui.theme.LocalIsGlass
-import com.agentcontrolcenter.app.ui.theme.glassBackground
 import com.agentcontrolcenter.app.ui.theme.AppEnterTransition
 import com.agentcontrolcenter.app.ui.theme.AppDropdownMenu
 import com.agentcontrolcenter.app.ui.theme.AppDropdownMenuItem
 import com.agentcontrolcenter.app.ui.theme.ShapePill
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
 import com.agentcontrolcenter.app.core.ui.HapticFeedback
 
@@ -197,6 +195,40 @@ fun ChatScreen(
     }
 }
 
+/**
+ * P2: 抽取 Phone/Tablet 聊天布局共用的附件启动器初始化，消除重复代码。
+ *
+ * 内部 remember 两个 [ActivityResultContracts.GetContent] 启动器（图片 / 文件），
+ * 返回封装好的 launch 动作 [ChatActions]，供 [ChatInputBar] 的
+ * onAttachImage / onAttachFile 直接使用。
+ */
+@Composable
+private fun rememberChatActions(viewModel: ChatViewModel): ChatActions {
+    val context = LocalContext.current
+    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.setPendingAttachment(context, it, isImage = true) }
+    }
+    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.setPendingAttachment(context, it, isImage = false) }
+    }
+    return ChatActions(
+        onAttachImage = { imagePickerLauncher.launch("image/*") },
+        onAttachFile = { filePickerLauncher.launch("*/*") }
+    )
+}
+
+/**
+ * 附件选择动作持有者。由 [rememberChatActions] 构造。
+ */
+private class ChatActions(
+    val onAttachImage: () -> Unit,
+    val onAttachFile: () -> Unit
+)
+
 @Composable
 private fun PhoneChatLayout(
     uiState: ChatUiState,
@@ -219,16 +251,8 @@ private fun PhoneChatLayout(
 
     // Voice + Attachment integration
     val context = LocalContext.current
-    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.setPendingAttachment(context, it, isImage = true) }
-    }
-    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.setPendingAttachment(context, it, isImage = false) }
-    }
+    // P2: 附件启动器初始化抽取到 rememberChatActions，与 Tablet 共用。
+    val chatActions = rememberChatActions(viewModel)
 
     LaunchedEffect(Unit) {
         viewModel.initVoiceInput(context)
@@ -277,8 +301,8 @@ private fun PhoneChatLayout(
                     adaptive = adaptive,
                     isVoiceListening = uiState.isVoiceListening,
                     onVoiceToggle = { viewModel.toggleVoiceInput() },
-                    onAttachImage = { imagePickerLauncher.launch("image/*") },
-                    onAttachFile = { filePickerLauncher.launch("*/*") },
+                    onAttachImage = chatActions.onAttachImage,
+                    onAttachFile = chatActions.onAttachFile,
                     pendingAttachmentType = uiState.pendingAttachmentType,
                     pendingAttachmentName = uiState.pendingAttachmentName,
                     onClearAttachment = { viewModel.clearPendingAttachment() },
@@ -331,16 +355,8 @@ private fun TabletChatLayout(
 
     // Voice + Attachment integration (same as Phone layout)
     val context = LocalContext.current
-    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.setPendingAttachment(context, it, isImage = true) }
-    }
-    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.setPendingAttachment(context, it, isImage = false) }
-    }
+    // P2: 附件启动器初始化抽取到 rememberChatActions，与 Phone 共用。
+    val chatActions = rememberChatActions(viewModel)
 
     LaunchedEffect(Unit) {
         viewModel.initVoiceInput(context)
@@ -457,8 +473,8 @@ private fun TabletChatLayout(
                         adaptive = adaptive,
                         isVoiceListening = uiState.isVoiceListening,
                         onVoiceToggle = { viewModel.toggleVoiceInput() },
-                        onAttachImage = { imagePickerLauncher.launch("image/*") },
-                        onAttachFile = { filePickerLauncher.launch("*/*") },
+                        onAttachImage = chatActions.onAttachImage,
+                        onAttachFile = chatActions.onAttachFile,
                         pendingAttachmentType = uiState.pendingAttachmentType,
                         pendingAttachmentName = uiState.pendingAttachmentName,
                         onClearAttachment = { viewModel.clearPendingAttachment() },
@@ -729,21 +745,12 @@ fun MessageBubble(
                     bottomEnd = if (isUser) 4.dp else 16.dp
                 )
             }
-            val isGlassBubble = LocalIsGlass.current
             Surface(
                 shape = bubbleShape,
-                color = if (isGlassBubble) Color.Transparent
-                        else if (isUser) MaterialTheme.colorScheme.primaryContainer
+                color = if (isUser) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = if (isGlassBubble) 0.dp else if (isUser) 0.dp else 1.dp,
+                tonalElevation = if (isUser) 0.dp else 1.dp,
                 modifier = Modifier
-                    .then(
-                        if (isGlassBubble) Modifier.glassBackground(
-                            tintColor = if (isUser) MaterialTheme.colorScheme.primary else Color.White,
-                            shape = bubbleShape,
-                            animateShine = false
-                        ) else Modifier
-                    )
                     .semantics {
                         contentDescription = if (isUser)
                             context.getString(R.string.a11y_message_user, message.content.take(50))
@@ -772,7 +779,7 @@ fun MessageBubble(
                                 .padding(bottom = 6.dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(6.dp)
+                                    shape = ShapeXs6
                                 )
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {

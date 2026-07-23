@@ -15,7 +15,7 @@ import Observation
 
 /// 外观配置
 struct AppearanceConfig: Equatable, Sendable {
-    /// 主题模式：`"light"` / `"dark"` / `"system"`（与 `AppThemePreference.rawValue` 一致，复用旧 key `"theme"`）
+    /// 主题模式：`"light"` / `"dark"` / `"system"`（与 `AppTheme.ThemePreference.rawValue` 一致，复用旧 key `"theme"`）
     var themeMode: String = AppearanceConfig.defaultThemeMode
     /// 字体大小：Android 用 `"small"`/`"medium"`/`"large"`；iOS 旧 `FontSize` 枚举使用中文 rawValue
     /// （`"小"`/`"中"`/`"大"`）。此处默认值与 Android 对齐为 `"medium"`，

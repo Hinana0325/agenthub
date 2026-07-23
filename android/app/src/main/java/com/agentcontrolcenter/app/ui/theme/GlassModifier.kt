@@ -29,7 +29,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,52 +37,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 
 /**
- * Whether the current composable tree is in glass mode.
- *
- * Liquid Glass system has been removed — this is always `false` and kept only for
- * backward compatibility with call sites that still read it.
- */
-val LocalIsGlass = staticCompositionLocalOf { false }
-
-// ---------------------------------------------------------------------------
-// Legacy glass CompositionLocals — no longer consumed by any rendering path.
-// Kept so that existing `LocalXxx.current` reads across the codebase compile.
-// ---------------------------------------------------------------------------
-
-/** Default glass blur radius (unused) */
-val LocalGlassBlurRadius = staticCompositionLocalOf { 16.dp }
-
-/** Default glass tint opacity (unused) */
-val LocalGlassTintAlpha = staticCompositionLocalOf { 0.20f }
-
-/** Default glass border opacity (unused) */
-val LocalGlassBorderAlpha = staticCompositionLocalOf { 0.15f }
-
-/** Dynamic shine (highlight) opacity (unused) */
-val LocalGlassShineAlpha = staticCompositionLocalOf { 0.10f }
-
-/** Dispersion (chromatic aberration) strength (unused) */
-val LocalGlassDispersion = staticCompositionLocalOf { 1.5f }
-
-/** Depth shadow elevation (dp) (unused) */
-val LocalGlassShadowElevation = staticCompositionLocalOf { 8.dp }
-
-/**
- * No-op modifier — Liquid Glass system has been removed.
- *
- * Returns the receiver unchanged so that existing call sites that chain
- * `.glassBackground(...)` continue to compile and behave as a plain Modifier.
- */
-@Composable
-fun Modifier.glassBackground(
-    tintColor: Color = Color.White,
-    borderColor: Color = Color.White,
-    shape: Shape = RoundedCornerShape(16.dp),
-    animateShine: Boolean = true,
-): Modifier = this
-
-/**
- * Standard Material3 [Surface] container — Liquid Glass disabled.
+ * Standard Material3 [Surface] container.
  * Delegates directly to [Surface] with a solid `surfaceContainer` color.
  */
 @Composable
@@ -104,7 +58,7 @@ fun AppSurfaceBox(
 }
 
 /**
- * Standard Material3 [TopAppBar] — Liquid Glass disabled.
+ * Standard Material3 [TopAppBar].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,7 +82,7 @@ fun AppTopAppBar(
 }
 
 /**
- * Standard Material3 [NavigationBar] — Liquid Glass disabled.
+ * Standard Material3 [NavigationBar].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,7 +99,7 @@ fun AppNavigationBar(
 }
 
 /**
- * Standard Material3 [NavigationRail] — Liquid Glass disabled.
+ * Standard Material3 [NavigationRail].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,7 +117,7 @@ fun AppNavigationRail(
 }
 
 /**
- * Standard Material3 [Card] (clickable) — Liquid Glass disabled.
+ * Standard Material3 [Card] (clickable).
  */
 @Composable
 fun AppCard(
@@ -172,7 +126,7 @@ fun AppCard(
     enabled: Boolean = true,
     shape: Shape = CardDefaults.shape,
     colors: androidx.compose.material3.CardColors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ),
     elevation: androidx.compose.material3.CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,
@@ -193,14 +147,14 @@ fun AppCard(
 }
 
 /**
- * Standard Material3 [Card] (non-clickable) — Liquid Glass disabled.
+ * Standard Material3 [Card] (non-clickable).
  */
 @Composable
 fun AppCard(
     modifier: Modifier = Modifier,
     shape: Shape = CardDefaults.shape,
     colors: androidx.compose.material3.CardColors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ),
     elevation: androidx.compose.material3.CardElevation = CardDefaults.cardElevation(),
     border: BorderStroke? = null,
@@ -217,7 +171,7 @@ fun AppCard(
 }
 
 /**
- * Standard Material3 [FloatingActionButton] — Liquid Glass disabled.
+ * Standard Material3 [FloatingActionButton].
  */
 @Composable
 fun AppFAB(
@@ -240,7 +194,6 @@ fun AppFAB(
 
 /**
  * Floating pill control — standard Material3 [Surface] with a pill shape.
- * Liquid Glass disabled.
  */
 @Composable
 fun AppPill(
@@ -266,7 +219,7 @@ fun AppPill(
 }
 
 /**
- * Standard Material3 [DropdownMenu] — Liquid Glass disabled.
+ * Standard Material3 [DropdownMenu].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -291,7 +244,7 @@ fun AppDropdownMenu(
 }
 
 /**
- * Standard Material3 [DropdownMenuItem] — Liquid Glass disabled.
+ * Standard Material3 [DropdownMenuItem].
  */
 @Composable
 fun AppDropdownMenuItem(
@@ -313,7 +266,7 @@ fun AppDropdownMenuItem(
 }
 
 /**
- * Standard Material3 [ModalBottomSheet] — Liquid Glass disabled.
+ * Standard Material3 [ModalBottomSheet].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.data.model.ActivityItem
-import com.agentcontrolcenter.app.ui.adaptive.WindowSize
+import com.agentcontrolcenter.app.ui.adaptive.WindowWidthClass
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.ui.components.EmptyStateView
 import com.agentcontrolcenter.app.ui.theme.AppCard
@@ -37,7 +38,7 @@ fun ActivityScreen(
 ) {
     val uiState by activityViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
-    val useDualPane = adaptive.windowSize == WindowSize.Expanded
+    val useDualPane = adaptive.widthClass == WindowWidthClass.Expanded
 
     var selectedActivityId by remember { mutableStateOf<String?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -290,7 +291,7 @@ private fun ActivityCard(activity: ActivityItem) {
 
     AppCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

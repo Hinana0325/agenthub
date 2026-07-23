@@ -6,6 +6,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -201,7 +203,7 @@ fun WizardOverlay(
                 if (uiState.agentConfigs.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth().clickable { showSaved = !showSaved },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = ShapeS12,
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ) {
                         Row(
@@ -241,7 +243,7 @@ fun WizardOverlay(
                                         // Agent type icon
                                         Surface(
                                             modifier = Modifier.size(32.dp),
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = ShapeS8,
                                             color = if (isSelected)
                                                 MaterialTheme.colorScheme.primary
                                             else
@@ -302,7 +304,7 @@ fun WizardOverlay(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ShapeS12
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -316,7 +318,7 @@ fun WizardOverlay(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     visualTransformation = PasswordVisualTransformation(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ShapeS12
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -348,7 +350,7 @@ fun WizardOverlay(
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = ShapeS12
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -393,7 +395,7 @@ fun WizardOverlay(
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ShapeS8,
                         color = MaterialTheme.colorScheme.errorContainer
                     ) {
                         Row(

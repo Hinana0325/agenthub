@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -185,7 +186,7 @@ private fun TaskItem(
                         showMenu = true
                     }
                 ),
-            shape = RoundedCornerShape(12.dp),
+            shape = ShapeS12,
         ) {
             Row(
                 modifier = Modifier
@@ -370,7 +371,7 @@ private fun taskTypeIcon(type: TaskManager.TaskType): androidx.compose.ui.graphi
 private fun taskStatusColor(status: TaskManager.TaskStatus): Color = when (status) {
     TaskManager.TaskStatus.Pending -> MaterialTheme.colorScheme.secondary
     TaskManager.TaskStatus.Running -> MaterialTheme.colorScheme.primary
-    TaskManager.TaskStatus.Completed -> Color(0xFF10B981)
+    TaskManager.TaskStatus.Completed -> LocalSuccessColor.current
     TaskManager.TaskStatus.Failed -> MaterialTheme.colorScheme.error
     TaskManager.TaskStatus.Cancelled -> MaterialTheme.colorScheme.outline
 }

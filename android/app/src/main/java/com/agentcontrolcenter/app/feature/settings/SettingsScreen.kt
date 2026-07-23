@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
@@ -26,9 +25,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agentcontrolcenter.app.R
-import com.agentcontrolcenter.app.ui.adaptive.WindowSize
+import com.agentcontrolcenter.app.ui.adaptive.WindowWidthClass
 import com.agentcontrolcenter.app.ui.adaptive.currentAdaptiveConfig
 import com.agentcontrolcenter.app.data.update.UpdateManager
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -47,7 +47,10 @@ fun SettingsScreen(
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val adaptive = currentAdaptiveConfig()
     val context = LocalContext.current
-    val useDualPane = adaptive.windowSize == WindowSize.Expanded
+    val useDualPane = adaptive.widthClass == WindowWidthClass.Expanded
+
+    // P2: 通过根 Scaffold 提供的全局 SnackbarHostState 展示消息，替代 Toast。
+    val snackbarHostState = LocalSnackbarHost.current
 
     // Agent-config count sourced from the Hilt-injected repository via the ViewModel
     // (previously fetched directly via the now-removed AppModule singleton).
@@ -124,7 +127,7 @@ fun SettingsScreen(
     // Backup message snackbar
     LaunchedEffect(uiState.backupMessage) {
         uiState.backupMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar(it)
             settingsViewModel.clearBackupMessage()
         }
     }

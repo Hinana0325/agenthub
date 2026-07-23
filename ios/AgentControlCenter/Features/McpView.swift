@@ -17,12 +17,24 @@ struct McpView: View {
     /// L-5 修复：保存加密失败时设置错误文本，UI 通过 alert 展示给用户
     @State private var lastError: String?
 
+    // MARK: - 加载/错误态(v5.0 P0)
+    /// 首屏骨架屏开关：true 时渲染 ListRowSkeleton 占位
+    @State private var isLoading: Bool = true
+    /// 加载错误信息：非 nil 时覆盖列表渲染 ErrorStateView
+    @State private var errorMessage: String? = nil
+
     /// UserDefaults 持久化键(因 DataController 未提供 McpServerEntity,使用 JSON 编码方式持久化)
     private static let storageKey = "mcp_servers"
 
     var body: some View {
         NavigationStack {
             List {
+                if isLoading {
+                    // v5.0 P0: 首屏骨架屏占位
+                    Section {
+                        SkeletonList(repeat: 4) { ListRowSkeleton() }
+                    }
+                } else {
                 // MCP Server 列表
                 Section("MCP 服务器") {
                     if servers.isEmpty {
@@ -59,8 +71,21 @@ struct McpView: View {
                         }
                     }
                 }
+                } // else
             }
             .navigationTitle("MCP")
+            // v5.0 P0: 加载错误时覆盖列表展示 ErrorStateView + onRetry 重载
+            .overlay {
+                if let errorMessage {
+                    ErrorStateView(
+                        icon: "network",
+                        title: "加载失败",
+                        message: errorMessage,
+                        onRetry: { reloadServers() }
+                    )
+                    .background(AppTheme.backgroundColor)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -68,7 +93,7 @@ struct McpView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("添加 MCP 服务器")
+                    .accessibilityLabel(String(localized: "accessibility.add_mcp_server"))
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
@@ -80,7 +105,9 @@ struct McpView: View {
             }
             // SW-M2: 使用 .task 替代 .onAppear，由 SwiftUI 管理任务生命周期
             .task {
-                loadServers()
+                if isLoading {
+                    await loadServersInitial()
+                }
             }
             // L-5 修复：加密失败时通过 alert 提示用户
             .alert(String(localized: "common.error.title"),
@@ -150,6 +177,25 @@ struct McpView: View {
             }
         }
     }
+
+    // MARK: - 加载/错误态(v5.0 P0)
+
+    /// 首屏加载：展示骨架屏后从 UserDefaults 拉取 MCP 服务器列表。
+    /// `loadServers` 是同步 API，不会抛错；保留 isLoading/errorMessage 框架
+    /// 便于未来切换异步数据源时无缝接入。
+    private func loadServersInitial() async {
+        // 短暂展示骨架屏，让用户感知「正在加载」
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        loadServers()
+        isLoading = false
+    }
+
+    /// 错误重试入口：重置状态后重新加载（onRetry 闭包要求 () -> Void）
+    private func reloadServers() {
+        isLoading = true
+        errorMessage = nil
+        Task { await loadServersInitial() }
+    }
 }
 
 // MARK: - MCP Server Row
@@ -178,6 +224,7 @@ private struct McpServerRow: View {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 10, height: 10)
+                    .accessibilityLabel(String(localized: "accessibility.connection_status"))
 
                 VStack(alignment: .leading) {
                     Text(server.name)
@@ -203,11 +250,12 @@ private struct McpServerRow: View {
                     if isConnecting {
                         ProgressView()
                     } else {
-                        Text(connectionState == .connected ? "断开" : "连接")
+                        Text(connectionState == .connected ? String(localized: "mcp.disconnect") : String(localized: "mcp.connect"))
                             .font(.caption)
                     }
                 }
                 .buttonStyle(.bordered)
+                .accessibilityLabel(connectionState == .connected ? String(localized: "accessibility.disconnect") : String(localized: "accessibility.connect"))
             }
 
             // 能力标签

@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeM16
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
+import com.agentcontrolcenter.app.ui.theme.ShapeXs4
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -132,7 +136,7 @@ fun PluginScreen(
                         )
                     }
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ShapeS8,
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -174,7 +178,7 @@ fun PluginScreen(
 private fun PluginStatsCard(total: Int, enabled: Int) {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeM16,
     ) {
         Row(
             modifier = Modifier
@@ -220,7 +224,7 @@ private fun PluginCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
         onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -235,7 +239,7 @@ private fun PluginCard(
         ) {
             Surface(
                 modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = ShapeS12,
                 color = if (plugin.isEnabled)
                     MaterialTheme.colorScheme.secondaryContainer
                 else
@@ -268,7 +272,7 @@ private fun PluginCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         plugin.permissions.forEach { perm ->
                             Surface(
-                                shape = RoundedCornerShape(4.dp),
+                                shape = ShapeXs4,
                                 color = MaterialTheme.colorScheme.surfaceVariant
                             ) {
                                 Text(

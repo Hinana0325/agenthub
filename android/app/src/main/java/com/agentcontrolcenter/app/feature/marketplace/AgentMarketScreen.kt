@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS10
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeXs4
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -155,7 +158,7 @@ fun AgentMarketScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = ShapeS12
             )
 
             // Tag filter chips
@@ -301,7 +304,7 @@ private fun MarketplaceAgentCard(
 ) {
     AppCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Column(
             modifier = Modifier
@@ -315,7 +318,7 @@ private fun MarketplaceAgentCard(
                 // Agent type icon
                 Surface(
                     modifier = Modifier.size(44.dp),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = ShapeS10,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -436,7 +439,7 @@ private fun MarketplaceAgentCard(
                 // Tags
                 agent.tags.take(3).forEach { tag ->
                     Surface(
-                        shape = RoundedCornerShape(4.dp),
+                        shape = ShapeXs4,
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                     ) {
                         Text(

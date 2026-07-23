@@ -220,7 +220,7 @@ struct ChatView: View {
                         .scaledToFill()
                         .frame(width: 48, height: 48)
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
-                    Text("已选择图片")
+                    Text(String(localized: "chat.attachment.selected"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -231,7 +231,7 @@ struct ChatView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
-                    .accessibilityLabel("清除已选图片")
+                    .accessibilityLabel(Text(String(localized: "accessibility.clear_image")))
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.top, AppTheme.Spacing.sm)
@@ -250,7 +250,7 @@ struct ChatView: View {
                 .disabled(isWaiting)
 
                 // 多行文本输入框
-                TextField("输入消息…", text: $inputText, axis: .vertical)
+                TextField(String(localized: "chat.placeholder"), text: $inputText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...5)
                     .focused($isInputFocused)
@@ -258,7 +258,7 @@ struct ChatView: View {
                         // 键盘上方添加完成按钮，用于收起键盘
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
-                            Button("完成") { isInputFocused = false }
+                            Button(String(localized: "common.done")) { isInputFocused = false }
                         }
                     }
                     .onChange(of: inputText) { _, newValue in
@@ -342,7 +342,7 @@ struct ChatView: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             }
-            .accessibilityLabel("取消回复")
+            .accessibilityLabel(Text(String(localized: "accessibility.cancel_reply")))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -352,10 +352,10 @@ struct ChatView: View {
     /// 回复角色的显示名称
     private func replyRoleName(_ role: MessageRole) -> String {
         switch role {
-        case .user: return "回复你"
-        case .assistant: return "回复助手"
-        case .system: return "回复系统"
-        case .tool: return "回复工具"
+        case .user: return String(localized: "chat.reply.user")
+        case .assistant: return String(localized: "chat.reply.assistant")
+        case .system: return String(localized: "chat.reply.system")
+        case .tool: return String(localized: "chat.reply.tool")
         }
     }
 
@@ -383,7 +383,9 @@ struct ChatView: View {
             voiceManager.state == .listening ? Color.red.opacity(0.25) : .clear,
             in: GlassTokens.circleShape
         )
-        .accessibilityLabel(voiceManager.state == .listening ? "停止语音输入" : "语音输入")
+        .accessibilityLabel(voiceManager.state == .listening
+                            ? Text(String(localized: "accessibility.voice_input_stop"))
+                            : Text(String(localized: "accessibility.voice_input")))
     }
 
     /// 切换语音输入状态
@@ -433,7 +435,7 @@ struct ChatView: View {
             canSend ? AppTheme.primaryColor : Color.gray.opacity(0.3),
             in: GlassTokens.circleShape
         )
-        .accessibilityLabel("发送")
+        .accessibilityLabel(Text(String(localized: "accessibility.send_button")))
     }
 
     // MARK: - 停止按钮
@@ -453,7 +455,7 @@ struct ChatView: View {
             Color.red,
             in: GlassTokens.circleShape
         )
-        .accessibilityLabel("停止生成")
+        .accessibilityLabel(Text(String(localized: "accessibility.stop_generate")))
     }
 
     // MARK: - 是否允许发送
@@ -493,11 +495,11 @@ struct ChatView: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .navigationTitle("帮助")
+            .navigationTitle(String(localized: "chat.help.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("关闭") {
+                    Button(String(localized: "common.close")) {
                         showHelpSheet = false
                     }
                 }
@@ -832,7 +834,7 @@ struct ChatView: View {
     /// 流式结束：把累积文本固化为一条助手消息并持久化
     private func finalizeAssistantMessage(sessionId: String) {
         HapticFeedback.success()
-        let content = streamingText.isEmpty ? "(无回复)" : streamingText
+        let content = streamingText.isEmpty ? String(localized: "chat.no_reply") : streamingText
         let msg = Message(
             id: UUID().uuidString,
             sessionId: sessionId,
@@ -903,7 +905,7 @@ struct ChatView: View {
                 id: UUID().uuidString,
                 sessionId: sessionId,
                 role: .assistant,
-                content: "未配置活跃 Agent，请先在「Agent」页面选择并配置一个 Agent。",
+                content: String(localized: "chat.no.agent"),
                 timestamp: Int64(Date().timeIntervalSince1970 * 1000),
                 status: .received
             )
@@ -1006,7 +1008,7 @@ private struct MessageBubble: View {
                     .padding(.vertical, 8)
                     .background(
                         isUser ? AppTheme.userBubbleColor : AppTheme.assistantBubbleColor,
-                        in: RoundedRectangle(cornerRadius: 14)
+                        in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
                     )
                     .foregroundStyle(isUser ? .white : .primary)
                     .textSelection(.enabled)
@@ -1099,7 +1101,7 @@ private struct MessageBubble: View {
         .padding(8)
         // 黑框修复: 原 `.thinMaterial` 在深色模式下有暗色基底，叠加在消息气泡上
         // 会形成近黑色小色块。改用 secondaryBackground 不透明色，深浅模式自适应。
-        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: 8))
+        .background(AppTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.sm))
     }
 
     // MARK: - 上下文菜单
@@ -1110,19 +1112,19 @@ private struct MessageBubble: View {
         Button {
             UIPasteboard.general.string = message.content
         } label: {
-            Label("复制", systemImage: "doc.on.doc")
+            Label(String(localized: "message.copy"), systemImage: "doc.on.doc")
         }
 
         Button {
             onDelete(message)
         } label: {
-            Label("删除", systemImage: "trash")
+            Label(String(localized: "common.delete"), systemImage: "trash")
         }
 
         Button {
             onReply(message)
         } label: {
-            Label("回复", systemImage: "arrowshape.turn.up.left")
+            Label(String(localized: "message.reply"), systemImage: "arrowshape.turn.up.left")
         }
     }
 }
@@ -1142,7 +1144,7 @@ private struct StreamingBubble: View {
                 .padding(.vertical, 8)
                 .background(
                     AppTheme.assistantBubbleColor,
-                    in: RoundedRectangle(cornerRadius: 14)
+                    in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
                 )
                 .foregroundStyle(.primary)
             Spacer()
@@ -1180,7 +1182,7 @@ private struct TypingIndicator: View {
             .padding(12)
             .background(
                 AppTheme.assistantBubbleColor,
-                in: RoundedRectangle(cornerRadius: 14)
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md)
             )
             Spacer()
         }
@@ -1256,10 +1258,10 @@ struct ChatEmptyState: View {
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 8) {
-                Text("开始对话")
+                Text(String(localized: "chat.empty.title"))
                     .font(.title2)
                     .fontWeight(.bold)
-                Text("请先在「Agent」页面配置并启用一个 Agent，即可开始对话。")
+                Text(String(localized: "chat.empty.no_agent_description"))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -1270,24 +1272,24 @@ struct ChatEmptyState: View {
                 Button {
                     configureAction()
                 } label: {
-                    Text("前往配置 Agent")
+                    Text(String(localized: "chat.empty.configure.cta"))
                         .font(.headline)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: 12))
+                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                 }
             } else {
                 // 默认使用 NavigationLink 直接跳转
                 NavigationLink {
                     AgentsView()
                 } label: {
-                    Text("前往配置 Agent")
+                    Text(String(localized: "chat.empty.configure.cta"))
                         .font(.headline)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: 12))
+                        .background(AppTheme.primaryColor, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.md))
                 }
             }
 

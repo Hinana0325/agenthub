@@ -15,10 +15,13 @@ class ScreenTest {
     }
 
     @Test
-    fun `tabs contain exactly 4 screens`() {
-        val expectedRoutes = setOf("chat", "sessions", "activity", "settings")
+    fun `tabs contain exactly 5 screens`() {
+        // P0 IA 重组：主 Tab 由 4 个（Chat/Sessions/Activity/Settings）
+        // 改为 5 个（Chat/Sessions/Agents/Tasks/More），Activity 与 Settings
+        // 下沉为 More 的次级入口，Agents 与 Tasks 上提为主 Tab。
+        val expectedRoutes = setOf("chat", "sessions", "agents", "tasks", "more")
         val actualRoutes = Screen.getTabs().map { it.route }.toSet()
-        assertEquals("tabs should have 4 routes", 4, actualRoutes.size)
+        assertEquals("tabs should have 5 routes", 5, actualRoutes.size)
         assertEquals("tabs routes should match expected", expectedRoutes, actualRoutes)
     }
 

@@ -1,6 +1,5 @@
 package com.agentcontrolcenter.app.feature.settings
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS8
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileUpload
@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.agentcontrolcenter.app.R
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
+import kotlinx.coroutines.launch
 
 /**
  * 安全相关设置：E2E 加密对话框及密钥管理（显示 / 复制 / 重新生成 / 导入）。
@@ -53,6 +56,9 @@ internal fun E2EPasswordDialog(
     var importKeyValue by remember { mutableStateOf("") }
     var showRegenerateConfirm by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    // P2: 复用根 Scaffold 提供的全局 SnackbarHostState，替代 Toast。
+    val snackbarHostState = LocalSnackbarHost.current
+    val scope = rememberCoroutineScope()
 
     if (showRegenerateConfirm) {
         AlertDialog(
@@ -63,7 +69,9 @@ internal fun E2EPasswordDialog(
                 TextButton(onClick = {
                     viewModel.regenerateKey()
                     showRegenerateConfirm = false
-                    Toast.makeText(context, context.getString(R.string.e2e_key_regenerated), Toast.LENGTH_SHORT).show()
+                    scope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.e2e_key_regenerated))
+                    }
                 }) {
                     Text(stringResource(R.string.e2e_confirm), color = MaterialTheme.colorScheme.error)
                 }
@@ -108,7 +116,7 @@ internal fun E2EPasswordDialog(
 
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ShapeS8,
                         color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
@@ -179,7 +187,9 @@ internal fun E2EPasswordDialog(
                                         viewModel.importKey(importKeyValue)
                                         importKeyValue = ""
                                         showImportField = false
-                                        Toast.makeText(context, context.getString(R.string.e2e_key_imported), Toast.LENGTH_SHORT).show()
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(context.getString(R.string.e2e_key_imported))
+                                        }
                                     }
                                 }
                             ) {

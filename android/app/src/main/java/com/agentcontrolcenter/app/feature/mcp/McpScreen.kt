@@ -1,12 +1,13 @@
 package com.agentcontrolcenter.app.feature.mcp
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.agentcontrolcenter.app.ui.theme.ShapeS12
+import com.agentcontrolcenter.app.ui.theme.ShapeXs4
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,8 +29,10 @@ import com.agentcontrolcenter.app.R
 import com.agentcontrolcenter.app.mcp.bridge.McpBridge
 import com.agentcontrolcenter.app.mcp.model.McpServer
 import com.agentcontrolcenter.app.mcp.model.McpTransportType
+import com.agentcontrolcenter.app.ui.components.LocalSnackbarHost
 import com.agentcontrolcenter.app.ui.theme.AppCard
 import com.agentcontrolcenter.app.ui.theme.AppTopAppBar
+import com.agentcontrolcenter.app.ui.theme.LocalSuccessColor
 
 /**
  * MCP 服务器管理页面 — 对齐 iOS McpView。
@@ -53,7 +56,8 @@ fun McpScreen(
     val servers by viewModel.serversWithState.collectAsStateWithLifecycle()
     val tools by viewModel.availableTools.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    // P2: 复用根 Scaffold 提供的全局 SnackbarHostState，替代本地 Toast。
+    val snackbarHostState = LocalSnackbarHost.current
 
     // 消费 ViewModel 发射的 message（连接/测试结果）
     LaunchedEffect(uiState.message) {
@@ -63,7 +67,7 @@ fun McpScreen(
             "MCP_TEST_FAILED" -> context.getString(R.string.mcp_test_failed)
             else -> msg
         }
-        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        snackbarHostState.showSnackbar(text)
         viewModel.clearMessage()
     }
 
@@ -94,8 +98,7 @@ fun McpScreen(
                 }
             )
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -199,7 +202,7 @@ private fun McpServerCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = ShapeS12,
     ) {
         Column(
             modifier = Modifier
@@ -371,7 +374,7 @@ private fun McpServerCard(
 @Composable
 private fun CapabilityTag(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Surface(
-        shape = RoundedCornerShape(4.dp),
+        shape = ShapeXs4,
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
@@ -568,7 +571,7 @@ private fun connectionStateDisplayName(state: McpBridge.ConnectionState): String
 private fun connectionStatusColor(state: McpBridge.ConnectionState): androidx.compose.ui.graphics.Color = when (state) {
     McpBridge.ConnectionState.Disconnected -> MaterialTheme.colorScheme.outline
     McpBridge.ConnectionState.Connecting -> MaterialTheme.colorScheme.tertiary
-    McpBridge.ConnectionState.Connected -> androidx.compose.ui.graphics.Color(0xFF10B981)
+    McpBridge.ConnectionState.Connected -> LocalSuccessColor.current
     McpBridge.ConnectionState.Failed -> MaterialTheme.colorScheme.error
 }
 
